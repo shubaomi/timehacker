@@ -39,19 +39,23 @@ describe("real PostgreSQL integration", () => {
     await database.$disconnect();
   });
 
-  it("has the deployed migration and an idempotent twenty-cheat seed", async () => {
+  it("has the deployed migrations and an idempotent bilingual 100-cheat seed", async () => {
     const migrations = await database.$queryRaw<Array<{ migration_name: string }>>`
       SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NOT NULL
     `;
     expect(migrations.map(({ migration_name }) => migration_name)).toContain(
       "20260802050000_init",
     );
-    expect(await seedCheatCatalog(database)).toBe(20);
-    expect(await seedCheatCatalog(database)).toBe(20);
-    expect(await database.cheatMethod.count()).toBe(20);
+    expect(migrations.map(({ migration_name }) => migration_name)).toContain(
+      "20260802190000_add_cheat_localizations",
+    );
+    expect(await seedCheatCatalog(database)).toBe(100);
+    expect(await seedCheatCatalog(database)).toBe(100);
+    expect(await database.cheatMethod.count()).toBe(100);
     expect(
       await database.cheatMethod.groupBy({ by: ["slug"], _count: { slug: true } }),
-    ).toHaveLength(20);
+    ).toHaveLength(100);
+    expect(await database.cheatMethod.count({ where: { nameZh: { not: null } } })).toBe(100);
   });
 
   it("creates an anonymous player idempotently and exposes a non-repeating assignment", async () => {
@@ -63,7 +67,7 @@ describe("real PostgreSQL integration", () => {
 
     const dashboard = await getDashboard(database, id, 1, fixedNow);
     expect(dashboard.suggestedCheat?.difficulty).toBe(1);
-    expect(dashboard.collection).toHaveLength(20);
+    expect(dashboard.collection).toHaveLength(100);
     expect(dashboard.collection.every((entry) => !entry.unlocked)).toBe(true);
   });
 
@@ -231,7 +235,7 @@ describe("real PostgreSQL integration", () => {
     await resetPlayer(database, resetId);
     expect(await database.gameRecord.count({ where: { userId: resetUser.id } })).toBe(0);
     expect(await database.gameRecord.count({ where: { userId: neighbor.id } })).toBe(1);
-    expect(await database.cheatMethod.count()).toBe(20);
+    expect(await database.cheatMethod.count()).toBe(100);
   });
 
   it("enforces foreign keys and the user-cheat unique constraint", async () => {

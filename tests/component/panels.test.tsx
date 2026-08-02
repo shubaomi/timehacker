@@ -4,16 +4,21 @@ import { describe, expect, it, vi } from "vitest";
 import { CollectionPanel } from "@/components/collection-panel";
 import { RankingsPanel } from "@/components/rankings-panel";
 import { ResetDialog } from "@/components/reset-dialog";
+import { LocaleProvider } from "@/i18n/locale-provider";
+
+const withLocale = (children: React.ReactNode) => (
+  <LocaleProvider initialLocale="en">{children}</LocaleProvider>
+);
 
 describe("secondary panels", () => {
   it("renders locked and unlocked archive states", () => {
     render(
-      <CollectionPanel
+      withLocale(<CollectionPanel
         collection={[
-          { slug: "a", name: "Recovered", description: "Known", difficulty: 1, category: "META", unlocked: true, completedAt: "2026-08-02" },
-          { slug: "b", name: "CLASSIFIED", description: null, difficulty: 2, category: "VISUAL", unlocked: false, completedAt: null },
+          { slug: "a", name: "Recovered", nameZh: "已恢复", description: "Known", descriptionZh: "已知", difficulty: 1, category: "META", unlocked: true, completedAt: "2026-08-02" },
+          { slug: "b", name: "CLASSIFIED", nameZh: "机密", description: null, descriptionZh: null, difficulty: 2, category: "VISUAL", unlocked: false, completedAt: null },
         ]}
-      />,
+      />),
     );
     expect(screen.getByText("Recovered")).toBeInTheDocument();
     expect(screen.getByText("CLASSIFIED")).toBeInTheDocument();
@@ -23,19 +28,19 @@ describe("secondary panels", () => {
 
   it("covers rank loading, error with retry, and empty data", async () => {
     const retry = vi.fn();
-    const { rerender } = render(<RankingsPanel rankings={null} loading error={null} onRetry={retry} />);
+    const { rerender } = render(withLocale(<RankingsPanel rankings={null} loading error={null} onRetry={retry} />));
     expect(screen.getByText(/Decrypting/)).toBeInTheDocument();
-    rerender(<RankingsPanel rankings={null} loading={false} error="Offline" onRetry={retry} />);
+    rerender(withLocale(<RankingsPanel rankings={null} loading={false} error="Offline" onRetry={retry} />));
     await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
     expect(retry).toHaveBeenCalledOnce();
-    rerender(<RankingsPanel rankings={{ timeHackers: [], perfectTiming: [], cheatMasters: [] }} loading={false} error={null} onRetry={retry} />);
+    rerender(withLocale(<RankingsPanel rankings={{ timeHackers: [], perfectTiming: [], cheatMasters: [] }} loading={false} error={null} onRetry={retry} />));
     expect(screen.getAllByText(/Be the first/)).toHaveLength(3);
   });
 
   it("focuses cancel and supports cancel and confirmation", async () => {
     const cancel = vi.fn();
     const confirm = vi.fn();
-    render(<ResetDialog open busy={false} onCancel={cancel} onConfirm={confirm} />);
+    render(withLocale(<ResetDialog open busy={false} onCancel={cancel} onConfirm={confirm} />));
     const keep = screen.getByRole("button", { name: "Keep progress" });
     expect(keep).toHaveFocus();
     await userEvent.click(keep);

@@ -47,8 +47,11 @@ model CheatMethod {
   id             String          @id @default(uuid()) @db.Uuid
   slug           String          @unique @db.VarChar(64)
   name           String          @db.VarChar(80)
+  nameZh         String?         @db.VarChar(80)
   description    String          @db.VarChar(280)
+  descriptionZh  String?         @db.VarChar(280)
   hint           String          @db.VarChar(180)
+  hintZh         String?         @db.VarChar(180)
   difficulty     Int
   category       CheatCategory
   triggerConfig  Json

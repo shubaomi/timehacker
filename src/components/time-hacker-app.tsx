@@ -8,6 +8,7 @@ import {
   CircleHelp,
   Copy,
   FlaskConical,
+  Languages,
   RotateCcw,
   Share2,
   Trophy,
@@ -26,6 +27,8 @@ import { evaluateCheatTrigger } from "@/game/cheats";
 import { buildShareText } from "@/game/share";
 import { formatDuration, formatSignedError, scaledElapsedTime } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
+import { localeTag, type MessageKey } from "@/i18n/config";
+import { useLocale } from "@/i18n/locale-provider";
 import type { CompletedGame, DashboardData, RankingsData } from "@/types/api";
 import { CollectionPanel } from "./collection-panel";
 import { RankingsPanel } from "./rankings-panel";
@@ -67,6 +70,7 @@ function normalizeKey(key: string): string {
 }
 
 export function TimeHackerApp() {
+  const { locale, setLocale, t } = useLocale();
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [rankings, setRankings] = useState<RankingsData | null>(null);
@@ -83,6 +87,7 @@ export function TimeHackerApp() {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [manualShare, setManualShare] = useState<string | null>(null);
   const [nickname, setNickname] = useState("");
+  const [serviceCommand, setServiceCommand] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const eventsRef = useRef<CheatEvent[]>([]);
@@ -92,6 +97,23 @@ export function TimeHackerApp() {
   const timeScaleRef = useRef(1);
   const activeGameRef = useRef<string | null>(null);
 
+  const localizeError = useCallback(
+    (cause: unknown, fallback: MessageKey) => {
+      const code = (cause as Error & { code?: string })?.code;
+      const errorKeys: Record<string, MessageKey> = {
+        PLAYER_NOT_FOUND: "playerNotFound",
+        DAILY_LIMIT_REACHED: "dailyLimitReached",
+        CHEAT_NOT_ELIGIBLE: "cheatNotEligible",
+        CATALOG_UNAVAILABLE: "catalogUnavailable",
+        GAME_NOT_FOUND: "gameNotFound",
+        INVALID_REQUEST: "invalidRequest",
+      };
+      if (code && errorKeys[code]) return t(errorKeys[code]);
+      return locale === "en" && cause instanceof Error ? cause.message : t(fallback);
+    },
+    [locale, t],
+  );
+
   const loadRankings = useCallback(async () => {
     setRankingsLoading(true);
     setRankingsError(null);
@@ -99,12 +121,12 @@ export function TimeHackerApp() {
       setRankings(await requestJson<RankingsData>("/api/rankings"));
     } catch (rankingError) {
       setRankingsError(
-        rankingError instanceof Error ? rankingError.message : "Rank channel unavailable.",
+        localizeError(rankingError, "rankUnavailable"),
       );
     } finally {
       setRankingsLoading(false);
     }
-  }, []);
+  }, [localizeError]);
 
   const loadDashboard = useCallback(
     async (id: string, selectedDifficulty: number) => {
@@ -156,14 +178,10 @@ export function TimeHackerApp() {
       const data = await loadDashboard(id, 1);
       setStatus(data.daily.remaining > 0 ? "READY" : "LIMIT_REACHED");
     } catch (initializationError) {
-      setError(
-        initializationError instanceof Error
-          ? initializationError.message
-          : "The time lab could not initialize.",
-      );
+      setError(localizeError(initializationError, "initializationFailed"));
       setStatus("READY");
     }
-  }, [loadDashboard]);
+  }, [loadDashboard, localizeError]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void initialize(), 0);
@@ -258,9 +276,9 @@ export function TimeHackerApp() {
     } catch (startError) {
       const code = (startError as Error & { code?: string }).code;
       setStatus(code === "DAILY_LIMIT_REACHED" ? "LIMIT_REACHED" : "READY");
-      setError(startError instanceof Error ? startError.message : "Challenge could not start.");
+      setError(localizeError(startError, "challengeStartFailed"));
     }
-  }, [dashboard, difficulty, mode, playerId]);
+  }, [dashboard, difficulty, localizeError, mode, playerId]);
 
   const stopChallenge = useCallback(async () => {
     if (!playerId || !activeGameRef.current) return;
@@ -284,9 +302,9 @@ export function TimeHackerApp() {
       setStatus(response.game.success ? "SUCCESS" : "FAILED");
     } catch (stopError) {
       setStatus("FAILED");
-      setError(stopError instanceof Error ? stopError.message : "Result could not be recorded.");
+      setError(localizeError(stopError, "resultSaveFailed"));
     }
-  }, [difficulty, loadDashboard, playerId]);
+  }, [difficulty, loadDashboard, localizeError, playerId]);
 
   const handlePrimary = useCallback(() => {
     if (status === "RUNNING") void stopChallenge();
@@ -321,7 +339,7 @@ export function TimeHackerApp() {
       });
       await loadDashboard(playerId, difficulty);
     } catch (nicknameError) {
-      setError(nicknameError instanceof Error ? nicknameError.message : "Nickname could not be saved.");
+      setError(localizeError(nicknameError, "nicknameSaveFailed"));
     }
   };
 
@@ -333,27 +351,29 @@ export function TimeHackerApp() {
       level: dashboard.player.currentLevel,
       unlockedCheats: dashboard.player.unlockedCheats,
       mode: result.mode,
+      locale,
+      totalCheats: dashboard.collection.length,
     });
     setManualShare(null);
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Time Hacker", text });
-        setShareStatus("Field report shared.");
+        await navigator.share({ title: t("shareTitle"), text });
+        setShareStatus(t("reportShared"));
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
-        setShareStatus("Field report copied.");
+        setShareStatus(t("reportCopied"));
       } else {
         setManualShare(text);
-        setShareStatus("Copy the field report manually.");
+        setShareStatus(t("copyReportManually"));
       }
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === "AbortError") return;
       try {
         await navigator.clipboard.writeText(text);
-        setShareStatus("Field report copied.");
+        setShareStatus(t("reportCopied"));
       } catch {
         setManualShare(text);
-        setShareStatus("Copy the field report manually.");
+        setShareStatus(t("copyReportManually"));
       }
     }
   };
@@ -374,7 +394,7 @@ export function TimeHackerApp() {
       prepareNext();
       setStatus("READY");
     } catch (resetError) {
-      setError(resetError instanceof Error ? resetError.message : "Progress could not be reset.");
+      setError(localizeError(resetError, "resetFailed"));
     } finally {
       setResetBusy(false);
     }
@@ -392,13 +412,32 @@ export function TimeHackerApp() {
       error: formatSignedError(result.errorMs),
     };
   }, [result]);
+  const suggestedCheatName = dashboard?.suggestedCheat
+    ? locale === "zh" ? dashboard.suggestedCheat.nameZh : dashboard.suggestedCheat.name
+    : null;
+  const suggestedCheatHint = dashboard?.suggestedCheat
+    ? locale === "zh" ? dashboard.suggestedCheat.hintZh : dashboard.suggestedCheat.hint
+    : null;
+  const suggestedEffectLabel = dashboard?.suggestedCheat
+    ? locale === "zh"
+      ? dashboard.suggestedCheat.effectConfig.labelZh
+      : dashboard.suggestedCheat.effectConfig.label
+    : null;
+
+  const submitServiceCommand = (event: FormEvent) => {
+    event.preventDefault();
+    for (const value of serviceCommand.trim().toUpperCase()) {
+      emitCheatEvent("KEY", value);
+    }
+    setServiceCommand("");
+  };
 
   if (!dashboard && status === "LOADING") {
     return (
       <main className="boot-screen" aria-busy="true">
         <div className="boot-mark"><FlaskConical aria-hidden="true" /></div>
-        <p>TIME HACKER / UNIT 08</p>
-        <h1>Opening the chronology chamber…</h1>
+        <p>{t("bootUnit")}</p>
+        <h1>{t("bootOpening")}</h1>
         <div className="boot-line"><span /></div>
       </main>
     );
@@ -408,9 +447,9 @@ export function TimeHackerApp() {
     return (
       <main className="boot-screen error-state" role="alert">
         <CircleHelp aria-hidden="true" size={32} />
-        <h1>Chronology link unavailable</h1>
-        <p>{error ?? "The local database could not be reached."}</p>
-        <button type="button" onClick={() => void initialize()}>Retry initialization</button>
+        <h1>{t("linkUnavailable")}</h1>
+        <p>{error ?? t("databaseUnavailable")}</p>
+        <button type="button" onClick={() => void initialize()}>{t("retryInitialization")}</button>
       </main>
     );
   }
@@ -420,28 +459,36 @@ export function TimeHackerApp() {
     <main className="lab-shell">
       <div className="ambient-grid" aria-hidden="true" />
       <header className="site-header">
-        <a href="#game" className="brand-lockup" aria-label="Time Hacker, return to game">
+        <a href="#game" className="brand-lockup" aria-label={t("brandReturn")}>
           <span><FlaskConical aria-hidden="true" size={19} /></span>
-          <div><b>TIME HACKER</b><small>CHRONOLOGY UNIT / 08</small></div>
+          <div><b>TIME HACKER</b><small>{t("unitLabel")}</small></div>
         </a>
         <div className="header-status">
-          <span><i /> LAB ONLINE</span>
+          <span><i /> {t("labOnline")}</span>
           <span>{dashboard.player.displayName}</span>
-          <span>UTC CHANNEL</span>
+          <span>{t("utcChannel")}</span>
+          <button
+            type="button"
+            className="language-switch"
+            aria-label={t("switchLanguage")}
+            onClick={() => setLocale(locale === "en" ? "zh" : "en")}
+          >
+            <Languages aria-hidden="true" size={14} /> {locale === "en" ? "中文" : "EN"}
+          </button>
         </div>
       </header>
 
-      <section className="mission-strip" aria-label="Mission status">
-        <p><Activity aria-hidden="true" size={15} /> ACTIVE EXPERIMENT</p>
-        <h1>Can you hack <em>time?</em></h1>
-        <p>Stop the chamber at exactly <strong>10.000 seconds.</strong> Or find where the rules bend.</p>
+      <section className="mission-strip" aria-label={t("missionStatus")}>
+        <p><Activity aria-hidden="true" size={15} /> {t("activeExperiment")}</p>
+        <h1>{t("missionLead")} <em>{t("missionTime")}</em></h1>
+        <p>{t("missionDescription")}</p>
       </section>
 
-      <nav className="section-tabs" aria-label="Lab sections">
+      <nav className="section-tabs" aria-label={t("labSections")}>
         {([
-          ["game", Zap, "Experiment"],
-          ["cheats", Archive, "Cheat archive"],
-          ["ranks", Trophy, "Global ranks"],
+          ["game", Zap, t("experiment")],
+          ["cheats", Archive, t("cheatArchive")],
+          ["ranks", Trophy, t("globalRanks")],
         ] as const).map(([value, Icon, label]) => (
           <button key={value} type="button" aria-current={panel === value ? "page" : undefined} onClick={() => switchPanel(value)}>
             <Icon aria-hidden="true" size={16} /> {label}
@@ -452,20 +499,20 @@ export function TimeHackerApp() {
       <div className="lab-grid" id="game">
         <div className="experiment-column">
           <div className="mode-row">
-            <div className="mode-switch" aria-label="Game mode">
-              <button type="button" className={mode === "HACKER" ? "active" : ""} onClick={() => switchMode("HACKER")} onFocus={() => emitCheatEvent("FOCUS", "mode")}>Hacker mode</button>
-              <button type="button" className={mode === "PURE" ? "active" : ""} disabled={!dashboard.player.firstSuccessAt} title={!dashboard.player.firstSuccessAt ? "Unlocks after your first success" : undefined} onClick={() => switchMode("PURE")} onFocus={() => emitCheatEvent("FOCUS", "mode")}>Pure mode</button>
+            <div className="mode-switch" aria-label={t("gameMode")}>
+              <button type="button" className={mode === "HACKER" ? "active" : ""} onClick={() => switchMode("HACKER")} onFocus={() => emitCheatEvent("FOCUS", "mode")}>{t("hackerMode")}</button>
+              <button type="button" className={mode === "PURE" ? "active" : ""} disabled={!dashboard.player.firstSuccessAt} title={!dashboard.player.firstSuccessAt ? t("pureModeLocked") : undefined} onClick={() => switchMode("PURE")} onFocus={() => emitCheatEvent("FOCUS", "mode")}>{t("pureMode")}</button>
             </div>
-            <div className="attempt-counter"><span>DAILY SIGNALS</span><strong>{dashboard.daily.remaining}<small> / {dashboard.daily.limit}</small></strong></div>
+            <div className="attempt-counter"><span>{t("dailySignals")}</span><strong>{dashboard.daily.remaining}<small> / {dashboard.daily.limit}</small></strong></div>
           </div>
 
           <TimerStage elapsedMs={elapsedMs} status={status} armed={armed} timeScale={chosenTimeScale} disabled={status === "LIMIT_REACHED"} onPrimary={handlePrimary} onEvent={emitCheatEvent} />
 
           <div className="live-message" aria-live="polite" role="status">
             {error ? <span className="error-copy">{error}</span> : null}
-            {status === "LIMIT_REACHED" ? <span>Your daily time challenges are complete. Reset at {new Date(dashboard.daily.resetsAt).toUTCString()}.</span> : null}
-            {status === "RUNNING" ? <span>The chamber is measuring. Stop when the readout reaches 10.000.</span> : null}
-            {armed && status === "READY" ? <span>{dashboard.suggestedCheat?.effectConfig.label}. Game time will run slowly.</span> : null}
+            {status === "LIMIT_REACHED" ? <span>{t("dailyComplete")} {t("resetAt", { date: new Intl.DateTimeFormat(localeTag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(dashboard.daily.resetsAt)) })}</span> : null}
+            {status === "RUNNING" ? <span>{t("chamberMeasuring")}</span> : null}
+            {armed && status === "READY" && suggestedEffectLabel ? <span>{t("gameTimeSlow", { label: suggestedEffectLabel })}</span> : null}
           </div>
         </div>
 
@@ -475,54 +522,69 @@ export function TimeHackerApp() {
               <motion.div key="game-panel" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
                 <section className="intel-panel briefing-panel">
                   <header className="panel-heading">
-                    <div><p>Current assignment</p><h2>{mode === "PURE" ? "Unassisted timing" : dashboard.suggestedCheat?.name ?? "Archive complete"}</h2></div>
+                    <div><p>{t("currentAssignment")}</p><h2>{mode === "PURE" ? t("unassistedTiming") : suggestedCheatName ?? t("archiveComplete")}</h2></div>
                     <span className="difficulty-stamp">D{mode === "PURE" ? 0 : dashboard.suggestedCheat?.difficulty ?? 5}</span>
                   </header>
                   {mode === "HACKER" && dashboard.suggestedCheat ? (
                     <>
-                      <p className="classified-copy">Trigger the hidden condition before START. A valid ritual slows game time without pretending it is real time.</p>
+                      <p className="classified-copy">{t("triggerBrief")}</p>
                       <button className="clue-block" type="button" onClick={() => emitCheatEvent("CLUE_TAP")}>
                         <CircleHelp aria-hidden="true" size={18} />
-                        <span><small>CLUE LEVEL {hintStrength}/3</small>{dashboard.suggestedCheat.hint}</span>
+                        <span><small>{t("clueLevel", { level: hintStrength })}</small>{suggestedCheatHint}</span>
                         <ChevronRight aria-hidden="true" size={16} />
                       </button>
-                      <div className="cipher-words" aria-label="Clue cipher words">
+                      <div className="cipher-words" aria-label={t("clueCipherWords")}>
                         {["time", "bends", "here"].map((word) => <button key={word} type="button" onClick={() => emitCheatEvent("CLUE_TOKEN", word)}>{word}</button>)}
                       </div>
+                      <form className="service-console" onSubmit={submitServiceCommand}>
+                        <label htmlFor="service-command">{t("serviceInput")}</label>
+                        <div>
+                          <input
+                            id="service-command"
+                            value={serviceCommand}
+                            onChange={(event) => setServiceCommand(event.target.value)}
+                            autoComplete="off"
+                            spellCheck={false}
+                            aria-describedby="service-command-hint"
+                          />
+                          <button type="submit" disabled={!serviceCommand.trim()}>{t("applyCommand")}</button>
+                        </div>
+                        <small id="service-command-hint">{t("serviceInputHint")}</small>
+                      </form>
                       <div className={`armed-card ${armed ? "active" : ""}`}>
                         <Zap aria-hidden="true" size={18} />
-                        <span><b>{armed ? "Exploit armed" : "Exploit dormant"}</b><small>{armed ? `Clock multiplier ${chosenTimeScale.toFixed(2)}` : "Complete the ritual to alter the chamber"}</small></span>
+                        <span><b>{armed ? t("exploitArmed") : t("exploitDormant")}</b><small>{armed ? t("clockMultiplier", { scale: chosenTimeScale.toFixed(2) }) : t("completeRitual")}</small></span>
                       </div>
                     </>
-                  ) : <p className="classified-copy">No exploit is available. Your hand and the normal clock are the only instruments in this run.</p>}
+                  ) : <p className="classified-copy">{t("pureBrief")}</p>}
 
                   {dashboard.player.firstSuccessAt ? (
                     <label className="difficulty-control">
-                      <span>Unlocked difficulty</span>
+                      <span>{t("unlockedDifficulty")}</span>
                       <select value={difficulty} onChange={async (event) => {
                         const next = Number(event.target.value);
                         if (playerId) await loadDashboard(playerId, next);
                         prepareNext();
                       }}>
-                        {Array.from({ length: dashboard.maximumDifficulty }, (_, index) => index + 1).map((value) => <option key={value} value={value}>Difficulty {value}</option>)}
+                        {Array.from({ length: dashboard.maximumDifficulty }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{t("difficulty", { value })}</option>)}
                       </select>
                     </label>
                   ) : null}
                 </section>
 
                 <section className="intel-panel operator-panel">
-                  <header className="panel-heading"><div><p>Operator record</p><h2>{dashboard.player.displayName}</h2></div><strong>L{String(dashboard.player.currentLevel).padStart(2, "0")}</strong></header>
+                  <header className="panel-heading"><div><p>{t("operatorRecord")}</p><h2>{dashboard.player.displayName}</h2></div><strong>L{String(dashboard.player.currentLevel).padStart(2, "0")}</strong></header>
                   <div className="metric-grid">
-                    <div><span>RUNS</span><b>{dashboard.player.totalGames}</b></div>
-                    <div><span>WINS</span><b>{dashboard.player.successGames}</b></div>
-                    <div><span>CHEATS</span><b>{dashboard.player.unlockedCheats}/20</b></div>
-                    <div><span>BEST Δ</span><b>{dashboard.player.bestErrorMs === null ? "—" : `${dashboard.player.bestErrorMs}ms`}</b></div>
+                    <div><span>{t("runs")}</span><b>{dashboard.player.totalGames}</b></div>
+                    <div><span>{t("wins")}</span><b>{dashboard.player.successGames}</b></div>
+                    <div><span>{t("cheats")}</span><b>{dashboard.player.unlockedCheats}/{dashboard.collection.length}</b></div>
+                    <div><span>{t("bestDelta")}</span><b>{dashboard.player.bestErrorMs === null ? "—" : `${dashboard.player.bestErrorMs}ms`}</b></div>
                   </div>
                   {dashboard.player.firstSuccessAt ? (
                     <form className="nickname-form" onSubmit={saveNickname}>
-                      <UserRoundPen aria-hidden="true" size={16} /><label htmlFor="nickname">Field name</label><input id="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} minLength={2} maxLength={24} /><button type="submit">Save</button>
+                      <UserRoundPen aria-hidden="true" size={16} /><label htmlFor="nickname">{t("fieldName")}</label><input id="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} minLength={2} maxLength={24} /><button type="submit">{t("save")}</button>
                     </form>
-                  ) : <p className="unlock-note">First success unlocks Pure Mode, difficulty control, and a custom field name.</p>}
+                  ) : <p className="unlock-note">{t("firstSuccessUnlocks")}</p>}
                 </section>
               </motion.div>
             ) : null}
@@ -536,23 +598,25 @@ export function TimeHackerApp() {
       <AnimatePresence>
         {result && (status === "SUCCESS" || status === "FAILED") ? (
           <motion.section className={`result-drawer ${result.success ? "success" : "failure"}`} initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} role="status" aria-live="assertive">
-            <div><p>{result.success ? "CHRONOLOGY BREACH CONFIRMED" : "MEASUREMENT OUTSIDE TOLERANCE"}</p><h2>{result.success ? "TIME HACKED!" : "TRY AGAIN"}</h2></div>
-            <div className="result-measurement"><span>{resultCopy?.duration}</span><b>{resultCopy?.error}</b><small>{result.mode} {result.usedCheat ? `· ${result.usedCheat.name}` : "· UNASSISTED"}</small></div>
-            <div className="result-actions"><button type="button" onClick={() => void shareResult()}><Share2 aria-hidden="true" size={17} /> Share field report</button><button type="button" onClick={prepareNext}>Run again <ChevronRight aria-hidden="true" size={17} /></button></div>
+            <div><p>{result.success ? t("breachConfirmed") : t("outsideTolerance")}</p><h2>{result.success ? t("timeHacked") : t("tryAgain")}</h2></div>
+            <div className="result-measurement"><span>{resultCopy?.duration}</span><b>{resultCopy?.error}</b><small>{result.mode} {result.usedCheat ? `· ${locale === "zh" ? result.usedCheat.nameZh ?? result.usedCheat.name : result.usedCheat.name}` : `· ${t("unassisted")}`}</small></div>
+            <div className="result-actions"><button type="button" onClick={() => void shareResult()}><Share2 aria-hidden="true" size={17} /> {t("shareReport")}</button><button type="button" onClick={prepareNext}>{t("runAgain")} <ChevronRight aria-hidden="true" size={17} /></button></div>
             {shareStatus ? <p className="share-status">{shareStatus}</p> : null}
-            {manualShare ? <textarea aria-label="Field report text" readOnly value={manualShare} /> : null}
+            {manualShare ? <textarea aria-label={t("fieldReportText")} readOnly value={manualShare} /> : null}
           </motion.section>
         ) : null}
       </AnimatePresence>
 
       <footer className="site-footer">
-        <p>TIME HACKER V1 <span>•</span> CASUAL ANONYMOUS FIELD TEST</p>
+        <p>{t("footer")}</p>
         <div>
           <button type="button" onClick={async () => {
-            const text = `Player ${dashboard.player.displayName} · ${dashboard.player.unlockedCheats}/20 cheats`;
-            try { await navigator.clipboard.writeText(text); setShareStatus("Operator summary copied."); } catch { setManualShare(text); }
-          }}><Copy aria-hidden="true" size={14} /> Copy ID summary</button>
-          <button type="button" onClick={() => setResetOpen(true)}><RotateCcw aria-hidden="true" size={14} /> Reset progress</button>
+            const text = locale === "zh"
+              ? `操作员 ${dashboard.player.displayName} · 已发现 ${dashboard.player.unlockedCheats}/${dashboard.collection.length} 个漏洞`
+              : `Player ${dashboard.player.displayName} · ${dashboard.player.unlockedCheats}/${dashboard.collection.length} cheats`;
+            try { await navigator.clipboard.writeText(text); setShareStatus(t("operatorSummaryCopied")); } catch { setManualShare(text); }
+          }}><Copy aria-hidden="true" size={14} /> {t("copyIdSummary")}</button>
+          <button type="button" onClick={() => setResetOpen(true)}><RotateCcw aria-hidden="true" size={14} /> {t("resetProgress")}</button>
         </div>
       </footer>
 

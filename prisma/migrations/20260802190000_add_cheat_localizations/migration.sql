@@ -1,0 +1,4 @@
+ALTER TABLE "CheatMethod"
+ADD COLUMN "nameZh" VARCHAR(80),
+ADD COLUMN "descriptionZh" VARCHAR(280),
+ADD COLUMN "hintZh" VARCHAR(180);

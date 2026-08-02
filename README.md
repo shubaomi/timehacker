@@ -1,11 +1,12 @@
 # Time Hacker
 
-Time Hacker is a mobile-first timing game: stop the chamber at exactly `10.000` seconds, or discover one of 20 hidden rituals that transparently slow game time. It is an anonymous, casual field test—not a professional anti-cheat competition.
+Time Hacker is a bilingual, mobile-first timing game: stop the chamber at exactly `10.000` seconds, or discover one of 100 hidden rituals that transparently slow game time. It is an anonymous, casual field test—not a professional anti-cheat competition.
 
 ## What V1 includes
 
 - Anonymous player identity persisted in local storage and PostgreSQL
-- Hacker Mode with 20 server-verified cheats across five difficulty tiers
+- English and Simplified Chinese UI with a persistent language switch and localized cheat archive
+- Hacker Mode with 100 server-verified cheats, balanced across five difficulty tiers and five interaction categories
 - Pure Mode unlocked after the first successful run
 - A strict `±10 ms` success window and a 50-start daily limit (UTC)
 - Progression, nickname, collection, three ranking views, sharing, and isolated reset
@@ -45,7 +46,7 @@ The application uses the existing database and its default `public` schema. It d
    pnpm db:seed
    ```
 
-   Seeding is idempotent. Re-running it updates the same 20 cheat records instead of duplicating them.
+   Seeding is idempotent. Re-running it updates the same 100 cheat records instead of duplicating them.
 
 4. Start the application:
 
@@ -64,7 +65,7 @@ Useful commands:
 ```powershell
 pnpm prisma:validate   # validate schema/configuration
 pnpm db:migrate       # deploy checked-in migrations
-pnpm db:seed          # upsert exactly 20 canonical cheats
+pnpm db:seed          # upsert exactly 100 canonical bilingual cheats
 pnpm tsx scripts/inspect-database.ts  # read-only table/catalog inspection
 ```
 
@@ -85,8 +86,8 @@ pnpm verify            # complete gate in the required order
 The suites cover:
 
 - timer math, inclusive `±10 ms` boundary, progression, share text, deterministic selection
-- positive and negative trigger cases for all 20 cheats
-- loading/error/empty/locked/result/dialog component states
+- uniqueness, bilingual content, difficulty/category balance, and positive/negative trigger cases for all 100 cheats
+- loading/error/empty/locked/result/dialog component states and persistent English/Chinese switching
 - real migration presence, idempotent seed, anonymous-player idempotency, server-side cheat verification
 - 49/50/51 concurrent daily-limit behavior, ranking order, reset isolation, foreign keys and uniqueness
 - initial, running, failed, armed, successful, collection, ranking, reset, persistence, Pure Mode, keyboard, daily-limit, reduced-motion, and share-fallback browser journeys (the browser harness fixes submitted target measurements at `10.000` while all eligibility, cheat events, database writes, and UI responses use production paths)

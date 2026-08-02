@@ -11,6 +11,19 @@ describe("share text", () => {
         unlockedCheats: 6,
         mode: "PURE",
       }),
-    ).toContain("Result: 00:10.007 (+0.007s)\nMode: PURE\nLevel: 4\nCheats discovered: 6/20");
+    ).toContain("Result: 00:10.007 (+0.007s)\nMode: PURE\nLevel: 4\nCheats discovered: 6/100");
+  });
+
+  it("renders a complete Chinese field report", () => {
+    expect(
+      buildShareText({
+        durationMs: 9_995,
+        errorMs: -5,
+        level: 3,
+        unlockedCheats: 12,
+        mode: "HACKER",
+        locale: "zh",
+      }),
+    ).toContain("成绩：00:09.995（−0.005s）\n模式：黑客\n等级：3\n已发现漏洞：12/100");
   });
 });

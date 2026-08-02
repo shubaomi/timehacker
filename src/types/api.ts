@@ -15,7 +15,9 @@ export interface PlayerSummary {
 export interface CollectionEntry {
   slug: string;
   name: string;
+  nameZh: string;
   description: string | null;
+  descriptionZh: string | null;
   difficulty: number;
   category: string;
   unlocked: boolean;
@@ -66,6 +68,6 @@ export interface CompletedGame {
   absoluteErrorMs: number;
   success: boolean;
   mode: "HACKER" | "PURE";
-  assignedCheat: { slug: string; name: string } | null;
-  usedCheat: { slug: string; name: string } | null;
+  assignedCheat: { slug: string; name: string; nameZh?: string | null } | null;
+  usedCheat: { slug: string; name: string; nameZh?: string | null } | null;
 }

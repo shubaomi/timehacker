@@ -43,6 +43,10 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+:lang(zh-Hans) body {
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", var(--font-body);
+}
+
 button,
 input,
 select,
@@ -239,6 +243,26 @@ textarea:focus-visible {
   gap: 7px;
   padding: 0 13px;
   border-left: 1px solid var(--line);
+}
+
+.language-switch {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--bone-200);
+  font: 650 0.62rem/1 var(--font-display);
+  letter-spacing: 0.05em;
+}
+
+.language-switch:hover {
+  border-color: var(--signal-400);
+  color: var(--signal-300);
 }
 
 .header-status i,
@@ -823,6 +847,58 @@ textarea:focus-visible {
   color: var(--bone-500);
   font: 600 0.58rem/1 var(--font-display);
   text-transform: uppercase;
+}
+
+.service-console {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 13px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.service-console > label {
+  color: var(--bone-300);
+  font: 650 0.58rem/1 var(--font-display);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.service-console > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px;
+}
+
+.service-console input,
+.service-console button {
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+}
+
+.service-console input {
+  min-width: 0;
+  padding: 0 10px;
+  background: var(--ink-950);
+  color: var(--bone-100);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+
+.service-console button {
+  padding: 0 12px;
+  background: var(--bone-100);
+  color: var(--ink-950);
+  font-weight: 750;
+}
+
+.service-console small {
+  color: var(--bone-500);
+  font-size: 0.68rem;
+  line-height: 1.35;
 }
 
 .armed-card {
@@ -1470,6 +1546,14 @@ textarea:focus-visible {
 @media (max-width: 430px) {
   .brand-lockup small {
     display: none;
+  }
+
+  .header-status span {
+    display: none;
+  }
+
+  .language-switch {
+    margin-left: 0;
   }
 
   .section-tabs button {

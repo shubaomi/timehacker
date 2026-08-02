@@ -94,7 +94,9 @@ export async function getDashboard(
     return {
       slug: definition.slug,
       name: unlocked ? definition.name : "CLASSIFIED",
+      nameZh: unlocked ? definition.nameZh : "机密",
       description: unlocked ? definition.description : null,
+      descriptionZh: unlocked ? definition.descriptionZh : null,
       difficulty: definition.difficulty,
       category: definition.category,
       unlocked: Boolean(unlocked),

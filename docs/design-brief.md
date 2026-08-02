@@ -1,4 +1,4 @@
-# Time Hacker V1 design brief
+# Time Hacker V2 design brief
 
 ## Product value check
 
@@ -6,8 +6,8 @@
 - Audience: mobile and desktop visitors who enjoy short skill challenges, hidden mechanics, collection, and shareable results.
 - Session: a one-to-three-minute visit built around one obvious start/stop action.
 - Expected value: test whether discovery, mastery, and social comparison create replay and sharing intent.
-- Counter-case: one hundred cheats, AI generation, accounts, payments, and admin tools would delay learning without proving demand.
-- Decision: build a polished, testable V1 with twenty distinct cheats. Commercial demand remains a real-user validation gate.
+- Counter-case: a large catalog can become repetitive or inaccessible if it is only quantity. Accounts, payments, AI-generated live content, and admin tools still add cost without proving demand.
+- Decision: preserve the focused one-action game while expanding the previously intended catalog to 100 authored, testable cheats. The matrix is deliberately balanced: four cheats in every difficulty/category cell. Commercial demand remains a real-user validation gate.
 
 ## UI concept
 
@@ -15,7 +15,7 @@
 
 The memorable moment is the timer housing changing its physical rhythm when a cheat is armed: calibration rails separate, the amber signal widens, and the status copy explicitly states that game time is being distorted.
 
-The bundled `ui-ux-pro-max` generator suggested retro-futurism and industrial safety orange. Its webinar layout and full pixel-font pairing were intentionally rejected because they conflict with a one-action game and reduce precision readability. `frontend-design` informed the asymmetric instrument layout, restrained high-impact motion, and avoidance of generic dashboard cards.
+The bundled `ui-ux-pro-max` generator suggested retro-futurism and industrial safety orange. Its webinar layout and full pixel-font pairing were intentionally rejected because they conflict with a one-action game and reduce precision readability. `frontend-design` informed the asymmetric instrument layout, restrained high-impact motion, bilingual fit, and avoidance of generic dashboard cards. The product mark uses the same clock, fracture, graphite, bone, and signal-orange vocabulary at favicon scale.
 
 ## Reference patterns
 
@@ -34,7 +34,7 @@ These are pattern references only; no visual asset or composition is copied.
 5. Discovery: failures reveal progressively stronger clues; a satisfied trigger arms a time-scale effect.
 6. Mastery: first success unlocks nickname, difficulty selection, Pure Mode, collection, ranks, share, and reset.
 
-All network surfaces have loading, empty, error, and retry states. Device-oriented cheats always have an equivalent keyboard or click route.
+All network surfaces have loading, empty, error, and retry states. Device-oriented cheats always have a service-input fallback so the catalog remains usable on touch-only, keyboard-only, and sensor-limited devices. Locale selection is stored locally and in a cookie; the root HTML language is updated for assistive technology.
 
 ## Design tokens
 
@@ -57,7 +57,8 @@ Text and controls must meet WCAG AA contrast; success and failure also use label
 
 - Display/time: Azeret Mono Variable, tabular numerals, 56-120px responsive scale.
 - Labels/body: Bricolage Grotesque Variable, 12-18px.
-- Fallbacks remain readable monospace/sans-serif families but are not the intended presentation.
+- Simplified Chinese fallback: Microsoft YaHei, PingFang SC, or Noto Sans CJK SC.
+- Other fallbacks remain readable monospace/sans-serif families but are not the intended presentation.
 
 ### Space, radius, and motion
 

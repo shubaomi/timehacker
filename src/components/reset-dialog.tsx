@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { AlertTriangle, X } from "lucide-react";
+import { useLocale } from "@/i18n/locale-provider";
 
 interface ResetDialogProps {
   open: boolean;
@@ -11,20 +12,21 @@ interface ResetDialogProps {
 }
 
 export function ResetDialog({ open, busy, onCancel, onConfirm }: ResetDialogProps) {
+  const { t } = useLocale();
   const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (open) cancelRef.current?.focus(); }, [open]);
   if (!open) return null;
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={onCancel}>
       <section className="reset-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-title" onMouseDown={(event) => event.stopPropagation()}>
-        <button className="dialog-close" type="button" onClick={onCancel} aria-label="Close reset dialog"><X aria-hidden="true" size={18} /></button>
+        <button className="dialog-close" type="button" onClick={onCancel} aria-label={t("closeResetDialog")}><X aria-hidden="true" size={18} /></button>
         <AlertTriangle aria-hidden="true" className="dialog-alert" size={28} />
-        <p>Destructive local operation</p>
-        <h2 id="reset-title">Reset your field record?</h2>
-        <p>This removes your game records, level, wins, best error, and recovered cheats. Your anonymous ID and nickname stay intact. No other player is affected.</p>
+        <p>{t("destructiveOperation")}</p>
+        <h2 id="reset-title">{t("resetTitle")}</h2>
+        <p>{t("resetDescription")}</p>
         <div className="dialog-actions">
-          <button ref={cancelRef} type="button" onClick={onCancel} disabled={busy}>Keep progress</button>
-          <button type="button" className="danger-button" onClick={onConfirm} disabled={busy}>{busy ? "Resetting…" : "Reset my progress"}</button>
+          <button ref={cancelRef} type="button" onClick={onCancel} disabled={busy}>{t("keepProgress")}</button>
+          <button type="button" className="danger-button" onClick={onConfirm} disabled={busy}>{busy ? t("resetting") : t("resetMine")}</button>
         </div>
       </section>
     </div>

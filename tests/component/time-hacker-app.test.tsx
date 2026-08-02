@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TimeHackerApp } from "@/components/time-hacker-app";
 import { CHEAT_DEFINITIONS } from "@/game/cheats";
+import { LocaleProvider } from "@/i18n/locale-provider";
 
 const fixedPlayerId = "44c26e31-f4f7-4e01-9cbd-ecbd6bc4b8c1";
 
@@ -26,13 +27,23 @@ function dashboard() {
     collection: CHEAT_DEFINITIONS.map((cheat, index) => ({
       slug: cheat.slug,
       name: index === 0 ? cheat.name : "CLASSIFIED",
+      nameZh: index === 0 ? cheat.nameZh : "机密",
       description: index === 0 ? cheat.description : null,
+      descriptionZh: index === 0 ? cheat.descriptionZh : null,
       difficulty: cheat.difficulty,
       category: cheat.category,
       unlocked: index === 0,
       completedAt: index === 0 ? "2026-08-02T00:00:00.000Z" : null,
     })),
   };
+}
+
+function renderApp() {
+  return render(
+    <LocaleProvider initialLocale="en">
+      <TimeHackerApp />
+    </LocaleProvider>,
+  );
 }
 
 function installFetchMock(success = true) {
@@ -73,7 +84,7 @@ describe("TimeHackerApp", () => {
 
   it("moves through READY, RUNNING, and successful STOPPED result states", async () => {
     installFetchMock(true);
-    render(<TimeHackerApp />);
+    renderApp();
     const start = await screen.findByRole("button", { name: /START.*SPACE/i });
     await userEvent.click(start);
     const stop = await screen.findByRole("button", { name: /STOP.*FREEZE/i });
@@ -84,7 +95,7 @@ describe("TimeHackerApp", () => {
 
   it("renders the failed result state", async () => {
     installFetchMock(false);
-    render(<TimeHackerApp />);
+    renderApp();
     await userEvent.click(await screen.findByRole("button", { name: /START.*SPACE/i }));
     await userEvent.click(await screen.findByRole("button", { name: /STOP.*FREEZE/i }));
     expect(await screen.findByText("TRY AGAIN")).toBeInTheDocument();
@@ -95,7 +106,7 @@ describe("TimeHackerApp", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
-    render(<TimeHackerApp />);
+    renderApp();
     await userEvent.click(await screen.findByRole("button", { name: /START.*SPACE/i }));
     await userEvent.click(await screen.findByRole("button", { name: /STOP.*FREEZE/i }));
     await userEvent.click(await screen.findByRole("button", { name: /Share field report/i }));
@@ -105,11 +116,22 @@ describe("TimeHackerApp", () => {
 
   it("shows and cancels the scoped reset confirmation", async () => {
     installFetchMock(true);
-    render(<TimeHackerApp />);
+    renderApp();
     await screen.findByRole("button", { name: /START.*SPACE/i });
     await userEvent.click(screen.getByRole("button", { name: /Reset progress/i }));
     expect(screen.getByRole("dialog", { name: /Reset your field record/i })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Keep progress" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("switches the complete interface to Chinese and persists the locale", async () => {
+    installFetchMock(true);
+    renderApp();
+    await screen.findByRole("button", { name: /START.*SPACE/i });
+    await userEvent.click(screen.getByRole("button", { name: "切换到中文" }));
+    expect(screen.getByRole("heading", { name: /你能破解.*时间吗/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /开始.*空格/ })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("zh-Hans");
+    expect(localStorage.getItem("time-hacker.locale.v1")).toBe("zh");
   });
 });

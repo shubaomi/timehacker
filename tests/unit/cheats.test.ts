@@ -39,14 +39,39 @@ function positiveEvents(config: CheatTriggerConfig): CheatEvent[] {
   }
 }
 
-describe("the twenty cheat definitions", () => {
-  it("contains twenty unique, valid, multi-category definitions", () => {
-    expect(CHEAT_DEFINITIONS).toHaveLength(20);
-    expect(new Set(CHEAT_DEFINITIONS.map(({ slug }) => slug))).toHaveLength(20);
-    expect(new Set(CHEAT_DEFINITIONS.map(({ category }) => category)).size).toBe(5);
+describe("the one hundred cheat definitions", () => {
+  it("contains 100 unique, bilingual, valid definitions", () => {
+    expect(CHEAT_DEFINITIONS).toHaveLength(100);
+    expect(new Set(CHEAT_DEFINITIONS.map(({ slug }) => slug))).toHaveLength(100);
+    expect(new Set(CHEAT_DEFINITIONS.map(({ name }) => name))).toHaveLength(100);
+    expect(new Set(CHEAT_DEFINITIONS.map(({ nameZh }) => nameZh))).toHaveLength(100);
+    expect(new Set(CHEAT_DEFINITIONS.map(({ triggerConfig }) => JSON.stringify(triggerConfig)))).toHaveLength(100);
     CHEAT_DEFINITIONS.forEach((definition) => {
       expect(() => validateCheatDefinition(definition)).not.toThrow();
+      expect(definition.nameZh.trim()).not.toBe("");
+      expect(definition.descriptionZh.trim()).not.toBe("");
+      expect(definition.hintZh.trim()).not.toBe("");
+      expect(definition.effectConfig.labelZh.trim()).not.toBe("");
     });
+  });
+
+  it("balances the catalog across all difficulty and category cells", () => {
+    for (const difficulty of [1, 2, 3, 4, 5]) {
+      expect(CHEAT_DEFINITIONS.filter((definition) => definition.difficulty === difficulty)).toHaveLength(20);
+      for (const category of ["OPERATION", "VISUAL", "RHYTHM", "DEVICE", "META"]) {
+        expect(
+          CHEAT_DEFINITIONS.filter(
+            (definition) => definition.difficulty === difficulty && definition.category === category,
+          ),
+        ).toHaveLength(4);
+      }
+    }
+  });
+
+  it("gives every device-dependent exploit an explicit service-input fallback", () => {
+    const deviceCheats = CHEAT_DEFINITIONS.filter(({ category }) => category === "DEVICE");
+    expect(deviceCheats).toHaveLength(20);
+    deviceCheats.forEach(({ triggerConfig }) => expect(triggerConfig.kind).toBe("fallback"));
   });
 
   it.each(CHEAT_DEFINITIONS.map((definition) => [definition.slug, definition] as const))(

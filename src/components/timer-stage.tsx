@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Gauge, Power, Radio, RotateCcw } from "lucide-react";
 import { motion } from "motion/react";
 import { formatDuration } from "@/game/timer";
+import { useLocale } from "@/i18n/locale-provider";
 
 interface TimerStageProps {
   elapsedMs: number;
@@ -27,16 +28,17 @@ export function TimerStage({
   onPrimary,
   onEvent,
 }: TimerStageProps) {
+  const { t } = useLocale();
   const running = status === "RUNNING";
   const busy = status === "STARTING" || status === "STOPPING";
   const holdStart = useRef(0);
   const primaryLabel = running
-    ? "STOP"
+    ? t("stop")
     : busy
-      ? "SYNCING"
+      ? t("syncing")
       : status === "SUCCESS" || status === "FAILED"
-        ? "RUN AGAIN"
-        : "START";
+        ? t("runAgain").toUpperCase()
+        : t("start");
 
   return (
     <section
@@ -52,7 +54,7 @@ export function TimerStage({
           />
         ))}
       </div>
-      <div className="accessible-corners" aria-label="Calibration corner controls">
+      <div className="accessible-corners" aria-label={t("calibrationCorners")}>
         {CORNERS.map((corner) => (
           <button key={corner} type="button" onClick={() => onEvent("CORNER_TAP", corner)}>
             {corner}
@@ -63,7 +65,7 @@ export function TimerStage({
       <div className="timer-topline">
         <button type="button" className="status-beacon" onClick={() => onEvent("STATUS_TAP")}>
           <span className="beacon-dot" aria-hidden="true" />
-          {armed ? "DISTORTION ARMED" : running ? "MEASURING" : "CHAMBER READY"}
+          {armed ? t("distortionArmed") : running ? t("measuring") : t("chamberReady")}
         </button>
         <span className="serial-mark">TH–10 / UNIT 08</span>
       </div>
@@ -78,20 +80,20 @@ export function TimerStage({
           id="timer-title"
           type="button"
           className="timer-readout"
-          aria-label={`Elapsed game time ${formatDuration(elapsedMs)}. Tap to test the timer glass.`}
+          aria-label={t("elapsedTime", { time: formatDuration(elapsedMs) })}
           onClick={() => onEvent("TIMER_TAP")}
           onFocus={() => onEvent("FOCUS", "target")}
         >
           {formatDuration(elapsedMs)}
         </button>
-        <div className="target-glyphs" aria-label="Target time service glyphs">
-          <span>TARGET</span>
+        <div className="target-glyphs" aria-label={t("targetGlyphs")}>
+          <span>{t("target")}</span>
           <div>
             {GLYPHS.map((glyph, index) => (
               <button
                 type="button"
                 key={`${glyph}-${index}`}
-                aria-label={`Target glyph ${glyph}, position ${index + 1}`}
+                aria-label={t("targetGlyph", { glyph, position: index + 1 })}
                 onClick={() => onEvent("GLYPH_TAP", glyph)}
               >
                 {glyph}
@@ -104,22 +106,22 @@ export function TimerStage({
 
       <div className="distortion-strip" aria-live="polite">
         <Gauge aria-hidden="true" size={16} />
-        <span>{armed ? `GAME CLOCK × ${timeScale.toFixed(2)}` : "GAME CLOCK × 1.00"}</span>
+        <span>{t("gameClock", { scale: armed ? timeScale.toFixed(2) : "1.00" })}</span>
         <i aria-hidden="true"><span style={{ width: `${Math.round(timeScale * 100)}%` }} /></i>
       </div>
 
       <div className="instrument-controls">
-        <div className="diagnostic-pads" aria-label="Calibration controls">
+        <div className="diagnostic-pads" aria-label={t("calibrationControls")}>
           <button type="button" onClick={() => onEvent("CONTROL_TAP")}>
-            <RotateCcw aria-hidden="true" size={16} /> Relay
+            <RotateCcw aria-hidden="true" size={16} /> {t("relay")}
           </button>
           <button type="button" onClick={() => onEvent("RHYTHM_TAP")}>
-            <Radio aria-hidden="true" size={16} /> Rhythm
+            <Radio aria-hidden="true" size={16} /> {t("rhythm")}
           </button>
           <button type="button" onClick={() => onEvent("CALIBRATION_TAP", 1)}>1</button>
           <button type="button" onClick={() => onEvent("CALIBRATION_TAP", 0)}>0</button>
-          <button type="button" aria-label="Pointer mirror signal" onClick={() => onEvent("INPUT_SOURCE", "pointer")}>P</button>
-          <button type="button" aria-label="Keyboard mirror signal" onClick={() => onEvent("INPUT_SOURCE", "keyboard")}>K</button>
+          <button type="button" aria-label={t("pointerSignal")} onClick={() => onEvent("INPUT_SOURCE", "pointer")}>P</button>
+          <button type="button" aria-label={t("keyboardSignal")} onClick={() => onEvent("INPUT_SOURCE", "keyboard")}>K</button>
         </div>
 
         <motion.button
@@ -151,7 +153,7 @@ export function TimerStage({
         >
           <Power aria-hidden="true" size={20} />
           <span>{primaryLabel}</span>
-          <small>{running ? "FREEZE READING" : "SPACE / ENTER"}</small>
+          <small>{running ? t("freezeReading") : t("keyboardShortcut")}</small>
         </motion.button>
       </div>
     </section>

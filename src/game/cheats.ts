@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ADDITIONAL_CHEAT_DEFINITIONS } from "./cheat-catalog";
 import type { CheatCategory, CheatEvent, EventPattern } from "./types";
 
 const eventPatternSchema = z.object({
@@ -70,6 +71,7 @@ export const cheatTriggerConfigSchema = z.union([
 export const cheatEffectConfigSchema = z.object({
   timeScale: z.number().gt(0).lte(1),
   label: z.string().min(1).max(80),
+  labelZh: z.string().min(1).max(80),
 });
 
 export type CheatTriggerConfig = z.infer<typeof cheatTriggerConfigSchema>;
@@ -78,8 +80,11 @@ export type CheatEffectConfig = z.infer<typeof cheatEffectConfigSchema>;
 export interface CheatDefinition {
   slug: string;
   name: string;
+  nameZh: string;
   description: string;
+  descriptionZh: string;
   hint: string;
+  hintZh: string;
   difficulty: number;
   category: CheatCategory;
   triggerConfig: CheatTriggerConfig;
@@ -94,7 +99,7 @@ function sequence(
   return { kind: "sequence", pattern, windowMs };
 }
 
-export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = [
+const BASE_CHEAT_DEFINITIONS = [
   {
     slug: "five-finger-echo",
     name: "Five-Finger Echo",
@@ -382,6 +387,57 @@ export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = [
   },
 ] as const;
 
+type LegacyTranslation = {
+  nameZh: string;
+  descriptionZh: string;
+  hintZh: string;
+  labelZh: string;
+};
+
+const LEGACY_TRANSLATIONS: Record<
+  (typeof BASE_CHEAT_DEFINITIONS)[number]["slug"],
+  LegacyTranslation
+> = {
+  "five-finger-echo": { nameZh: "五指回声", descriptionZh: "面板记住快速敲击的能力，比记住时间更强。", hintZh: "玻璃正在监听。启动前快速敲击五次。", labelZh: "回声阻尼已接入" },
+  "pressure-delay": { nameZh: "压力延迟", descriptionZh: "长按执行器会把延迟预载到计时电路中。", hintZh: "不要立即松开，让控制器感受到你的耐心。", labelZh: "压力缓存已充能" },
+  "slow-command": { nameZh: "慢速命令", descriptionZh: "一条维护助记命令能绕过公共控制层。", hintZh: "实验室接受一条四字母键盘指令。", labelZh: "SLOW 命令已接受" },
+  "four-corner-breach": { nameZh: "四角突破", descriptionZh: "顺时针诊断扫描会打开未记录的服务路线。", hintZh: "从西北角开始，沿顺时针描摹外壳。", labelZh: "外壳回路已绕过" },
+  "signal-oscillation": { nameZh: "信号振荡", descriptionZh: "在证据与仪器之间交替操作会扰乱时钟源。", hintZh: "玻璃、线索、玻璃、线索——重复这个矛盾。", labelZh: "振荡信号已捕获" },
+  "triple-actuator": { nameZh: "三重执行器", descriptionZh: "三次待机测试会让继电器进入宽松状态。", hintZh: "计时舱空闲时，测试主控制三次。", labelZh: "继电器宽松状态已开启" },
+  "calibration-101": { nameZh: "校准 101", descriptionZh: "一段二进制服务码会重定向显示振荡器。", hintZh: "最小的有效课程写作 1—0—1。", labelZh: "二进制校准已加载" },
+  "status-rebound": { nameZh: "状态回弹", descriptionZh: "在同一拍内确认两次，状态灯就会回弹。", hintZh: "快速确认两次实时状态。", labelZh: "检测到状态回弹" },
+  "patient-zero": { nameZh: "零号耐心", descriptionZh: "无人触碰的计时舱会在五秒后偏离规格。", hintZh: "在就绪状态等待五秒，什么都不要做。", labelZh: "空闲漂移已收集" },
+  "mode-flip": { nameZh: "模式翻转", descriptionZh: "快速切换模式会让两个调速器同时部分生效。", hintZh: "在系统稳定前连续改变三次主意。", labelZh: "调速器冲突已激活" },
+  "metronome-leak": { nameZh: "节拍器泄漏", descriptionZh: "四次均匀脉冲会与内部时钟分频器同步。", hintZh: "在节奏端口敲出稳定的四拍。", labelZh: "节拍相位已锁定" },
+  "reverse-sweep": { nameZh: "反向扫描", descriptionZh: "下、上、下的扫描会让校准总线反向运行一次。", hintZh: "在仪器上向下、向上、再向下滚动。", labelZh: "校准总线已反转" },
+  "archive-route": { nameZh: "档案路线", descriptionZh: "穿过情报档案的特定路线会重新打开游戏时钟。", hintZh: "访问作弊档案、排行榜，再回到实验。", labelZh: "档案路线已认证" },
+  "clue-cipher": { nameZh: "线索密文", descriptionZh: "三个高亮词会组成一句计时器必须服从的话。", hintZh: "只读标记词：TIME / BENDS / HERE。", labelZh: "密文短句已解析" },
+  "tab-return": { nameZh: "标签返回", descriptionZh: "返回的浏览器标签页会携带旧时钟权限。", hintZh: "切走再回来；设备不支持时可输入 BACK。", labelZh: "旧标签权限已接受" },
+  "horizon-shift": { nameZh: "地平线偏移", descriptionZh: "横屏传感器读数会改变计时舱对重力的假设。", hintZh: "转动地平线，或使用键盘输入 HORIZON。", labelZh: "重力假设已旋转" },
+  "escape-hatch": { nameZh: "逃生舱门", descriptionZh: "最古老的键盘退出序列仍控制着实验室外壳。", hintZh: "按 Escape、Enter、再按 Escape。", labelZh: "外壳逃生舱已打开" },
+  "mirrored-input": { nameZh: "镜像输入", descriptionZh: "交替使用指针和键盘会制造双重控制身份。", hintZh: "指针、键盘、指针、键盘——镜像操作员。", labelZh: "双重操作身份已建立" },
+  "ten-thousand-glyph": { nameZh: "一万字形", descriptionZh: "逐位输入目标数字时，目标本身会变成服务码。", hintZh: "把目标作为五个独立数字点击：1 0 0 0 0。", labelZh: "目标字形已覆盖" },
+  "quiet-circuit": { nameZh: "静默电路", descriptionZh: "只移动焦点的检查路线能在不触碰控制器时启动计时器。", hintZh: "依次聚焦目标、模式、主控制，不要激活。", labelZh: "静默电路已启动" },
+};
+
+export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = [
+  ...BASE_CHEAT_DEFINITIONS.map((definition) => {
+    const translation = LEGACY_TRANSLATIONS[definition.slug];
+    return {
+      ...definition,
+      nameZh: translation.nameZh,
+      descriptionZh: translation.descriptionZh,
+      hintZh: translation.hintZh,
+      triggerConfig: cheatTriggerConfigSchema.parse(definition.triggerConfig),
+      effectConfig: {
+        ...definition.effectConfig,
+        labelZh: translation.labelZh,
+      },
+    };
+  }),
+  ...ADDITIONAL_CHEAT_DEFINITIONS,
+];
+
 function matchesPattern(event: CheatEvent, pattern: EventPattern): boolean {
   return (
     event.type === pattern.type &&
@@ -479,6 +535,9 @@ export function validateCheatDefinition(definition: CheatDefinition): CheatDefin
   cheatEffectConfigSchema.parse(definition.effectConfig);
   if (!Number.isInteger(definition.difficulty) || definition.difficulty < 1 || definition.difficulty > 5) {
     throw new RangeError("Cheat difficulty must be an integer from 1 to 5");
+  }
+  for (const value of [definition.nameZh, definition.descriptionZh, definition.hintZh]) {
+    if (value.trim().length === 0) throw new RangeError("Cheat translations are required");
   }
   return definition;
 }

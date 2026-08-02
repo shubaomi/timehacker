@@ -1,5 +1,6 @@
 import { formatDuration, formatSignedError } from "./timer";
 import type { GameMode } from "./types";
+import { translate, type Locale } from "@/i18n/config";
 
 interface ShareResultInput {
   durationMs: number;
@@ -8,6 +9,7 @@ interface ShareResultInput {
   unlockedCheats: number;
   totalCheats?: number;
   mode: GameMode;
+  locale?: Locale;
 }
 
 export function buildShareText({
@@ -15,15 +17,16 @@ export function buildShareText({
   errorMs,
   level,
   unlockedCheats,
-  totalCheats = 20,
+  totalCheats = 100,
   mode,
+  locale = "en",
 }: ShareResultInput): string {
   return [
-    "TIME HACKER // FIELD REPORT",
-    `Result: ${formatDuration(durationMs)} (${formatSignedError(errorMs)})`,
-    `Mode: ${mode === "PURE" ? "PURE" : "HACKER"}`,
-    `Level: ${level}`,
-    `Cheats discovered: ${unlockedCheats}/${totalCheats}`,
-    "Can you stop time at 10.000?",
+    translate(locale, "shareHeader"),
+    translate(locale, "shareResult", { duration: formatDuration(durationMs), error: formatSignedError(errorMs) }),
+    translate(locale, "shareMode", { mode: translate(locale, mode === "PURE" ? "modePure" : "modeHacker") }),
+    translate(locale, "shareLevel", { level }),
+    translate(locale, "shareCheats", { count: unlockedCheats, total: totalCheats }),
+    translate(locale, "shareChallenge"),
   ].join("\n");
 }

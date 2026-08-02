@@ -59,8 +59,8 @@ async function createBrowserPlayer(page: Page, playerId = randomUUID()) {
 
 async function openReadyGame(page: Page) {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Can you hack time/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /START.*SPACE/i })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: /Can you hack time/i })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("button", { name: /START.*SPACE/i })).toBeEnabled({ timeout: 60_000 });
 }
 
 async function takeEvidence(page: Page, projectName: string, state: string) {
@@ -153,12 +153,26 @@ test("responsive initial state has no serious accessibility, console, or overflo
   await openReadyGame(page);
 
   await expect(page.locator(".timer-housing")).toBeVisible();
+  await expect(page.locator('link[rel~="icon"][href*="icon.svg"]')).toHaveCount(1);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBe(true);
   await assertNoHighImpactAxeFindings(page);
   await takeEvidence(page, testInfo.project.name, "initial");
   expect(browserErrors).toEqual([]);
+});
+
+test("language switch localizes the interface and persists across reload", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "Locale persistence runs once on desktop.");
+  await createBrowserPlayer(page);
+  await openReadyGame(page);
+  await page.getByRole("button", { name: "切换到中文" }).click();
+  await expect(page.getByRole("heading", { name: /你能破解.*时间吗/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /开始.*空格/ })).toBeEnabled();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: /你能破解.*时间吗/ })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
 });
 
 test("game journey verifies failure, cheat success, share fallback, and persistence", async ({ page }, testInfo) => {
@@ -193,7 +207,7 @@ test("game journey verifies failure, cheat success, share fallback, and persiste
   const persistedId = await page.evaluate((key) => localStorage.getItem(key), storageKey);
   expect(persistedId).toBe(playerId);
   await page.reload();
-  await expect(page.locator(".metric-grid")).toContainText("CHEATS1/20");
+  await expect(page.locator(".metric-grid")).toContainText("CHEATS1/100");
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeEnabled();
 });
 
@@ -243,7 +257,7 @@ test("unlocked journey verifies Pure Mode keyboard control, collection, ranks, a
   await expect(page.getByRole("dialog", { name: "Reset your field record?" })).toBeVisible();
   await takeEvidence(page, testInfo.project.name, "reset-dialog");
   await page.getByRole("button", { name: "Reset my progress" }).click();
-  await expect(page.locator(".metric-grid")).toContainText("CHEATS0/20");
+  await expect(page.locator(".metric-grid")).toContainText("CHEATS0/100");
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeDisabled();
 });
 

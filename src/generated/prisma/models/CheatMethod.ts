@@ -38,8 +38,11 @@ export type CheatMethodMinAggregateOutputType = {
   id: string | null
   slug: string | null
   name: string | null
+  nameZh: string | null
   description: string | null
+  descriptionZh: string | null
   hint: string | null
+  hintZh: string | null
   difficulty: number | null
   category: $Enums.CheatCategory | null
   enabled: boolean | null
@@ -51,8 +54,11 @@ export type CheatMethodMaxAggregateOutputType = {
   id: string | null
   slug: string | null
   name: string | null
+  nameZh: string | null
   description: string | null
+  descriptionZh: string | null
   hint: string | null
+  hintZh: string | null
   difficulty: number | null
   category: $Enums.CheatCategory | null
   enabled: boolean | null
@@ -64,8 +70,11 @@ export type CheatMethodCountAggregateOutputType = {
   id: number
   slug: number
   name: number
+  nameZh: number
   description: number
+  descriptionZh: number
   hint: number
+  hintZh: number
   difficulty: number
   category: number
   triggerConfig: number
@@ -89,8 +98,11 @@ export type CheatMethodMinAggregateInputType = {
   id?: true
   slug?: true
   name?: true
+  nameZh?: true
   description?: true
+  descriptionZh?: true
   hint?: true
+  hintZh?: true
   difficulty?: true
   category?: true
   enabled?: true
@@ -102,8 +114,11 @@ export type CheatMethodMaxAggregateInputType = {
   id?: true
   slug?: true
   name?: true
+  nameZh?: true
   description?: true
+  descriptionZh?: true
   hint?: true
+  hintZh?: true
   difficulty?: true
   category?: true
   enabled?: true
@@ -115,8 +130,11 @@ export type CheatMethodCountAggregateInputType = {
   id?: true
   slug?: true
   name?: true
+  nameZh?: true
   description?: true
+  descriptionZh?: true
   hint?: true
+  hintZh?: true
   difficulty?: true
   category?: true
   triggerConfig?: true
@@ -217,8 +235,11 @@ export type CheatMethodGroupByOutputType = {
   id: string
   slug: string
   name: string
+  nameZh: string | null
   description: string
+  descriptionZh: string | null
   hint: string
+  hintZh: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: runtime.JsonValue
@@ -255,8 +276,11 @@ export type CheatMethodWhereInput = {
   id?: Prisma.UuidFilter<"CheatMethod"> | string
   slug?: Prisma.StringFilter<"CheatMethod"> | string
   name?: Prisma.StringFilter<"CheatMethod"> | string
+  nameZh?: Prisma.StringNullableFilter<"CheatMethod"> | string | null
   description?: Prisma.StringFilter<"CheatMethod"> | string
+  descriptionZh?: Prisma.StringNullableFilter<"CheatMethod"> | string | null
   hint?: Prisma.StringFilter<"CheatMethod"> | string
+  hintZh?: Prisma.StringNullableFilter<"CheatMethod"> | string | null
   difficulty?: Prisma.IntFilter<"CheatMethod"> | number
   category?: Prisma.EnumCheatCategoryFilter<"CheatMethod"> | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonFilter<"CheatMethod">
@@ -273,8 +297,11 @@ export type CheatMethodOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  nameZh?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrder
+  descriptionZh?: Prisma.SortOrderInput | Prisma.SortOrder
   hint?: Prisma.SortOrder
+  hintZh?: Prisma.SortOrderInput | Prisma.SortOrder
   difficulty?: Prisma.SortOrder
   category?: Prisma.SortOrder
   triggerConfig?: Prisma.SortOrder
@@ -294,8 +321,11 @@ export type CheatMethodWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.CheatMethodWhereInput[]
   NOT?: Prisma.CheatMethodWhereInput | Prisma.CheatMethodWhereInput[]
   name?: Prisma.StringFilter<"CheatMethod"> | string
+  nameZh?: Prisma.StringNullableFilter<"CheatMethod"> | string | null
   description?: Prisma.StringFilter<"CheatMethod"> | string
+  descriptionZh?: Prisma.StringNullableFilter<"CheatMethod"> | string | null
   hint?: Prisma.StringFilter<"CheatMethod"> | string
+  hintZh?: Prisma.StringNullableFilter<"CheatMethod"> | string | null
   difficulty?: Prisma.IntFilter<"CheatMethod"> | number
   category?: Prisma.EnumCheatCategoryFilter<"CheatMethod"> | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonFilter<"CheatMethod">
@@ -312,8 +342,11 @@ export type CheatMethodOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  nameZh?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrder
+  descriptionZh?: Prisma.SortOrderInput | Prisma.SortOrder
   hint?: Prisma.SortOrder
+  hintZh?: Prisma.SortOrderInput | Prisma.SortOrder
   difficulty?: Prisma.SortOrder
   category?: Prisma.SortOrder
   triggerConfig?: Prisma.SortOrder
@@ -335,8 +368,11 @@ export type CheatMethodScalarWhereWithAggregatesInput = {
   id?: Prisma.UuidWithAggregatesFilter<"CheatMethod"> | string
   slug?: Prisma.StringWithAggregatesFilter<"CheatMethod"> | string
   name?: Prisma.StringWithAggregatesFilter<"CheatMethod"> | string
+  nameZh?: Prisma.StringNullableWithAggregatesFilter<"CheatMethod"> | string | null
   description?: Prisma.StringWithAggregatesFilter<"CheatMethod"> | string
+  descriptionZh?: Prisma.StringNullableWithAggregatesFilter<"CheatMethod"> | string | null
   hint?: Prisma.StringWithAggregatesFilter<"CheatMethod"> | string
+  hintZh?: Prisma.StringNullableWithAggregatesFilter<"CheatMethod"> | string | null
   difficulty?: Prisma.IntWithAggregatesFilter<"CheatMethod"> | number
   category?: Prisma.EnumCheatCategoryWithAggregatesFilter<"CheatMethod"> | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonWithAggregatesFilter<"CheatMethod">
@@ -350,8 +386,11 @@ export type CheatMethodCreateInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -368,8 +407,11 @@ export type CheatMethodUncheckedCreateInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -386,8 +428,11 @@ export type CheatMethodUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -404,8 +449,11 @@ export type CheatMethodUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -422,8 +470,11 @@ export type CheatMethodCreateManyInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -437,8 +488,11 @@ export type CheatMethodUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -452,8 +506,11 @@ export type CheatMethodUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -467,8 +524,11 @@ export type CheatMethodCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  nameZh?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  descriptionZh?: Prisma.SortOrder
   hint?: Prisma.SortOrder
+  hintZh?: Prisma.SortOrder
   difficulty?: Prisma.SortOrder
   category?: Prisma.SortOrder
   triggerConfig?: Prisma.SortOrder
@@ -486,8 +546,11 @@ export type CheatMethodMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  nameZh?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  descriptionZh?: Prisma.SortOrder
   hint?: Prisma.SortOrder
+  hintZh?: Prisma.SortOrder
   difficulty?: Prisma.SortOrder
   category?: Prisma.SortOrder
   enabled?: Prisma.SortOrder
@@ -499,8 +562,11 @@ export type CheatMethodMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   slug?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  nameZh?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  descriptionZh?: Prisma.SortOrder
   hint?: Prisma.SortOrder
+  hintZh?: Prisma.SortOrder
   difficulty?: Prisma.SortOrder
   category?: Prisma.SortOrder
   enabled?: Prisma.SortOrder
@@ -580,8 +646,11 @@ export type CheatMethodCreateWithoutUnlockedByInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -597,8 +666,11 @@ export type CheatMethodUncheckedCreateWithoutUnlockedByInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -630,8 +702,11 @@ export type CheatMethodUpdateWithoutUnlockedByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -647,8 +722,11 @@ export type CheatMethodUncheckedUpdateWithoutUnlockedByInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -664,8 +742,11 @@ export type CheatMethodCreateWithoutAssignedGamesInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -681,8 +762,11 @@ export type CheatMethodUncheckedCreateWithoutAssignedGamesInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -703,8 +787,11 @@ export type CheatMethodCreateWithoutUsedGamesInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -720,8 +807,11 @@ export type CheatMethodUncheckedCreateWithoutUsedGamesInput = {
   id?: string
   slug: string
   name: string
+  nameZh?: string | null
   description: string
+  descriptionZh?: string | null
   hint: string
+  hintZh?: string | null
   difficulty: number
   category: $Enums.CheatCategory
   triggerConfig: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -753,8 +843,11 @@ export type CheatMethodUpdateWithoutAssignedGamesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -770,8 +863,11 @@ export type CheatMethodUncheckedUpdateWithoutAssignedGamesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -798,8 +894,11 @@ export type CheatMethodUpdateWithoutUsedGamesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -815,8 +914,11 @@ export type CheatMethodUncheckedUpdateWithoutUsedGamesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   slug?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  nameZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.StringFieldUpdateOperationsInput | string
+  descriptionZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   hint?: Prisma.StringFieldUpdateOperationsInput | string
+  hintZh?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   difficulty?: Prisma.IntFieldUpdateOperationsInput | number
   category?: Prisma.EnumCheatCategoryFieldUpdateOperationsInput | $Enums.CheatCategory
   triggerConfig?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -881,8 +983,11 @@ export type CheatMethodSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   id?: boolean
   slug?: boolean
   name?: boolean
+  nameZh?: boolean
   description?: boolean
+  descriptionZh?: boolean
   hint?: boolean
+  hintZh?: boolean
   difficulty?: boolean
   category?: boolean
   triggerConfig?: boolean
@@ -900,8 +1005,11 @@ export type CheatMethodSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   id?: boolean
   slug?: boolean
   name?: boolean
+  nameZh?: boolean
   description?: boolean
+  descriptionZh?: boolean
   hint?: boolean
+  hintZh?: boolean
   difficulty?: boolean
   category?: boolean
   triggerConfig?: boolean
@@ -915,8 +1023,11 @@ export type CheatMethodSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   id?: boolean
   slug?: boolean
   name?: boolean
+  nameZh?: boolean
   description?: boolean
+  descriptionZh?: boolean
   hint?: boolean
+  hintZh?: boolean
   difficulty?: boolean
   category?: boolean
   triggerConfig?: boolean
@@ -930,8 +1041,11 @@ export type CheatMethodSelectScalar = {
   id?: boolean
   slug?: boolean
   name?: boolean
+  nameZh?: boolean
   description?: boolean
+  descriptionZh?: boolean
   hint?: boolean
+  hintZh?: boolean
   difficulty?: boolean
   category?: boolean
   triggerConfig?: boolean
@@ -941,7 +1055,7 @@ export type CheatMethodSelectScalar = {
   updatedAt?: boolean
 }
 
-export type CheatMethodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "name" | "description" | "hint" | "difficulty" | "category" | "triggerConfig" | "effectConfig" | "enabled" | "createdAt" | "updatedAt", ExtArgs["result"]["cheatMethod"]>
+export type CheatMethodOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slug" | "name" | "nameZh" | "description" | "descriptionZh" | "hint" | "hintZh" | "difficulty" | "category" | "triggerConfig" | "effectConfig" | "enabled" | "createdAt" | "updatedAt", ExtArgs["result"]["cheatMethod"]>
 export type CheatMethodInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   assignedGames?: boolean | Prisma.CheatMethod$assignedGamesArgs<ExtArgs>
   usedGames?: boolean | Prisma.CheatMethod$usedGamesArgs<ExtArgs>
@@ -962,8 +1076,11 @@ export type $CheatMethodPayload<ExtArgs extends runtime.Types.Extensions.Interna
     id: string
     slug: string
     name: string
+    nameZh: string | null
     description: string
+    descriptionZh: string | null
     hint: string
+    hintZh: string | null
     difficulty: number
     category: $Enums.CheatCategory
     triggerConfig: runtime.JsonValue
@@ -1400,8 +1517,11 @@ export interface CheatMethodFieldRefs {
   readonly id: Prisma.FieldRef<"CheatMethod", 'String'>
   readonly slug: Prisma.FieldRef<"CheatMethod", 'String'>
   readonly name: Prisma.FieldRef<"CheatMethod", 'String'>
+  readonly nameZh: Prisma.FieldRef<"CheatMethod", 'String'>
   readonly description: Prisma.FieldRef<"CheatMethod", 'String'>
+  readonly descriptionZh: Prisma.FieldRef<"CheatMethod", 'String'>
   readonly hint: Prisma.FieldRef<"CheatMethod", 'String'>
+  readonly hintZh: Prisma.FieldRef<"CheatMethod", 'String'>
   readonly difficulty: Prisma.FieldRef<"CheatMethod", 'Int'>
   readonly category: Prisma.FieldRef<"CheatMethod", 'CheatCategory'>
   readonly triggerConfig: Prisma.FieldRef<"CheatMethod", 'Json'>
