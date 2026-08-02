@@ -73,19 +73,35 @@ function installFetchMock(success = true, suggestedCheat = CHEAT_DEFINITIONS[0])
   return mock;
 }
 
-async function completeSecretGesture(pattern: readonly string[]) {
-  await userEvent.click(screen.getByRole("button", { name: "Something is glimmering here" }));
-  const surface = screen.getByRole("group", { name: "Hidden gesture area" });
-  surface.focus();
+async function completeSecretInteraction(interaction: NonNullable<(typeof CHEAT_DEFINITIONS)[number]["triggerConfig"]["secretInteraction"]>) {
+  await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
   const keys: Record<string, string> = {
-    up: "[ArrowUp]",
-    down: "[ArrowDown]",
-    left: "[ArrowLeft]",
-    right: "[ArrowRight]",
-    tap: "[Enter]",
-    hold: "h",
+    "swipe-up": "[ArrowUp]",
+    "swipe-right": "[ArrowRight]",
+    "swipe-down": "[ArrowDown]",
+    "swipe-left": "[ArrowLeft]",
+    "wipe-up": "[ArrowUp]",
+    "wipe-right": "[ArrowRight]",
+    "wipe-down": "[ArrowDown]",
+    "wipe-left": "[ArrowLeft]",
+    "echo-up": "[ArrowUp]",
+    "echo-right": "[ArrowRight]",
+    "echo-down": "[ArrowDown]",
+    "echo-left": "[ArrowLeft]",
+    "press-tap": "[Enter]",
+    "press-hold": "h",
+    "press-deep": "d",
   };
-  for (const gesture of pattern) await userEvent.keyboard(keys[gesture]);
+  for (const action of interaction.steps) {
+    const key = keys[action];
+    if (key) {
+      const surface = screen.getByRole("group", { name: new RegExp(interaction.family === "pressure" ? "pressure" : "next", "i") });
+      surface.focus();
+      await userEvent.keyboard(key);
+    } else {
+      await userEvent.click(document.querySelector(`[data-secret-action="${action}"]`) as HTMLElement);
+    }
+  }
 }
 
 describe("TimeHackerApp", () => {
@@ -161,7 +177,7 @@ describe("TimeHackerApp", () => {
     expect(screen.queryByText("Service input")).not.toBeInTheDocument();
     expect(screen.queryByText("Operator record")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Secrets" })).not.toBeInTheDocument();
-    await completeSecretGesture(suggestedCheat.triggerConfig.secretGesture!);
+    await completeSecretInteraction(suggestedCheat.triggerConfig.secretInteraction!);
     expect(screen.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeInTheDocument();
   });
 

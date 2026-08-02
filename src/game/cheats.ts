@@ -6,6 +6,11 @@ import {
   makeCatalogEffect,
   type CheatEffectConfig,
 } from "./effects";
+import {
+  makeSecretInteraction,
+  secretInteractionConfigSchema,
+  selectSecretFamily,
+} from "./secret-interactions";
 import type { CheatCategory, CheatEvent, EventPattern } from "./types";
 
 const eventPatternSchema = z.object({
@@ -94,18 +99,15 @@ const accessibleHoldSchema = z.object({
   alternative: sequenceSchema,
 });
 
-export const SECRET_GESTURES = ["up", "down", "left", "right", "tap", "hold"] as const;
-export type SecretGesture = (typeof SECRET_GESTURES)[number];
-
-const secretGestureExtension = z.object({
-  secretGesture: z.array(z.enum(SECRET_GESTURES)).min(3).max(5),
+const secretInteractionExtension = z.object({
+  secretInteraction: secretInteractionConfigSchema,
 });
 
 export const cheatTriggerConfigSchema = z.intersection(z.union([
   simpleTriggerSchema,
   fallbackSchema,
   accessibleHoldSchema,
-]), secretGestureExtension.partial());
+]), secretInteractionExtension.partial());
 
 export type CheatTriggerConfig = z.infer<typeof cheatTriggerConfigSchema>;
 export { cheatEffectConfigSchema } from "./effects";
@@ -474,26 +476,18 @@ const PRE_REVISION_CHEATS: readonly CheatDefinition[] = [
   ...ADDITIONAL_CHEAT_DEFINITIONS,
 ];
 
-function makeSecretGesture(index: number, difficulty: number): SecretGesture[] {
-  const base = SECRET_GESTURES.length;
-  const pattern: SecretGesture[] = [
-    SECRET_GESTURES[Math.floor(index / (base * base)) % base],
-    SECRET_GESTURES[Math.floor(index / base) % base],
-    SECRET_GESTURES[index % base],
-  ];
-  if (difficulty >= 3) pattern.push(SECRET_GESTURES[(index + difficulty) % base]);
-  if (difficulty >= 5) pattern.push(SECRET_GESTURES[(base - 1 - (index % base) + base) % base]);
-  return pattern;
-}
-
+const secretFamilyOccurrences = new Map<string, number>();
 export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = PRE_REVISION_CHEATS.map((definition, index) => {
   const revision = CHEAT_REVISIONS[definition.slug];
   const revised = revision ? { ...definition, ...revision } : definition;
+  const family = selectSecretFamily(revised.category, index);
+  const occurrence = secretFamilyOccurrences.get(family) ?? 0;
+  secretFamilyOccurrences.set(family, occurrence + 1);
   return {
     ...revised,
     triggerConfig: {
       ...revised.triggerConfig,
-      secretGesture: makeSecretGesture(index, revised.difficulty),
+      secretInteraction: makeSecretInteraction(family, occurrence, revised.difficulty),
     },
     effectConfig: makeCatalogEffect(
       revised.slug,
@@ -538,12 +532,12 @@ function evaluateSequence(
   return false;
 }
 
-function secretGestureSequence(config: CheatTriggerConfig) {
-  return config.secretGesture
+function secretInteractionSequence(config: CheatTriggerConfig) {
+  return config.secretInteraction
     ? {
         kind: "sequence" as const,
-        pattern: config.secretGesture.map((value) => ({ type: "SECRET_GESTURE", value })),
-        windowMs: 15_000,
+        pattern: config.secretInteraction.steps.map((value) => ({ type: "SECRET_ACTION", value })),
+        windowMs: 20_000,
       }
     : null;
 }
@@ -651,9 +645,9 @@ export function evaluateCheatProgress(rawConfig: unknown, events: readonly Cheat
   let resetReason: CheatProgress["resetReason"] = null;
   let rhythmDeviation: number | null = null;
 
-  const secretSequence = secretGestureSequence(config);
-  const hasSecretGestureInput = events.some(({ type }) => type === "SECRET_GESTURE");
-  if (secretSequence && hasSecretGestureInput) {
+  const secretSequence = secretInteractionSequence(config);
+  const hasSecretInteractionInput = events.some(({ type }) => type === "SECRET_ACTION");
+  if (secretSequence && hasSecretInteractionInput) {
     ({ currentStep, totalSteps, resetReason } = sequenceProgress(secretSequence.pattern, events));
     if (matched) currentStep = totalSteps;
     return { matched, currentStep, totalSteps, resetReason, rhythmDeviation, armed: matched };
@@ -718,7 +712,7 @@ export function evaluateCheatTrigger(
   events: readonly CheatEvent[],
 ): boolean {
   const config = cheatTriggerConfigSchema.parse(rawConfig);
-  const secretSequence = secretGestureSequence(config);
+  const secretSequence = secretInteractionSequence(config);
   if (secretSequence && evaluateSequence(secretSequence, events)) return true;
   if (config.kind === "fallback") {
     return (

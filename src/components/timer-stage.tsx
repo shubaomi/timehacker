@@ -2,17 +2,17 @@
 
 import { motion } from "motion/react";
 import { useRef } from "react";
-import type { SecretGesture } from "@/game/cheats";
+import type { SecretInteractionConfig } from "@/game/secret-interactions";
 import { useLocale } from "@/i18n/locale-provider";
-import { SecretGesture as SecretGestureControl } from "./secret-gesture";
+import { SecretInteraction } from "./secret-interaction";
 
 interface TimerStageProps {
   elapsedMs: number;
   status: string;
   armed: boolean;
   secretEnabled: boolean;
-  gesturePattern: readonly SecretGesture[];
-  gestureProgress: number;
+  secretInteraction: SecretInteractionConfig;
+  secretProgress: number;
   disabled: boolean;
   onPrimary: () => void;
   onEvent: (type: string, value?: string | number, durationMs?: number) => void;
@@ -27,8 +27,8 @@ export function TimerStage({
   status,
   armed,
   secretEnabled,
-  gesturePattern,
-  gestureProgress,
+  secretInteraction,
+  secretProgress,
   disabled,
   onPrimary,
   onEvent,
@@ -64,12 +64,12 @@ export function TimerStage({
           <small>s</small>
         </button>
 
-        {secretEnabled ? (
-          <SecretGestureControl
-            pattern={gesturePattern}
-            progress={gestureProgress}
+        {secretEnabled && !running && !busy && !disabled ? (
+          <SecretInteraction
+            key={`${secretInteraction.family}:${secretInteraction.variant}`}
+            interaction={secretInteraction}
+            progress={secretProgress}
             armed={armed}
-            disabled={running || busy || disabled}
             onEvent={onEvent}
           />
         ) : null}

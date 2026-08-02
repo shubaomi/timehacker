@@ -7,6 +7,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../src/generated/prisma/client";
 import { Pool } from "pg";
 import { CHEAT_DEFINITIONS } from "../../src/game/cheats";
+import { SECRET_INTERACTION_FAMILIES } from "../../src/game/secret-interactions";
 import { selectNextCheat } from "../../src/game/selection";
 import { config } from "dotenv";
 import { retryTransientDatabaseOperation } from "../database-retry";
@@ -21,6 +22,7 @@ const database = new PrismaClient({ adapter: new PrismaPg({ connectionString: pr
 const cleanupPool = new Pool({ connectionString: process.env.DATABASE_URL, keepAlive: true, max: 1 });
 const storageKey = "time-hacker.player-id.v1";
 const createdPlayers = new Set<string>();
+const allCreatedPlayers = new Set<string>();
 const screenshotRoot = path.resolve("artifacts", "screenshots");
 
 async function installShareFallback(page: Page) {
@@ -53,6 +55,7 @@ function playerIdForAssignment(slug: string, totalGames: number, difficulty = 1)
 
 async function createBrowserPlayer(page: Page, playerId = randomUUID()) {
   createdPlayers.add(playerId);
+  allCreatedPlayers.add(playerId);
   await page.addInitScript(
     ([key, value]) => localStorage.setItem(key, value),
     [storageKey, playerId] as const,
@@ -90,7 +93,7 @@ async function assertNoHighImpactAxeFindings(page: Page) {
   expect(highImpact, JSON.stringify(highImpact, null, 2)).toEqual([]);
 }
 
-async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 1) {
+async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 1, onOpened?: () => Promise<void>) {
   const slug = await page.evaluate(async ([storageKey, difficulty]) => {
     const playerId = localStorage.getItem(storageKey);
     const response = await fetch(`/api/dashboard?playerId=${encodeURIComponent(playerId ?? "")}&difficulty=${difficulty}`);
@@ -99,20 +102,36 @@ async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 
   }, [storageKey, difficulty] as const);
   if (expectedSlug) expect(slug).toBe(expectedSlug);
   const definition = CHEAT_DEFINITIONS.find((cheat) => cheat.slug === slug);
-  if (!definition?.triggerConfig.secretGesture) throw new Error(`Missing secret gesture for ${slug ?? "unknown"}`);
-  await page.getByRole("button", { name: "Something is glimmering here" }).click();
-  const surface = page.getByRole("group", { name: "Hidden gesture area" });
-  await surface.focus();
+  if (!definition?.triggerConfig.secretInteraction) throw new Error(`Missing secret interaction for ${slug ?? "unknown"}`);
+  await page.getByRole("button", { name: "Something unusual is hiding here" }).click();
+  await expect(page.locator(".secret-card")).toHaveCSS("opacity", "1");
+  if (onOpened) await onOpened();
   const keys: Record<string, string> = {
-    up: "ArrowUp",
-    down: "ArrowDown",
-    left: "ArrowLeft",
-    right: "ArrowRight",
-    tap: "Enter",
-    hold: "h",
+    "swipe-up": "ArrowUp",
+    "swipe-right": "ArrowRight",
+    "swipe-down": "ArrowDown",
+    "swipe-left": "ArrowLeft",
+    "wipe-up": "ArrowUp",
+    "wipe-right": "ArrowRight",
+    "wipe-down": "ArrowDown",
+    "wipe-left": "ArrowLeft",
+    "echo-up": "ArrowUp",
+    "echo-right": "ArrowRight",
+    "echo-down": "ArrowDown",
+    "echo-left": "ArrowLeft",
+    "press-tap": "Enter",
+    "press-hold": "h",
+    "press-deep": "d",
   };
-  for (const gesture of definition.triggerConfig.secretGesture) {
-    await page.keyboard.press(keys[gesture]);
+  for (const action of definition.triggerConfig.secretInteraction.steps) {
+    const key = keys[action];
+    if (key) {
+      const surface = page.locator(".secret-playground");
+      await surface.focus();
+      await page.keyboard.press(key);
+    } else {
+      await page.locator(`[data-secret-action="${action}"]`).click();
+    }
   }
   await expect(page.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeVisible();
 }
@@ -128,6 +147,10 @@ test.afterEach(async ({ page }) => {
 
 test.afterAll(async () => {
   await database.$disconnect();
+  const ids = [...allCreatedPlayers];
+  if (ids.length > 0) {
+    await cleanupPool.query('DELETE FROM "User" WHERE "playerId" = ANY($1::text[])', [ids]);
+  }
   await cleanupPool.end();
 });
 
@@ -303,21 +326,23 @@ test("reduced-motion preference keeps the game usable", async ({ page }, testInf
   await expect(page.getByRole("button", { name: /STOP.*Space or Enter/i })).toBeVisible();
 });
 
-test("D1 through D5 secrets are reachable through the playful gesture surface", async ({ browser }, testInfo) => {
+test("all twelve interaction families are reachable across D1 through D5", async ({ browser }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1440", "Difficulty coverage runs once on desktop.");
-  const cases = [
-    { difficulty: 1, slug: "double-relay" },
-    { difficulty: 2, slug: "mode-flip" },
-    { difficulty: 3, slug: "reverse-sweep" },
-    { difficulty: 4, slug: "escape-hatch" },
-    { difficulty: 5, slug: "hundred-code" },
-  ];
+  const cases = SECRET_INTERACTION_FAMILIES.map((family, index) => {
+    const desiredDifficulty = (index % 5) + 1;
+    const candidates = CHEAT_DEFINITIONS.filter((definition) => definition.triggerConfig.secretInteraction?.family === family);
+    const definition = candidates.find(({ difficulty }) => difficulty === desiredDifficulty) ?? candidates[0];
+    if (!definition) throw new Error(`No secret definition for ${family}`);
+    return { family, difficulty: definition.difficulty, slug: definition.slug };
+  });
+  expect(new Set(cases.map(({ difficulty }) => difficulty))).toEqual(new Set([1, 2, 3, 4, 5]));
 
   for (const entry of cases) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
     const playerId = playerIdForAssignment(entry.slug, 0, entry.difficulty);
     createdPlayers.add(playerId);
+    allCreatedPlayers.add(playerId);
     await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [storageKey, playerId] as const);
     await retryTransientDatabaseOperation(() => database.user.create({
       data: { playerId, currentLevel: 20, successGames: 1, firstSuccessAt: new Date() },
@@ -328,7 +353,12 @@ test("D1 through D5 secrets are reachable through the playful gesture surface", 
       await page.getByRole("combobox").selectOption(String(entry.difficulty));
       await page.getByRole("button", { name: "Close game menu" }).click();
     }
-    await armAssignedCheat(page, entry.slug, entry.difficulty);
+    await armAssignedCheat(
+      page,
+      entry.slug,
+      entry.difficulty,
+      () => takeEvidence(page, "secret-families", entry.family),
+    );
     await context.close();
   }
 });

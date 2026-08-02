@@ -7,6 +7,7 @@ import {
   type CheatTriggerConfig,
 } from "@/game/cheats";
 import type { CheatEvent, EventPattern } from "@/game/types";
+import { SECRET_INTERACTION_FAMILIES } from "@/game/secret-interactions";
 import {
   experienceArchetype,
   experienceSurfaces,
@@ -80,15 +81,28 @@ describe("the one hundred cheat definitions", () => {
     });
   });
 
-  it("gives all one hundred cheats a unique server-verifiable gesture trail", () => {
-    const patterns = CHEAT_DEFINITIONS.map(({ triggerConfig }) => triggerConfig.secretGesture);
-    expect(patterns.every((pattern) => pattern && pattern.length >= 3 && pattern.length <= 5)).toBe(true);
-    expect(new Set(patterns.map((pattern) => JSON.stringify(pattern)))).toHaveLength(100);
+  it("gives all one hundred cheats unique server-verifiable interactions across twelve families", () => {
+    const interactions = CHEAT_DEFINITIONS.map(({ triggerConfig }) => triggerConfig.secretInteraction);
+    expect(interactions.every((interaction) => interaction && interaction.steps.length >= 3 && interaction.steps.length <= 5)).toBe(true);
+    expect(new Set(interactions.map((interaction) => JSON.stringify([
+      interaction?.family,
+      interaction?.steps,
+    ])))).toHaveLength(100);
+    expect(new Set(interactions.map((interaction) => interaction?.family))).toEqual(new Set(SECRET_INTERACTION_FAMILIES));
     for (const definition of CHEAT_DEFINITIONS) {
-      const pattern = definition.triggerConfig.secretGesture!;
-      const events = pattern.map((value, index) => ({ type: "SECRET_GESTURE", value, at: index * 300 }));
+      const interaction = definition.triggerConfig.secretInteraction!;
+      const events = interaction.steps.map((value, index) => ({ type: "SECRET_ACTION", value, at: index * 300 }));
       expect(evaluateCheatTrigger(definition.triggerConfig, events), definition.slug).toBe(true);
       expect(evaluateCheatTrigger(definition.triggerConfig, events.slice(0, -1)), definition.slug).toBe(false);
+      expect(evaluateCheatTrigger(definition.triggerConfig, events.map((event, index) => index === events.length - 1 ? { ...event, value: "wrong-action" } : event)), definition.slug).toBe(false);
+    }
+  });
+
+  it("scales progressive guidance from D1 to D5", () => {
+    for (const definition of CHEAT_DEFINITIONS) {
+      const interaction = definition.triggerConfig.secretInteraction!;
+      expect(interaction.steps).toHaveLength(definition.difficulty >= 5 ? 5 : definition.difficulty >= 3 ? 4 : 3);
+      expect(interaction.hintDelayMs).toBe([1_200, 1_800, 2_600, 3_400, 4_200][definition.difficulty - 1]);
     }
   });
 

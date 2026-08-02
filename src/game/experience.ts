@@ -81,11 +81,11 @@ export const UI_EVENT_CAPABILITIES = new Set([
   "CORNER_TAP", "FOCUS", "GLYPH_POSITION", "GLYPH_TAP", "INPUT_SOURCE", "INSPECT", "KEY",
   "LOCALE_TOGGLE", "MODE_TOGGLE", "ORIENTATION", "PANEL_OPEN", "READY_MARK", "READY_WAIT",
   "RHYTHM_TAP", "RITUAL_PULSE", "SERVICE_KEY", "SERVICE_SWEEP", "STATUS_PHASE_CAPTURE",
-  "STATUS_TAP", "TIMER_TAP", "VISIBILITY_RETURN", "WHEEL", "SECRET_GESTURE",
+  "STATUS_TAP", "TIMER_TAP", "VISIBILITY_RETURN", "WHEEL", "SECRET_ACTION",
 ]);
 
 export function triggerEventTypes(config: CheatTriggerConfig): string[] {
-  const secretTypes = config.secretGesture ? ["SECRET_GESTURE"] : [];
+  const secretTypes = config.secretInteraction ? ["SECRET_ACTION"] : [];
   if (config.kind === "fallback") {
     return [...new Set([...config.primary.pattern, ...config.fallback.pattern].map(({ type }) => type).concat(secretTypes))];
   }

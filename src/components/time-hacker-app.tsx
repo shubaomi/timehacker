@@ -35,6 +35,7 @@ import { CollectionPanel } from "./collection-panel";
 import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
 import { formatStopwatch, TimerStage } from "./timer-stage";
+import { DEFAULT_SECRET_INTERACTION } from "@/game/secret-interactions";
 
 type GameStatus =
   | "LOADING"
@@ -450,7 +451,7 @@ export function TimeHackerApp() {
     );
   }
 
-  const gesturePattern = dashboard.suggestedCheat?.triggerConfig.secretGesture ?? ["up", "right", "down"];
+  const secretInteraction = dashboard.suggestedCheat?.triggerConfig.secretInteraction ?? DEFAULT_SECRET_INTERACTION;
   const drawerTitle = panel === "cheats" ? t("cheatArchive") : panel === "ranks" ? t("globalRanks") : t("menuTitle");
 
   return (
@@ -493,8 +494,8 @@ export function TimeHackerApp() {
             status={status}
             armed={mode === "HACKER" && armed}
             secretEnabled={mode === "HACKER" && Boolean(dashboard.suggestedCheat)}
-            gesturePattern={gesturePattern}
-            gestureProgress={ritualProgress?.currentStep ?? 0}
+            secretInteraction={secretInteraction}
+            secretProgress={ritualProgress?.currentStep ?? 0}
             disabled={status === "LIMIT_REACHED"}
             onPrimary={handlePrimary}
             onEvent={emitCheatEvent}
