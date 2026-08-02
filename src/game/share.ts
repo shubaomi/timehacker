@@ -9,6 +9,7 @@ interface ShareResultInput {
   unlockedCheats: number;
   totalCheats?: number;
   mode: GameMode;
+  assistanceType?: string | null;
   locale?: Locale;
 }
 
@@ -19,12 +20,14 @@ export function buildShareText({
   unlockedCheats,
   totalCheats = 100,
   mode,
+  assistanceType,
   locale = "en",
 }: ShareResultInput): string {
   return [
     translate(locale, "shareHeader"),
     translate(locale, "shareResult", { duration: formatDuration(durationMs), error: formatSignedError(errorMs) }),
     translate(locale, "shareMode", { mode: translate(locale, mode === "PURE" ? "modePure" : "modeHacker") }),
+    ...(assistanceType ? [translate(locale, "shareAssistance", { type: assistanceType })] : []),
     translate(locale, "shareLevel", { level }),
     translate(locale, "shareCheats", { count: unlockedCheats, total: totalCheats }),
     translate(locale, "shareChallenge"),

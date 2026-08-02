@@ -7,7 +7,7 @@ import { LocaleProvider } from "@/i18n/locale-provider";
 
 const fixedPlayerId = "44c26e31-f4f7-4e01-9cbd-ecbd6bc4b8c1";
 
-function dashboard() {
+function dashboard(suggestedCheat = CHEAT_DEFINITIONS[0]) {
   return {
     player: {
       playerId: fixedPlayerId,
@@ -23,7 +23,7 @@ function dashboard() {
     daily: { limit: 50, attempts: 1, remaining: 49, resetsAt: "2026-08-03T00:00:00.000Z" },
     difficulty: 1,
     maximumDifficulty: 1,
-    suggestedCheat: CHEAT_DEFINITIONS[0],
+    suggestedCheat,
     collection: CHEAT_DEFINITIONS.map((cheat, index) => ({
       slug: cheat.slug,
       name: index === 0 ? cheat.name : "CLASSIFIED",
@@ -46,10 +46,11 @@ function renderApp() {
   );
 }
 
-function installFetchMock(success = true) {
-  const mock = vi.fn(async (input: RequestInfo | URL) => {
+function installFetchMock(success = true, suggestedCheat = CHEAT_DEFINITIONS[0]) {
+  const mock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+    void _init;
     const url = typeof input === "string" ? input : input.toString();
-    if (url.startsWith("/api/dashboard")) return Response.json(dashboard());
+    if (url.startsWith("/api/dashboard")) return Response.json(dashboard(suggestedCheat));
     if (url === "/api/rankings") return Response.json({ timeHackers: [], perfectTiming: [], cheatMasters: [] });
     if (url === "/api/games/start") return Response.json({ game: { id: "game-1" } }, { status: 201 });
     if (url === "/api/games/game-1/complete") {
@@ -134,4 +135,49 @@ describe("TimeHackerApp", () => {
     expect(document.documentElement.lang).toBe("zh-Hans");
     expect(localStorage.getItem("time-hacker.locale.v1")).toBe("zh");
   });
+
+  it("announces ritual progress and arms through the single-pointer latch alternative", async () => {
+    installFetchMock(true);
+    renderApp();
+    await screen.findByRole("button", { name: /START.*SPACE/i });
+    await userEvent.click(screen.getByRole("button", { name: /Elapsed game time/i }));
+    expect(screen.getByText("Ritual trace 1/5")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Accessible ritual controls"));
+    await userEvent.click(screen.getByRole("button", { name: "Echo latch" }));
+    expect(screen.getByText("Exploit armed", { exact: true })).toBeInTheDocument();
+    expect(screen.getAllByText(/brake pulse/i).length).toBeGreaterThan(0);
+  });
+
+  it(
+    "retains a completed READY wait as server-verifiable evidence after START",
+    async () => {
+      const breathGap = CHEAT_DEFINITIONS.find(({ slug }) => slug === "breath-gap");
+      expect(breathGap).toBeDefined();
+      const fetchMock = installFetchMock(true, breathGap);
+      renderApp();
+
+      const start = await screen.findByRole("button", { name: /START.*SPACE/i });
+      expect(await screen.findByText("Exploit armed", { exact: true }, { timeout: 4_000 })).toBeInTheDocument();
+      await userEvent.click(start);
+      await userEvent.click(await screen.findByRole("button", { name: /STOP.*FREEZE/i }));
+
+      const completionCall = fetchMock.mock.calls.find(([input]) =>
+        String(input).includes("/api/games/game-1/complete"),
+      );
+      expect(completionCall).toBeDefined();
+      const request = completionCall?.[1] as RequestInit;
+      const body = JSON.parse(String(request.body)) as {
+        events: Array<{ type: string; durationMs?: number }>;
+      };
+      expect(body.events).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "READY_WAIT", durationMs: expect.any(Number) }),
+        ]),
+      );
+      expect(
+        body.events.find(({ type }) => type === "READY_WAIT")?.durationMs,
+      ).toBeGreaterThanOrEqual(3_000);
+    },
+    10_000,
+  );
 });

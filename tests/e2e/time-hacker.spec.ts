@@ -8,6 +8,7 @@ import { PrismaClient } from "../../src/generated/prisma/client";
 import { CHEAT_DEFINITIONS } from "../../src/game/cheats";
 import { selectNextCheat } from "../../src/game/selection";
 import { config } from "dotenv";
+import { retryTransientDatabaseOperation } from "../database-retry";
 
 config({ path: ".env.local", quiet: true });
 
@@ -15,7 +16,7 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for browser acceptance tests");
 }
 
-const database = new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL) });
+const database = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, keepAlive: true, max: 5 }) });
 const storageKey = "time-hacker.player-id.v1";
 const createdPlayers = new Set<string>();
 const screenshotRoot = path.resolve("artifacts", "screenshots");
@@ -33,14 +34,14 @@ async function installShareFallback(page: Page) {
   });
 }
 
-function playerIdForAssignment(slug: string, totalGames: number) {
+function playerIdForAssignment(slug: string, totalGames: number, difficulty = 1) {
   const day = new Date().toISOString().slice(0, 10);
   for (let attempt = 0; attempt < 500; attempt += 1) {
     const playerId = randomUUID();
     const selected = selectNextCheat({
       definitions: CHEAT_DEFINITIONS,
       discoveredSlugs: new Set(),
-      desiredDifficulty: 1,
+      desiredDifficulty: difficulty,
       seed: `${playerId}:${totalGames}:${day}`,
     });
     if (selected?.slug === slug) return playerId;
@@ -69,11 +70,11 @@ async function takeEvidence(page: Page, projectName: string, state: string) {
   await page.screenshot({ path: path.join(folder, `${state}.png`), fullPage: true });
 }
 
-async function normalizeNextCompletionToTarget(page: Page) {
+async function normalizeNextCompletionToTarget(page: Page, wallDurationMs = 10_000) {
   await page.route("**/api/games/*/complete", async (route) => {
     const payload = route.request().postDataJSON() as Record<string, unknown>;
     await route.continue({
-      postData: JSON.stringify({ ...payload, durationMs: 10_000 }),
+      postData: JSON.stringify({ ...payload, durationMs: 10_000, wallDurationMs }),
       headers: { ...route.request().headers(), "content-type": "application/json" },
     });
   }, { times: 1 });
@@ -122,20 +123,11 @@ async function armAssignedCheat(page: Page) {
   await expect(page.getByText("Exploit armed", { exact: true })).toBeVisible();
 }
 
-async function completeExactRun(page: Page) {
-  await normalizeNextCompletionToTarget(page);
-  const primary = page.getByRole("button", { name: /START.*SPACE/i });
-  await primary.click();
-  await expect(page.getByRole("button", { name: /STOP.*FREEZE READING/i })).toBeVisible();
-  await page.getByRole("button", { name: /STOP.*FREEZE READING/i }).click();
-  await expect(page.getByRole("heading", { name: "TIME HACKED!" })).toBeVisible();
-}
-
 test.afterEach(async () => {
   const ids = [...createdPlayers];
   createdPlayers.clear();
   if (ids.length > 0) {
-    await database.user.deleteMany({ where: { playerId: { in: ids } } });
+    await retryTransientDatabaseOperation(() => database.user.deleteMany({ where: { playerId: { in: ids } } }));
   }
 });
 
@@ -193,11 +185,15 @@ test("game journey verifies failure, cheat success, share fallback, and persiste
 
   await page.getByRole("button", { name: "Run again", exact: true }).click();
   await armAssignedCheat(page);
-  const multiplierText = await page.locator(".armed-card small").textContent();
-  const timeScale = Number(multiplierText?.match(/0\.\d+/)?.[0]);
-  expect(timeScale).toBeGreaterThan(0);
+  await expect(page.locator(".armed-card")).toContainText(/brake pulse/i);
   await takeEvidence(page, testInfo.project.name, "armed");
-  await completeExactRun(page);
+  await normalizeNextCompletionToTarget(page, 10_500);
+  const armedPrimary = page.getByRole("button", { name: /START.*SPACE/i });
+  await armedPrimary.click();
+  await expect(page.getByRole("button", { name: /STOP.*FREEZE READING/i })).toBeVisible();
+  await page.getByRole("button", { name: /STOP.*FREEZE READING/i }).click();
+  await expect(page.getByRole("heading", { name: "TIME HACKED!" })).toBeVisible();
+  await expect(page.getByText(/HACKER ASSISTED · BRAKE_PULSE/)).toBeVisible();
   await takeEvidence(page, testInfo.project.name, "success");
 
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeEnabled();
@@ -292,4 +288,56 @@ test("reduced-motion preference keeps the game usable", async ({ page }, testInf
   expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
   await page.getByRole("button", { name: /START.*SPACE/i }).click();
   await expect(page.getByRole("button", { name: /STOP.*FREEZE READING/i })).toBeVisible();
+});
+
+test("D1 through D5 representative rituals are reachable with explicit controls", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "Difficulty coverage runs once on desktop.");
+  const cases = [
+    { difficulty: 1, slug: "double-relay", name: "Relay Morse Alpha", run: async (page: Page) => {
+      await page.getByText("Accessible ritual controls").click();
+      await page.getByRole("button", { name: "Short pulse" }).click();
+      await page.getByRole("button", { name: "Long pulse" }).click();
+    } },
+    { difficulty: 2, slug: "mode-flip", name: "Mode Paradox", run: async (page: Page) => {
+      await page.getByRole("button", { name: "Pure mode" }).click();
+      await page.getByRole("button", { name: "Hacker mode" }).click();
+    } },
+    { difficulty: 3, slug: "reverse-sweep", name: "Reverse Sweep", run: async (page: Page) => {
+      await page.getByText("Accessible ritual controls").click();
+      await page.getByRole("button", { name: "Sweep down", exact: true }).click();
+      await page.getByRole("button", { name: "Sweep up", exact: true }).click();
+      await page.getByRole("button", { name: "Sweep down", exact: true }).click();
+    } },
+    { difficulty: 4, slug: "escape-hatch", name: "Escape Hatch", run: async (page: Page) => {
+      await page.getByText("Accessible ritual controls").click();
+      await page.getByRole("button", { name: "Service Escape" }).click();
+      await page.getByRole("button", { name: "Service Enter" }).click();
+      await page.getByRole("button", { name: "Service Escape" }).click();
+    } },
+    { difficulty: 5, slug: "hundred-code", name: "Hundred Code", run: async (page: Page) => {
+      const calibration = page.locator(".diagnostic-pads");
+      for (const bit of [1, 1, 0, 0, 1, 0, 0]) {
+        await calibration.getByRole("button", { name: String(bit), exact: true }).click();
+      }
+    } },
+  ];
+
+  for (const entry of cases) {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const playerId = playerIdForAssignment(entry.slug, 0, entry.difficulty);
+    createdPlayers.add(playerId);
+    await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [storageKey, playerId] as const);
+    await retryTransientDatabaseOperation(() => database.user.create({
+      data: { playerId, currentLevel: 20, successGames: 1, firstSuccessAt: new Date() },
+    }));
+    await openReadyGame(page);
+    if (entry.difficulty > 1) {
+      await page.getByRole("combobox").selectOption(String(entry.difficulty));
+    }
+    await expect(page.locator(".briefing-panel h2")).toHaveText(entry.name);
+    await entry.run(page);
+    await expect(page.getByText("Exploit armed", { exact: true })).toBeVisible();
+    await context.close();
+  }
 });

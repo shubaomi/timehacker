@@ -86,8 +86,11 @@ model GameRecord {
   status           GameStatus    @default(STARTED)
   targetMs         Int           @default(10000)
   durationMs       Int?
+  wallDurationMs   Int?
   errorMs          Int?
   absoluteErrorMs  Int?
+  toleranceMs      Int           @default(10)
+  assistanceType  String?       @db.VarChar(32)
   success          Boolean?
   assignedCheatId  String?       @db.Uuid
   usedCheatId      String?       @db.Uuid

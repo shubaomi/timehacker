@@ -7,7 +7,7 @@
 - Session: a one-to-three-minute visit built around one obvious start/stop action.
 - Expected value: test whether discovery, mastery, and social comparison create replay and sharing intent.
 - Counter-case: a large catalog can become repetitive or inaccessible if it is only quantity. Accounts, payments, AI-generated live content, and admin tools still add cost without proving demand.
-- Decision: preserve the focused one-action game while expanding the previously intended catalog to 100 authored, testable cheats. The matrix is deliberately balanced: four cheats in every difficulty/category cell. Commercial demand remains a real-user validation gate.
+- Decision: preserve the focused one-action game while maintaining 100 authored, testable cheats. Difficulty remains exactly 20 per tier, while category totals follow interaction quality instead of a forced 5×5 matrix. Commercial demand and subjective fun remain real-user validation gates.
 
 ## UI concept
 
@@ -31,10 +31,10 @@ These are pattern references only; no visual asset or composition is copied.
 2. Ready: show the 10.000-second objective, mode, assigned clue, and one primary START control.
 3. Running: replace START with STOP, announce state, and keep secondary surfaces quiet.
 4. Result: show measured duration, signed error, success state, progress changes, and a concise next action.
-5. Discovery: failures reveal progressively stronger clues; a satisfied trigger arms a time-scale effect.
+5. Discovery: failures reveal progressively stronger clues; a satisfied trigger arms one transparent effect family: full dilation, final-zone dilation, assisted tolerance, or a brake pulse.
 6. Mastery: first success unlocks nickname, difficulty selection, Pure Mode, collection, ranks, share, and reset.
 
-All network surfaces have loading, empty, error, and retry states. Device-oriented cheats always have a service-input fallback so the catalog remains usable on touch-only, keyboard-only, and sensor-limited devices. Locale selection is stored locally and in a cookie; the root HTML language is updated for assistive technology.
+All network surfaces have loading, empty, error, and retry states. Device-oriented cheats always have a service-input fallback; sweep, focus, service-key, pulse and hold rituals also expose explicit single-pointer controls. Ritual progress is announced in text with `aria-live`, including soft reset and timing feedback. Locale selection is stored locally and in a cookie; the root HTML language is updated for assistive technology.
 
 ## Design tokens
 

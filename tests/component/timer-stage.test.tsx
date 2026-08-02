@@ -12,7 +12,7 @@ const baseProps = {
   elapsedMs: 0,
   status: "READY",
   armed: false,
-  timeScale: 1,
+  effect: null,
   disabled: false,
   onPrimary: vi.fn(),
   onEvent: vi.fn(),
@@ -47,8 +47,22 @@ describe("TimerStage", () => {
   });
 
   it("announces a slowed game clock without relying on color", () => {
-    render(withLocale(<TimerStage {...baseProps} armed timeScale={0.42} />));
-    expect(screen.getByText("DISTORTION ARMED")).toBeInTheDocument();
-    expect(screen.getByText("GAME CLOCK × 0.42")).toBeInTheDocument();
+    render(withLocale(<TimerStage {...baseProps} armed effect={{ type: "FULL_DILATION", timeScale: 0.55, label: "Full", labelZh: "全程" }} />));
+    expect(screen.getByRole("button", { name: /DISTORTION ARMED/ })).toBeInTheDocument();
+    expect(screen.getByText("FULL DILATION × 0.55")).toBeInTheDocument();
+  });
+
+  it("offers touch alternatives for sweep, pulse, inspect, latch, and service keys", async () => {
+    const onEvent = vi.fn();
+    render(withLocale(<TimerStage {...baseProps} onEvent={onEvent} />));
+    await userEvent.click(screen.getByText("Accessible ritual controls"));
+    await userEvent.click(screen.getByRole("button", { name: "Sweep up" }));
+    await userEvent.click(screen.getByRole("button", { name: "Inspect target" }));
+    await userEvent.click(screen.getByRole("button", { name: "Short pulse" }));
+    await userEvent.click(screen.getByRole("button", { name: "Service Escape" }));
+    expect(onEvent).toHaveBeenCalledWith("SERVICE_SWEEP", "up");
+    expect(onEvent).toHaveBeenCalledWith("INSPECT", "target");
+    expect(onEvent).toHaveBeenCalledWith("RITUAL_PULSE", "short");
+    expect(onEvent).toHaveBeenCalledWith("SERVICE_KEY", "ESCAPE");
   });
 });

@@ -29,15 +29,19 @@ export type AggregateGameRecord = {
 export type GameRecordAvgAggregateOutputType = {
   targetMs: number | null
   durationMs: number | null
+  wallDurationMs: number | null
   errorMs: number | null
   absoluteErrorMs: number | null
+  toleranceMs: number | null
 }
 
 export type GameRecordSumAggregateOutputType = {
   targetMs: number | null
   durationMs: number | null
+  wallDurationMs: number | null
   errorMs: number | null
   absoluteErrorMs: number | null
+  toleranceMs: number | null
 }
 
 export type GameRecordMinAggregateOutputType = {
@@ -48,8 +52,11 @@ export type GameRecordMinAggregateOutputType = {
   status: $Enums.GameStatus | null
   targetMs: number | null
   durationMs: number | null
+  wallDurationMs: number | null
   errorMs: number | null
   absoluteErrorMs: number | null
+  toleranceMs: number | null
+  assistanceType: string | null
   success: boolean | null
   assignedCheatId: string | null
   usedCheatId: string | null
@@ -66,8 +73,11 @@ export type GameRecordMaxAggregateOutputType = {
   status: $Enums.GameStatus | null
   targetMs: number | null
   durationMs: number | null
+  wallDurationMs: number | null
   errorMs: number | null
   absoluteErrorMs: number | null
+  toleranceMs: number | null
+  assistanceType: string | null
   success: boolean | null
   assignedCheatId: string | null
   usedCheatId: string | null
@@ -84,8 +94,11 @@ export type GameRecordCountAggregateOutputType = {
   status: number
   targetMs: number
   durationMs: number
+  wallDurationMs: number
   errorMs: number
   absoluteErrorMs: number
+  toleranceMs: number
+  assistanceType: number
   success: number
   assignedCheatId: number
   usedCheatId: number
@@ -99,15 +112,19 @@ export type GameRecordCountAggregateOutputType = {
 export type GameRecordAvgAggregateInputType = {
   targetMs?: true
   durationMs?: true
+  wallDurationMs?: true
   errorMs?: true
   absoluteErrorMs?: true
+  toleranceMs?: true
 }
 
 export type GameRecordSumAggregateInputType = {
   targetMs?: true
   durationMs?: true
+  wallDurationMs?: true
   errorMs?: true
   absoluteErrorMs?: true
+  toleranceMs?: true
 }
 
 export type GameRecordMinAggregateInputType = {
@@ -118,8 +135,11 @@ export type GameRecordMinAggregateInputType = {
   status?: true
   targetMs?: true
   durationMs?: true
+  wallDurationMs?: true
   errorMs?: true
   absoluteErrorMs?: true
+  toleranceMs?: true
+  assistanceType?: true
   success?: true
   assignedCheatId?: true
   usedCheatId?: true
@@ -136,8 +156,11 @@ export type GameRecordMaxAggregateInputType = {
   status?: true
   targetMs?: true
   durationMs?: true
+  wallDurationMs?: true
   errorMs?: true
   absoluteErrorMs?: true
+  toleranceMs?: true
+  assistanceType?: true
   success?: true
   assignedCheatId?: true
   usedCheatId?: true
@@ -154,8 +177,11 @@ export type GameRecordCountAggregateInputType = {
   status?: true
   targetMs?: true
   durationMs?: true
+  wallDurationMs?: true
   errorMs?: true
   absoluteErrorMs?: true
+  toleranceMs?: true
+  assistanceType?: true
   success?: true
   assignedCheatId?: true
   usedCheatId?: true
@@ -259,8 +285,11 @@ export type GameRecordGroupByOutputType = {
   status: $Enums.GameStatus
   targetMs: number
   durationMs: number | null
+  wallDurationMs: number | null
   errorMs: number | null
   absoluteErrorMs: number | null
+  toleranceMs: number
+  assistanceType: string | null
   success: boolean | null
   assignedCheatId: string | null
   usedCheatId: string | null
@@ -300,8 +329,11 @@ export type GameRecordWhereInput = {
   status?: Prisma.EnumGameStatusFilter<"GameRecord"> | $Enums.GameStatus
   targetMs?: Prisma.IntFilter<"GameRecord"> | number
   durationMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
+  wallDurationMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
   errorMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
   absoluteErrorMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
+  toleranceMs?: Prisma.IntFilter<"GameRecord"> | number
+  assistanceType?: Prisma.StringNullableFilter<"GameRecord"> | string | null
   success?: Prisma.BoolNullableFilter<"GameRecord"> | boolean | null
   assignedCheatId?: Prisma.UuidNullableFilter<"GameRecord"> | string | null
   usedCheatId?: Prisma.UuidNullableFilter<"GameRecord"> | string | null
@@ -321,8 +353,11 @@ export type GameRecordOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   targetMs?: Prisma.SortOrder
   durationMs?: Prisma.SortOrderInput | Prisma.SortOrder
+  wallDurationMs?: Prisma.SortOrderInput | Prisma.SortOrder
   errorMs?: Prisma.SortOrderInput | Prisma.SortOrder
   absoluteErrorMs?: Prisma.SortOrderInput | Prisma.SortOrder
+  toleranceMs?: Prisma.SortOrder
+  assistanceType?: Prisma.SortOrderInput | Prisma.SortOrder
   success?: Prisma.SortOrderInput | Prisma.SortOrder
   assignedCheatId?: Prisma.SortOrderInput | Prisma.SortOrder
   usedCheatId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -345,8 +380,11 @@ export type GameRecordWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.EnumGameStatusFilter<"GameRecord"> | $Enums.GameStatus
   targetMs?: Prisma.IntFilter<"GameRecord"> | number
   durationMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
+  wallDurationMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
   errorMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
   absoluteErrorMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
+  toleranceMs?: Prisma.IntFilter<"GameRecord"> | number
+  assistanceType?: Prisma.StringNullableFilter<"GameRecord"> | string | null
   success?: Prisma.BoolNullableFilter<"GameRecord"> | boolean | null
   assignedCheatId?: Prisma.UuidNullableFilter<"GameRecord"> | string | null
   usedCheatId?: Prisma.UuidNullableFilter<"GameRecord"> | string | null
@@ -366,8 +404,11 @@ export type GameRecordOrderByWithAggregationInput = {
   status?: Prisma.SortOrder
   targetMs?: Prisma.SortOrder
   durationMs?: Prisma.SortOrderInput | Prisma.SortOrder
+  wallDurationMs?: Prisma.SortOrderInput | Prisma.SortOrder
   errorMs?: Prisma.SortOrderInput | Prisma.SortOrder
   absoluteErrorMs?: Prisma.SortOrderInput | Prisma.SortOrder
+  toleranceMs?: Prisma.SortOrder
+  assistanceType?: Prisma.SortOrderInput | Prisma.SortOrder
   success?: Prisma.SortOrderInput | Prisma.SortOrder
   assignedCheatId?: Prisma.SortOrderInput | Prisma.SortOrder
   usedCheatId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -392,8 +433,11 @@ export type GameRecordScalarWhereWithAggregatesInput = {
   status?: Prisma.EnumGameStatusWithAggregatesFilter<"GameRecord"> | $Enums.GameStatus
   targetMs?: Prisma.IntWithAggregatesFilter<"GameRecord"> | number
   durationMs?: Prisma.IntNullableWithAggregatesFilter<"GameRecord"> | number | null
+  wallDurationMs?: Prisma.IntNullableWithAggregatesFilter<"GameRecord"> | number | null
   errorMs?: Prisma.IntNullableWithAggregatesFilter<"GameRecord"> | number | null
   absoluteErrorMs?: Prisma.IntNullableWithAggregatesFilter<"GameRecord"> | number | null
+  toleranceMs?: Prisma.IntWithAggregatesFilter<"GameRecord"> | number
+  assistanceType?: Prisma.StringNullableWithAggregatesFilter<"GameRecord"> | string | null
   success?: Prisma.BoolNullableWithAggregatesFilter<"GameRecord"> | boolean | null
   assignedCheatId?: Prisma.UuidNullableWithAggregatesFilter<"GameRecord"> | string | null
   usedCheatId?: Prisma.UuidNullableWithAggregatesFilter<"GameRecord"> | string | null
@@ -409,8 +453,11 @@ export type GameRecordCreateInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   startedAt?: Date | string
   completedAt?: Date | string | null
@@ -428,8 +475,11 @@ export type GameRecordUncheckedCreateInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   assignedCheatId?: string | null
   usedCheatId?: string | null
@@ -445,8 +495,11 @@ export type GameRecordUpdateInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -464,8 +517,11 @@ export type GameRecordUncheckedUpdateInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   assignedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   usedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -482,8 +538,11 @@ export type GameRecordCreateManyInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   assignedCheatId?: string | null
   usedCheatId?: string | null
@@ -499,8 +558,11 @@ export type GameRecordUpdateManyMutationInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -515,8 +577,11 @@ export type GameRecordUncheckedUpdateManyInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   assignedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   usedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -543,8 +608,11 @@ export type GameRecordCountOrderByAggregateInput = {
   status?: Prisma.SortOrder
   targetMs?: Prisma.SortOrder
   durationMs?: Prisma.SortOrder
+  wallDurationMs?: Prisma.SortOrder
   errorMs?: Prisma.SortOrder
   absoluteErrorMs?: Prisma.SortOrder
+  toleranceMs?: Prisma.SortOrder
+  assistanceType?: Prisma.SortOrder
   success?: Prisma.SortOrder
   assignedCheatId?: Prisma.SortOrder
   usedCheatId?: Prisma.SortOrder
@@ -556,8 +624,10 @@ export type GameRecordCountOrderByAggregateInput = {
 export type GameRecordAvgOrderByAggregateInput = {
   targetMs?: Prisma.SortOrder
   durationMs?: Prisma.SortOrder
+  wallDurationMs?: Prisma.SortOrder
   errorMs?: Prisma.SortOrder
   absoluteErrorMs?: Prisma.SortOrder
+  toleranceMs?: Prisma.SortOrder
 }
 
 export type GameRecordMaxOrderByAggregateInput = {
@@ -568,8 +638,11 @@ export type GameRecordMaxOrderByAggregateInput = {
   status?: Prisma.SortOrder
   targetMs?: Prisma.SortOrder
   durationMs?: Prisma.SortOrder
+  wallDurationMs?: Prisma.SortOrder
   errorMs?: Prisma.SortOrder
   absoluteErrorMs?: Prisma.SortOrder
+  toleranceMs?: Prisma.SortOrder
+  assistanceType?: Prisma.SortOrder
   success?: Prisma.SortOrder
   assignedCheatId?: Prisma.SortOrder
   usedCheatId?: Prisma.SortOrder
@@ -586,8 +659,11 @@ export type GameRecordMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   targetMs?: Prisma.SortOrder
   durationMs?: Prisma.SortOrder
+  wallDurationMs?: Prisma.SortOrder
   errorMs?: Prisma.SortOrder
   absoluteErrorMs?: Prisma.SortOrder
+  toleranceMs?: Prisma.SortOrder
+  assistanceType?: Prisma.SortOrder
   success?: Prisma.SortOrder
   assignedCheatId?: Prisma.SortOrder
   usedCheatId?: Prisma.SortOrder
@@ -599,8 +675,10 @@ export type GameRecordMinOrderByAggregateInput = {
 export type GameRecordSumOrderByAggregateInput = {
   targetMs?: Prisma.SortOrder
   durationMs?: Prisma.SortOrder
+  wallDurationMs?: Prisma.SortOrder
   errorMs?: Prisma.SortOrder
   absoluteErrorMs?: Prisma.SortOrder
+  toleranceMs?: Prisma.SortOrder
 }
 
 export type GameRecordCreateNestedManyWithoutUserInput = {
@@ -748,8 +826,11 @@ export type GameRecordCreateWithoutUserInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   startedAt?: Date | string
   completedAt?: Date | string | null
@@ -765,8 +846,11 @@ export type GameRecordUncheckedCreateWithoutUserInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   assignedCheatId?: string | null
   usedCheatId?: string | null
@@ -812,8 +896,11 @@ export type GameRecordScalarWhereInput = {
   status?: Prisma.EnumGameStatusFilter<"GameRecord"> | $Enums.GameStatus
   targetMs?: Prisma.IntFilter<"GameRecord"> | number
   durationMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
+  wallDurationMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
   errorMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
   absoluteErrorMs?: Prisma.IntNullableFilter<"GameRecord"> | number | null
+  toleranceMs?: Prisma.IntFilter<"GameRecord"> | number
+  assistanceType?: Prisma.StringNullableFilter<"GameRecord"> | string | null
   success?: Prisma.BoolNullableFilter<"GameRecord"> | boolean | null
   assignedCheatId?: Prisma.UuidNullableFilter<"GameRecord"> | string | null
   usedCheatId?: Prisma.UuidNullableFilter<"GameRecord"> | string | null
@@ -829,8 +916,11 @@ export type GameRecordCreateWithoutAssignedCheatInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   startedAt?: Date | string
   completedAt?: Date | string | null
@@ -847,8 +937,11 @@ export type GameRecordUncheckedCreateWithoutAssignedCheatInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   usedCheatId?: string | null
   startedAt?: Date | string
@@ -873,8 +966,11 @@ export type GameRecordCreateWithoutUsedCheatInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   startedAt?: Date | string
   completedAt?: Date | string | null
@@ -891,8 +987,11 @@ export type GameRecordUncheckedCreateWithoutUsedCheatInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   assignedCheatId?: string | null
   startedAt?: Date | string
@@ -949,8 +1048,11 @@ export type GameRecordCreateManyUserInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   assignedCheatId?: string | null
   usedCheatId?: string | null
@@ -966,8 +1068,11 @@ export type GameRecordUpdateWithoutUserInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -983,8 +1088,11 @@ export type GameRecordUncheckedUpdateWithoutUserInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   assignedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   usedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1000,8 +1108,11 @@ export type GameRecordUncheckedUpdateManyWithoutUserInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   assignedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   usedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1018,8 +1129,11 @@ export type GameRecordCreateManyAssignedCheatInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   usedCheatId?: string | null
   startedAt?: Date | string
@@ -1035,8 +1149,11 @@ export type GameRecordCreateManyUsedCheatInput = {
   status?: $Enums.GameStatus
   targetMs?: number
   durationMs?: number | null
+  wallDurationMs?: number | null
   errorMs?: number | null
   absoluteErrorMs?: number | null
+  toleranceMs?: number
+  assistanceType?: string | null
   success?: boolean | null
   assignedCheatId?: string | null
   startedAt?: Date | string
@@ -1051,8 +1168,11 @@ export type GameRecordUpdateWithoutAssignedCheatInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1069,8 +1189,11 @@ export type GameRecordUncheckedUpdateWithoutAssignedCheatInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   usedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1086,8 +1209,11 @@ export type GameRecordUncheckedUpdateManyWithoutAssignedCheatInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   usedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1102,8 +1228,11 @@ export type GameRecordUpdateWithoutUsedCheatInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1120,8 +1249,11 @@ export type GameRecordUncheckedUpdateWithoutUsedCheatInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   assignedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1137,8 +1269,11 @@ export type GameRecordUncheckedUpdateManyWithoutUsedCheatInput = {
   status?: Prisma.EnumGameStatusFieldUpdateOperationsInput | $Enums.GameStatus
   targetMs?: Prisma.IntFieldUpdateOperationsInput | number
   durationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  wallDurationMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   errorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   absoluteErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  toleranceMs?: Prisma.IntFieldUpdateOperationsInput | number
+  assistanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   success?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
   assignedCheatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1156,8 +1291,11 @@ export type GameRecordSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   status?: boolean
   targetMs?: boolean
   durationMs?: boolean
+  wallDurationMs?: boolean
   errorMs?: boolean
   absoluteErrorMs?: boolean
+  toleranceMs?: boolean
+  assistanceType?: boolean
   success?: boolean
   assignedCheatId?: boolean
   usedCheatId?: boolean
@@ -1177,8 +1315,11 @@ export type GameRecordSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   status?: boolean
   targetMs?: boolean
   durationMs?: boolean
+  wallDurationMs?: boolean
   errorMs?: boolean
   absoluteErrorMs?: boolean
+  toleranceMs?: boolean
+  assistanceType?: boolean
   success?: boolean
   assignedCheatId?: boolean
   usedCheatId?: boolean
@@ -1198,8 +1339,11 @@ export type GameRecordSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   status?: boolean
   targetMs?: boolean
   durationMs?: boolean
+  wallDurationMs?: boolean
   errorMs?: boolean
   absoluteErrorMs?: boolean
+  toleranceMs?: boolean
+  assistanceType?: boolean
   success?: boolean
   assignedCheatId?: boolean
   usedCheatId?: boolean
@@ -1219,8 +1363,11 @@ export type GameRecordSelectScalar = {
   status?: boolean
   targetMs?: boolean
   durationMs?: boolean
+  wallDurationMs?: boolean
   errorMs?: boolean
   absoluteErrorMs?: boolean
+  toleranceMs?: boolean
+  assistanceType?: boolean
   success?: boolean
   assignedCheatId?: boolean
   usedCheatId?: boolean
@@ -1229,7 +1376,7 @@ export type GameRecordSelectScalar = {
   createdAt?: boolean
 }
 
-export type GameRecordOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientRequestId" | "userId" | "mode" | "status" | "targetMs" | "durationMs" | "errorMs" | "absoluteErrorMs" | "success" | "assignedCheatId" | "usedCheatId" | "startedAt" | "completedAt" | "createdAt", ExtArgs["result"]["gameRecord"]>
+export type GameRecordOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientRequestId" | "userId" | "mode" | "status" | "targetMs" | "durationMs" | "wallDurationMs" | "errorMs" | "absoluteErrorMs" | "toleranceMs" | "assistanceType" | "success" | "assignedCheatId" | "usedCheatId" | "startedAt" | "completedAt" | "createdAt", ExtArgs["result"]["gameRecord"]>
 export type GameRecordInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   assignedCheat?: boolean | Prisma.GameRecord$assignedCheatArgs<ExtArgs>
@@ -1261,8 +1408,11 @@ export type $GameRecordPayload<ExtArgs extends runtime.Types.Extensions.Internal
     status: $Enums.GameStatus
     targetMs: number
     durationMs: number | null
+    wallDurationMs: number | null
     errorMs: number | null
     absoluteErrorMs: number | null
+    toleranceMs: number
+    assistanceType: string | null
     success: boolean | null
     assignedCheatId: string | null
     usedCheatId: string | null
@@ -1702,8 +1852,11 @@ export interface GameRecordFieldRefs {
   readonly status: Prisma.FieldRef<"GameRecord", 'GameStatus'>
   readonly targetMs: Prisma.FieldRef<"GameRecord", 'Int'>
   readonly durationMs: Prisma.FieldRef<"GameRecord", 'Int'>
+  readonly wallDurationMs: Prisma.FieldRef<"GameRecord", 'Int'>
   readonly errorMs: Prisma.FieldRef<"GameRecord", 'Int'>
   readonly absoluteErrorMs: Prisma.FieldRef<"GameRecord", 'Int'>
+  readonly toleranceMs: Prisma.FieldRef<"GameRecord", 'Int'>
+  readonly assistanceType: Prisma.FieldRef<"GameRecord", 'String'>
   readonly success: Prisma.FieldRef<"GameRecord", 'Boolean'>
   readonly assignedCheatId: Prisma.FieldRef<"GameRecord", 'String'>
   readonly usedCheatId: Prisma.FieldRef<"GameRecord", 'String'>

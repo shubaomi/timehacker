@@ -5,6 +5,8 @@ import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { CHEAT_DEFINITIONS } from "@/game/cheats";
+import { effectWallTimeToTarget } from "@/game/effects";
 import { completeGame, startGame } from "@/server/game-service";
 import {
   createOrResumePlayer,
@@ -13,6 +15,7 @@ import {
 } from "@/server/player-service";
 import { getRankings } from "@/server/ranking-service";
 import { seedCheatCatalog } from "@/server/seed-service";
+import { retryTransientDatabaseOperation } from "../database-retry";
 
 config({ path: ".env.local", quiet: true });
 
@@ -20,7 +23,7 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for database integration tests");
 }
 
-const database = new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL) });
+const database = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, keepAlive: true, max: 5 }) });
 const runId = randomUUID().slice(0, 8);
 const prefix = `e2e-${runId}`;
 const fixedNow = new Date("2026-08-02T10:00:00.000Z");
@@ -31,11 +34,11 @@ function playerId(label: string): string {
 
 describe("real PostgreSQL integration", () => {
   beforeAll(async () => {
-    await database.user.deleteMany({ where: { playerId: { startsWith: prefix } } });
+    await retryTransientDatabaseOperation(() => database.user.deleteMany({ where: { playerId: { startsWith: prefix } } }));
   });
 
   afterAll(async () => {
-    await database.user.deleteMany({ where: { playerId: { startsWith: prefix } } });
+    await retryTransientDatabaseOperation(() => database.user.deleteMany({ where: { playerId: { startsWith: prefix } } }));
     await database.$disconnect();
   });
 
@@ -89,19 +92,23 @@ describe("real PostgreSQL integration", () => {
       type: "TIMER_TAP",
       at: index * 200,
     }));
+    const effect = CHEAT_DEFINITIONS.find(({ slug }) => slug === "five-finger-echo")!.effectConfig;
+    const wallDurationMs = effectWallTimeToTarget(effect, 10_010);
     const first = await completeGame(
       database,
-      { playerId: id, gameId: game.id, durationMs: 10_010, events },
+      { playerId: id, gameId: game.id, durationMs: 10_010, wallDurationMs, events },
       new Date(fixedNow.getTime() + 15_000),
     );
     const second = await completeGame(
       database,
-      { playerId: id, gameId: game.id, durationMs: 10_010, events },
+      { playerId: id, gameId: game.id, durationMs: 10_010, wallDurationMs, events },
       new Date(fixedNow.getTime() + 16_000),
     );
     expect(first.success).toBe(true);
     expect(second.id).toBe(first.id);
     expect(first.usedCheat?.slug).toBe("five-finger-echo");
+    expect(first.assistanceType).toBe(effect.type);
+    expect(first.wallDurationMs).toBe(Math.round(wallDurationMs));
 
     const player = await database.user.findUniqueOrThrow({
       where: { playerId: id },
@@ -111,6 +118,52 @@ describe("real PostgreSQL integration", () => {
     expect(player.successGames).toBe(1);
     expect(player.bestErrorMs).toBe(10);
     expect(player.unlockedCheats).toHaveLength(1);
+  });
+
+  it("lets only a server-verified tolerance ritual widen Hacker judgment", async () => {
+    const hackerId = playerId("tolerance-hacker");
+    const pureId = playerId("tolerance-pure");
+    await Promise.all([
+      createOrResumePlayer(database, hackerId),
+      createOrResumePlayer(database, pureId),
+    ]);
+    const hackerGame = await startGame(database, {
+      playerId: hackerId,
+      clientRequestId: `${prefix}-tolerance-hacker`,
+      mode: "HACKER",
+      difficulty: 1,
+      assignedCheatSlug: "double-relay",
+    }, fixedNow);
+    const pureGame = await startGame(database, {
+      playerId: pureId,
+      clientRequestId: `${prefix}-tolerance-pure`,
+      mode: "PURE",
+      difficulty: 1,
+    }, fixedNow);
+    const events = [
+      { type: "RITUAL_PULSE", value: "short", at: 100 },
+      { type: "RITUAL_PULSE", value: "long", at: 500 },
+    ];
+    const hackerResult = await completeGame(database, {
+      playerId: hackerId,
+      gameId: hackerGame.id,
+      durationMs: 10_015,
+      wallDurationMs: 10_015,
+      events,
+    });
+    const pureResult = await completeGame(database, {
+      playerId: pureId,
+      gameId: pureGame.id,
+      durationMs: 10_015,
+      wallDurationMs: 10_015,
+      events,
+    });
+    expect(hackerResult.success).toBe(true);
+    expect(hackerResult.assistanceType).toBe("TOLERANCE_ASSIST");
+    expect(hackerResult.toleranceMs).toBe(20);
+    expect(pureResult.success).toBe(false);
+    expect(pureResult.assistanceType).toBeNull();
+    expect(pureResult.toleranceMs).toBe(10);
   });
 
   it("enforces the 49, 50, and 51 attempt boundary under concurrency", async () => {

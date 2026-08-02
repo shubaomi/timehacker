@@ -37,6 +37,7 @@ export const startGameSchema = z.object({
 export const completeGameSchema = z.object({
   playerId: playerIdSchema,
   durationMs: z.number().finite().nonnegative().max(120_000),
+  wallDurationMs: z.number().finite().nonnegative().max(120_000).optional(),
   events: z.array(cheatEventSchema).max(100).default([]),
 });
 

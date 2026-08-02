@@ -1,4 +1,5 @@
 import type { CheatDefinition, CheatTriggerConfig } from "./cheats";
+import { makeCatalogEffect } from "./effects";
 import type { CheatCategory, EventPattern } from "./types";
 
 const sequence = (pattern: EventPattern[], windowMs = 5_000): CheatTriggerConfig => ({
@@ -81,6 +82,7 @@ function cheat(
   triggerConfig: CheatTriggerConfig,
   timeScale: number,
 ): CheatDefinition {
+  void timeScale;
   return {
     slug,
     name,
@@ -92,11 +94,7 @@ function cheat(
     difficulty,
     category,
     triggerConfig,
-    effectConfig: {
-      timeScale,
-      label: `${name} engaged`,
-      labelZh: `${nameZh}已接入`,
-    },
+    effectConfig: makeCatalogEffect(slug, difficulty, `${name} engaged`, `${nameZh}已接入`),
     enabled: true,
   };
 }

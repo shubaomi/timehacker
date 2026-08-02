@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { CheatEvent } from "@/game/types";
 import { CHEAT_DEFINITIONS, evaluateCheatTrigger } from "@/game/cheats";
+import { cheatEffectConfigSchema, effectElapsedTime, effectToleranceMs } from "@/game/effects";
 import { calculateLevel, difficultyForLevel, utcDayRange } from "@/game/progress";
 import { measureGame } from "@/game/timer";
 import { AppError, isPrismaErrorWithCode } from "./errors";
@@ -17,6 +18,7 @@ interface CompleteGameInput {
   playerId: string;
   gameId: string;
   durationMs: number;
+  wallDurationMs?: number;
   events: CheatEvent[];
 }
 
@@ -135,17 +137,26 @@ export async function completeGame(
       return game;
     }
 
-    const measurement = measureGame(input.durationMs, game.targetMs);
     const cheatTriggered =
       game.mode === "HACKER" &&
       game.assignedCheat !== null &&
       evaluateCheatTrigger(game.assignedCheat.triggerConfig, input.events);
     const usedCheatId = cheatTriggered ? game.assignedCheatId : null;
+    const effect = cheatTriggered && game.assignedCheat
+      ? cheatEffectConfigSchema.parse(game.assignedCheat.effectConfig)
+      : null;
+    const wallDurationMs = input.wallDurationMs ?? input.durationMs;
+    const judgedDurationMs = effectElapsedTime(wallDurationMs, effect);
+    const toleranceMs = effectToleranceMs(effect);
+    const measurement = measureGame(judgedDurationMs, game.targetMs, toleranceMs);
 
     const completed = await transaction.gameRecord.update({
       where: { id: game.id },
       data: {
         ...measurement,
+        wallDurationMs: Math.round(wallDurationMs),
+        toleranceMs,
+        assistanceType: effect?.type ?? null,
         status: "COMPLETED",
         completedAt: now,
         usedCheatId,

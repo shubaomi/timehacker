@@ -19,6 +19,7 @@ export async function getRankings(database: PrismaClient) {
   const perfectRecords = await database.gameRecord.findMany({
       where: {
         mode: "PURE",
+        assistanceType: null,
         status: "COMPLETED",
         absoluteErrorMs: { not: null },
       },

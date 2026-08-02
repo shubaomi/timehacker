@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { ADDITIONAL_CHEAT_DEFINITIONS } from "./cheat-catalog";
+import { CHEAT_REVISIONS } from "./cheat-revisions";
+import {
+  cheatEffectConfigSchema,
+  makeCatalogEffect,
+  type CheatEffectConfig,
+} from "./effects";
 import type { CheatCategory, CheatEvent, EventPattern } from "./types";
 
 const eventPatternSchema = z.object({
@@ -48,6 +54,22 @@ const waitSchema = z.object({
   minDurationMs: z.number().positive(),
 });
 
+const timedSequenceSchema = z.object({
+  kind: z.literal("timedSequence"),
+  pattern: z.array(eventPatternSchema).min(2),
+  intervals: z.array(z.object({
+    minMs: z.number().nonnegative(),
+    maxMs: z.number().positive(),
+  })).min(1),
+});
+
+const waitRangeSchema = z.object({
+  kind: z.literal("waitRange"),
+  eventType: z.string().min(1),
+  minDurationMs: z.number().nonnegative(),
+  maxDurationMs: z.number().positive(),
+});
+
 const simpleTriggerSchema = z.discriminatedUnion("kind", [
   sequenceSchema,
   countSchema,
@@ -55,6 +77,8 @@ const simpleTriggerSchema = z.discriminatedUnion("kind", [
   alternatingSchema,
   rhythmSchema,
   waitSchema,
+  timedSequenceSchema,
+  waitRangeSchema,
 ]);
 
 const fallbackSchema = z.object({
@@ -63,19 +87,22 @@ const fallbackSchema = z.object({
   fallback: sequenceSchema,
 });
 
+const accessibleHoldSchema = z.object({
+  kind: z.literal("accessibleHold"),
+  eventType: z.string().min(1),
+  minDurationMs: z.number().positive().max(2_500),
+  alternative: sequenceSchema,
+});
+
 export const cheatTriggerConfigSchema = z.union([
   simpleTriggerSchema,
   fallbackSchema,
+  accessibleHoldSchema,
 ]);
 
-export const cheatEffectConfigSchema = z.object({
-  timeScale: z.number().gt(0).lte(1),
-  label: z.string().min(1).max(80),
-  labelZh: z.string().min(1).max(80),
-});
-
 export type CheatTriggerConfig = z.infer<typeof cheatTriggerConfigSchema>;
-export type CheatEffectConfig = z.infer<typeof cheatEffectConfigSchema>;
+export { cheatEffectConfigSchema } from "./effects";
+export type { CheatEffectConfig } from "./effects";
 
 export interface CheatDefinition {
   slug: string;
@@ -420,7 +447,7 @@ const LEGACY_TRANSLATIONS: Record<
   "quiet-circuit": { nameZh: "静默电路", descriptionZh: "只移动焦点的检查路线能在不触碰控制器时启动计时器。", hintZh: "依次聚焦目标、模式、主控制，不要激活。", labelZh: "静默电路已启动" },
 };
 
-export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = [
+const PRE_REVISION_CHEATS: readonly CheatDefinition[] = [
   ...BASE_CHEAT_DEFINITIONS.map((definition) => {
     const translation = LEGACY_TRANSLATIONS[definition.slug];
     return {
@@ -429,14 +456,31 @@ export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = [
       descriptionZh: translation.descriptionZh,
       hintZh: translation.hintZh,
       triggerConfig: cheatTriggerConfigSchema.parse(definition.triggerConfig),
-      effectConfig: {
-        ...definition.effectConfig,
-        labelZh: translation.labelZh,
-      },
+      effectConfig: makeCatalogEffect(
+        definition.slug,
+        definition.difficulty,
+        definition.effectConfig.label,
+        translation.labelZh,
+      ),
     };
   }),
   ...ADDITIONAL_CHEAT_DEFINITIONS,
 ];
+
+export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = PRE_REVISION_CHEATS.map((definition) => {
+  const revision = CHEAT_REVISIONS[definition.slug];
+  if (!revision) return definition;
+  const revised = { ...definition, ...revision };
+  return {
+    ...revised,
+    effectConfig: makeCatalogEffect(
+      revised.slug,
+      revised.difficulty,
+      `${revised.name} engaged`,
+      `${revised.nameZh}已接入`,
+    ),
+  };
+});
 
 function matchesPattern(event: CheatEvent, pattern: EventPattern): boolean {
   return (
@@ -513,7 +557,120 @@ function evaluateSimpleTrigger(
         (interval) => Math.abs(interval - average) <= config.maxDeviationMs,
       );
     }
+    case "timedSequence": {
+      if (config.intervals.length !== config.pattern.length - 1) return false;
+      const relevantTypes = new Set(config.pattern.map(({ type }) => type));
+      const relevantEvents = events.filter(({ type }) => relevantTypes.has(type));
+      if (relevantEvents.length < config.pattern.length) return false;
+      for (let start = 0; start <= relevantEvents.length - config.pattern.length; start += 1) {
+        const candidate = relevantEvents.slice(start, start + config.pattern.length);
+        if (!candidate.every((event, index) => matchesPattern(event, config.pattern[index]))) continue;
+        const intervalsMatch = config.intervals.every(({ minMs, maxMs }, index) => {
+          const interval = candidate[index + 1].at - candidate[index].at;
+          return interval >= minMs && interval <= maxMs;
+        });
+        if (intervalsMatch) return true;
+      }
+      return false;
+    }
+    case "waitRange":
+      return events.some((event) => {
+        const duration = event.durationMs ?? -1;
+        return event.type === config.eventType && duration >= config.minDurationMs && duration <= config.maxDurationMs;
+      });
   }
+}
+
+export interface CheatProgress {
+  matched: boolean;
+  currentStep: number;
+  totalSteps: number;
+  resetReason: "sequence-reset" | "timing-reset" | null;
+  rhythmDeviation: number | null;
+  armed: boolean;
+}
+
+function sequenceProgress(
+  pattern: EventPattern[],
+  events: readonly CheatEvent[],
+): Pick<CheatProgress, "currentStep" | "totalSteps" | "resetReason"> {
+  const relevantTypes = new Set(pattern.map(({ type }) => type));
+  const relevant = events.filter(({ type }) => relevantTypes.has(type));
+  let currentStep = 0;
+  for (let length = Math.min(pattern.length, relevant.length); length > 0; length -= 1) {
+    const tail = relevant.slice(-length);
+    if (tail.every((event, index) => matchesPattern(event, pattern[index]))) {
+      currentStep = length;
+      break;
+    }
+  }
+  return {
+    currentStep,
+    totalSteps: pattern.length,
+    resetReason: relevant.length > 0 && currentStep === 0 ? "sequence-reset" : null,
+  };
+}
+
+export function evaluateCheatProgress(rawConfig: unknown, events: readonly CheatEvent[]): CheatProgress {
+  const config = cheatTriggerConfigSchema.parse(rawConfig);
+  const matched = evaluateCheatTrigger(config, events);
+  let currentStep = 0;
+  let totalSteps = 1;
+  let resetReason: CheatProgress["resetReason"] = null;
+  let rhythmDeviation: number | null = null;
+
+  if (config.kind === "sequence" || config.kind === "timedSequence") {
+    ({ currentStep, totalSteps, resetReason } = sequenceProgress(config.pattern, events));
+    if (config.kind === "timedSequence" && currentStep > 1) {
+      const matching = events.filter((event) => config.pattern.some(({ type }) => type === event.type)).slice(-currentStep);
+      const deviations = matching.slice(1).map((event, index) => {
+        const interval = event.at - matching[index].at;
+        const expected = config.intervals[index];
+        if (!expected) return 0;
+        if (interval < expected.minMs) return expected.minMs - interval;
+        if (interval > expected.maxMs) return interval - expected.maxMs;
+        return 0;
+      });
+      rhythmDeviation = deviations.length ? Math.max(...deviations) : null;
+      if (rhythmDeviation && rhythmDeviation > 0) resetReason = "timing-reset";
+    }
+  } else if (config.kind === "fallback") {
+    const primary = sequenceProgress(config.primary.pattern, events);
+    const alternative = sequenceProgress(config.fallback.pattern, events);
+    ({ currentStep, totalSteps, resetReason } = primary.currentStep >= alternative.currentStep ? primary : alternative);
+  } else if (config.kind === "accessibleHold") {
+    const holdEvent = events.filter(({ type }) => type === config.eventType).at(-1);
+    const alternative = sequenceProgress(config.alternative.pattern, events);
+    totalSteps = Math.max(1, Math.round(config.minDurationMs));
+    currentStep = Math.max(
+      Math.min(totalSteps, Math.round(holdEvent?.durationMs ?? 0)),
+      alternative.currentStep === alternative.totalSteps ? totalSteps : 0,
+    );
+  } else if (config.kind === "count") {
+    totalSteps = config.count;
+    currentStep = Math.min(totalSteps, events.filter(({ type }) => type === config.eventType).length);
+  } else if (config.kind === "alternating") {
+    const pattern = Array.from({ length: config.cycles * 2 }, (_, index) => index % 2 === 0 ? config.first : config.second);
+    ({ currentStep, totalSteps, resetReason } = sequenceProgress(pattern, events));
+  } else if (config.kind === "rhythm") {
+    totalSteps = config.count;
+    const matching = events.filter(({ type }) => type === config.eventType).slice(-config.count);
+    currentStep = matching.length;
+    if (matching.length > 2) {
+      const intervals = matching.slice(1).map((event, index) => event.at - matching[index].at);
+      const average = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+      rhythmDeviation = Math.max(...intervals.map((interval) => Math.abs(interval - average)));
+      if (rhythmDeviation > config.maxDeviationMs) resetReason = "timing-reset";
+    }
+  } else {
+    const minimum = config.minDurationMs;
+    totalSteps = Math.max(1, Math.round(minimum));
+    const latest = events.filter(({ type }) => type === config.eventType).at(-1);
+    currentStep = Math.min(totalSteps, Math.round(latest?.durationMs ?? 0));
+  }
+
+  if (matched) currentStep = totalSteps;
+  return { matched, currentStep, totalSteps, resetReason, rhythmDeviation, armed: matched };
 }
 
 export function evaluateCheatTrigger(
@@ -527,6 +684,10 @@ export function evaluateCheatTrigger(
       evaluateSequence(config.fallback, events)
     );
   }
+  if (config.kind === "accessibleHold") {
+    return events.some((event) => event.type === config.eventType && (event.durationMs ?? 0) >= config.minDurationMs) ||
+      evaluateSequence(config.alternative, events);
+  }
   return evaluateSimpleTrigger(config, events);
 }
 
@@ -538,6 +699,12 @@ export function validateCheatDefinition(definition: CheatDefinition): CheatDefin
   }
   for (const value of [definition.nameZh, definition.descriptionZh, definition.hintZh]) {
     if (value.trim().length === 0) throw new RangeError("Cheat translations are required");
+  }
+  if (definition.triggerConfig.kind === "timedSequence" && definition.triggerConfig.intervals.length !== definition.triggerConfig.pattern.length - 1) {
+    throw new RangeError("Timed sequence must define one interval per transition");
+  }
+  if (definition.triggerConfig.kind === "waitRange" && definition.triggerConfig.maxDurationMs <= definition.triggerConfig.minDurationMs) {
+    throw new RangeError("Wait range maximum must exceed its minimum");
   }
   return definition;
 }

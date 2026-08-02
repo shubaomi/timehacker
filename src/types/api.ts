@@ -67,6 +67,9 @@ export interface CompletedGame {
   errorMs: number;
   absoluteErrorMs: number;
   success: boolean;
+  wallDurationMs: number | null;
+  toleranceMs: number;
+  assistanceType: "FULL_DILATION" | "FINAL_DILATION" | "TOLERANCE_ASSIST" | "BRAKE_PULSE" | null;
   mode: "HACKER" | "PURE";
   assignedCheat: { slug: string; name: string; nameZh?: string | null } | null;
   usedCheat: { slug: string; name: string; nameZh?: string | null } | null;

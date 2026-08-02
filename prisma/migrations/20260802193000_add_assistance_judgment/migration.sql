@@ -1,0 +1,4 @@
+ALTER TABLE "GameRecord"
+  ADD COLUMN "wallDurationMs" INTEGER,
+  ADD COLUMN "toleranceMs" INTEGER NOT NULL DEFAULT 10,
+  ADD COLUMN "assistanceType" VARCHAR(32);

@@ -681,6 +681,37 @@ textarea:focus-visible {
   background: rgba(255, 255, 255, 0.045);
 }
 
+.service-controls {
+  margin-top: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  background: rgba(4, 13, 13, 0.72);
+}
+
+.service-controls summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0.75rem 0.9rem;
+  color: var(--muted);
+  font: 700 0.68rem/1.2 var(--font-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.service-controls > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.service-controls button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  background: rgba(12, 28, 28, 0.9);
+  color: var(--paper);
+  font: 650 0.72rem/1.2 var(--font-mono);
+}
+
 .primary-actuator {
   min-height: 72px;
   display: grid;

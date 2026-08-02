@@ -6,7 +6,9 @@ Time Hacker is a bilingual, mobile-first timing game: stop the chamber at exactl
 
 - Anonymous player identity persisted in local storage and PostgreSQL
 - English and Simplified Chinese UI with a persistent language switch and localized cheat archive
-- Hacker Mode with 100 server-verified cheats, balanced across five difficulty tiers and five interaction categories
+- Hacker Mode with 100 server-verified cheats, 20 per difficulty tier and quality-led category distribution
+- Four transparent assistance families: full dilation, final-zone dilation, tolerance assist, and brake pulse
+- Ritual progress plus touch alternatives for sweep, focus, service keys, pulse patterns, and holds
 - Pure Mode unlocked after the first successful run
 - A strict `±10 ms` success window and a 50-start daily limit (UTC)
 - Progression, nickname, collection, three ranking views, sharing, and isolated reset
@@ -86,9 +88,9 @@ pnpm verify            # complete gate in the required order
 The suites cover:
 
 - timer math, inclusive `±10 ms` boundary, progression, share text, deterministic selection
-- uniqueness, bilingual content, difficulty/category balance, and positive/negative trigger cases for all 100 cheats
+- uniqueness, bilingual content, difficulty/category ranges, experience diversity, UI event reachability, and positive/negative trigger cases for all 100 cheats
 - loading/error/empty/locked/result/dialog component states and persistent English/Chinese switching
-- real migration presence, idempotent seed, anonymous-player idempotency, server-side cheat verification
+- real migration presence, idempotent seed, anonymous-player idempotency, server-side cheat/effect verification, and Pure/Hacker judgment isolation
 - 49/50/51 concurrent daily-limit behavior, ranking order, reset isolation, foreign keys and uniqueness
 - initial, running, failed, armed, successful, collection, ranking, reset, persistence, Pure Mode, keyboard, daily-limit, reduced-motion, and share-fallback browser journeys (the browser harness fixes submitted target measurements at `10.000` while all eligibility, cheat events, database writes, and UI responses use production paths)
 - serious/critical axe findings, browser console errors, horizontal overflow, 200% zoom, and screenshots at `360×800`, `390×844`, `768×1024`, and `1440×900`

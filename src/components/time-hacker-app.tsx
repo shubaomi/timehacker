@@ -23,9 +23,13 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { evaluateCheatTrigger } from "@/game/cheats";
+import { evaluateCheatProgress, evaluateCheatTrigger, type CheatProgress } from "@/game/cheats";
+import {
+  effectElapsedTime,
+  type CheatEffectConfig,
+} from "@/game/effects";
 import { buildShareText } from "@/game/share";
-import { formatDuration, formatSignedError, scaledElapsedTime } from "@/game/timer";
+import { formatDuration, formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
 import { localeTag, type MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
@@ -82,6 +86,7 @@ export function TimeHackerApp() {
   const [panel, setPanel] = useState<Panel>("game");
   const [elapsedMs, setElapsedMs] = useState(0);
   const [armed, setArmed] = useState(false);
+  const [ritualProgress, setRitualProgress] = useState<CheatProgress | null>(null);
   const [result, setResult] = useState<CompletedGame | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
@@ -92,9 +97,11 @@ export function TimeHackerApp() {
   const [resetBusy, setResetBusy] = useState(false);
   const eventsRef = useRef<CheatEvent[]>([]);
   const armedRef = useRef(false);
+  const modeRef = useRef<GameMode>("HACKER");
   const readyEpochRef = useRef(0);
+  const idleStartRef = useRef(0);
   const wallStartRef = useRef(0);
-  const timeScaleRef = useRef(1);
+  const effectRef = useRef<CheatEffectConfig | null>(null);
   const activeGameRef = useRef<string | null>(null);
 
   const localizeError = useCallback(
@@ -143,24 +150,35 @@ export function TimeHackerApp() {
 
   const emitCheatEvent = useCallback(
     (type: string, value?: string | number, durationMs?: number) => {
-      if (status !== "READY" || mode !== "HACKER") return;
+      if (status !== "READY" || (modeRef.current !== "HACKER" && type !== "MODE_TOGGLE")) return;
+      const now = performance.now();
       const event: CheatEvent = {
         type,
         value,
         durationMs,
-        at: Math.max(0, performance.now() - readyEpochRef.current),
+        at: Math.max(0, now - readyEpochRef.current),
       };
-      const nextEvents = [...eventsRef.current, event].slice(-100);
+      const isIdleSample = type === "READY_WAIT" || type === "READY_MARK";
+      if (!isIdleSample) idleStartRef.current = now;
+      const retainedEvents = type === "READY_WAIT"
+        ? eventsRef.current.filter(({ type: existingType }) => existingType !== "READY_WAIT")
+        : isIdleSample
+          ? eventsRef.current
+          : armedRef.current
+            ? eventsRef.current
+            : eventsRef.current.filter(({ type: existingType }) => existingType !== "READY_WAIT");
+      const nextEvents = [...retainedEvents, event].slice(-100);
       eventsRef.current = nextEvents;
-      if (
-        dashboard?.suggestedCheat &&
-        evaluateCheatTrigger(dashboard.suggestedCheat.triggerConfig, nextEvents)
-      ) {
+      if (dashboard?.suggestedCheat) {
+        const progress = evaluateCheatProgress(dashboard.suggestedCheat.triggerConfig, nextEvents);
+        setRitualProgress(progress);
+      }
+      if (dashboard?.suggestedCheat && evaluateCheatTrigger(dashboard.suggestedCheat.triggerConfig, nextEvents)) {
         armedRef.current = true;
         setArmed(true);
       }
     },
-    [dashboard, mode, status],
+    [dashboard, status],
   );
 
   const initialize = useCallback(async () => {
@@ -190,12 +208,21 @@ export function TimeHackerApp() {
 
   useEffect(() => {
     if (status !== "READY") return;
-    readyEpochRef.current = performance.now();
-    const idleTimer = window.setTimeout(() => {
-      emitCheatEvent("READY_WAIT", undefined, 5_000);
-    }, 5_000);
-    return () => window.clearTimeout(idleTimer);
-  }, [dashboard?.suggestedCheat?.slug, emitCheatEvent, status]);
+    const now = performance.now();
+    readyEpochRef.current = now;
+    idleStartRef.current = now;
+    eventsRef.current = [{ type: "READY_MARK", at: 0 }];
+    if (dashboard?.suggestedCheat) {
+      setRitualProgress(evaluateCheatProgress(dashboard.suggestedCheat.triggerConfig, eventsRef.current));
+    }
+    const triggerJson = JSON.stringify(dashboard?.suggestedCheat?.triggerConfig ?? {});
+    if (!triggerJson.includes("READY_WAIT") && !triggerJson.includes("READY_MARK")) return;
+    const idleTimer = window.setInterval(() => {
+      const elapsed = Math.max(0, performance.now() - idleStartRef.current);
+      emitCheatEvent("READY_WAIT", undefined, elapsed);
+    }, 100);
+    return () => window.clearInterval(idleTimer);
+  }, [dashboard?.suggestedCheat, emitCheatEvent, status]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -206,9 +233,10 @@ export function TimeHackerApp() {
       if (document.visibilityState === "visible") emitCheatEvent("VISIBILITY_RETURN");
     };
     const handleOrientation = () => {
-      if (window.matchMedia("(orientation: landscape)").matches) {
-        emitCheatEvent("ORIENTATION", "landscape");
-      }
+      emitCheatEvent(
+        "ORIENTATION",
+        window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait",
+      );
     };
     window.addEventListener("keydown", handleKey);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -225,7 +253,7 @@ export function TimeHackerApp() {
     let frame = 0;
     const tick = () => {
       const wallElapsed = performance.now() - wallStartRef.current;
-      setElapsedMs(scaledElapsedTime(wallElapsed, timeScaleRef.current));
+      setElapsedMs(effectElapsedTime(wallElapsed, effectRef.current));
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -236,6 +264,8 @@ export function TimeHackerApp() {
     eventsRef.current = [];
     armedRef.current = false;
     activeGameRef.current = null;
+    effectRef.current = null;
+    setRitualProgress(null);
     setArmed(false);
     setElapsedMs(0);
     setResult(null);
@@ -266,10 +296,10 @@ export function TimeHackerApp() {
         }),
       });
       activeGameRef.current = response.game.id;
-      timeScaleRef.current =
+      effectRef.current =
         mode === "HACKER" && armedRef.current && dashboard.suggestedCheat
-          ? dashboard.suggestedCheat.effectConfig.timeScale
-          : 1;
+          ? dashboard.suggestedCheat.effectConfig
+          : null;
       wallStartRef.current = performance.now();
       setElapsedMs(0);
       setStatus("RUNNING");
@@ -282,10 +312,8 @@ export function TimeHackerApp() {
 
   const stopChallenge = useCallback(async () => {
     if (!playerId || !activeGameRef.current) return;
-    const durationMs = scaledElapsedTime(
-      performance.now() - wallStartRef.current,
-      timeScaleRef.current,
-    );
+    const wallDurationMs = performance.now() - wallStartRef.current;
+    const durationMs = effectElapsedTime(wallDurationMs, effectRef.current);
     setElapsedMs(durationMs);
     setStatus("STOPPING");
     try {
@@ -293,7 +321,7 @@ export function TimeHackerApp() {
         `/api/games/${activeGameRef.current}/complete`,
         {
           method: "POST",
-          body: JSON.stringify({ playerId, durationMs, events: eventsRef.current }),
+          body: JSON.stringify({ playerId, durationMs, wallDurationMs, events: eventsRef.current }),
         },
       );
       await loadDashboard(playerId, difficulty);
@@ -314,12 +342,9 @@ export function TimeHackerApp() {
 
   const switchMode = (nextMode: GameMode) => {
     if (nextMode === "PURE" && !dashboard?.player.firstSuccessAt) return;
-    emitCheatEvent("MODE_TOGGLE", nextMode);
+    emitCheatEvent("MODE_TOGGLE", nextMode.toLowerCase());
+    modeRef.current = nextMode;
     setMode(nextMode);
-    if (nextMode === "PURE") {
-      armedRef.current = false;
-      setArmed(false);
-    }
   };
 
   const switchPanel = (nextPanel: Panel) => {
@@ -351,6 +376,7 @@ export function TimeHackerApp() {
       level: dashboard.player.currentLevel,
       unlockedCheats: dashboard.player.unlockedCheats,
       mode: result.mode,
+      assistanceType: result.assistanceType,
       locale,
       totalCheats: dashboard.collection.length,
     });
@@ -389,6 +415,7 @@ export function TimeHackerApp() {
       });
       await loadDashboard(playerId, 1);
       setDifficulty(1);
+      modeRef.current = "HACKER";
       setMode("HACKER");
       setResetOpen(false);
       prepareNext();
@@ -400,10 +427,10 @@ export function TimeHackerApp() {
     }
   };
 
-  const chosenTimeScale =
+  const chosenEffect =
     mode === "HACKER" && dashboard?.suggestedCheat
-      ? dashboard.suggestedCheat.effectConfig.timeScale
-      : 1;
+      ? dashboard.suggestedCheat.effectConfig
+      : null;
   const hintStrength = Math.min(3, Math.floor((dashboard?.player.totalGames ?? 0) / 2) + 1);
   const resultCopy = useMemo(() => {
     if (!result) return null;
@@ -471,7 +498,11 @@ export function TimeHackerApp() {
             type="button"
             className="language-switch"
             aria-label={t("switchLanguage")}
-            onClick={() => setLocale(locale === "en" ? "zh" : "en")}
+            onClick={() => {
+              const nextLocale = locale === "en" ? "zh" : "en";
+              emitCheatEvent("LOCALE_TOGGLE", nextLocale);
+              setLocale(nextLocale);
+            }}
           >
             <Languages aria-hidden="true" size={14} /> {locale === "en" ? "中文" : "EN"}
           </button>
@@ -506,7 +537,7 @@ export function TimeHackerApp() {
             <div className="attempt-counter"><span>{t("dailySignals")}</span><strong>{dashboard.daily.remaining}<small> / {dashboard.daily.limit}</small></strong></div>
           </div>
 
-          <TimerStage elapsedMs={elapsedMs} status={status} armed={armed} timeScale={chosenTimeScale} disabled={status === "LIMIT_REACHED"} onPrimary={handlePrimary} onEvent={emitCheatEvent} />
+          <TimerStage elapsedMs={elapsedMs} status={status} armed={mode === "HACKER" && armed} effect={chosenEffect} disabled={status === "LIMIT_REACHED"} onPrimary={handlePrimary} onEvent={emitCheatEvent} />
 
           <div className="live-message" aria-live="polite" role="status">
             {error ? <span className="error-copy">{error}</span> : null}
@@ -553,7 +584,19 @@ export function TimeHackerApp() {
                       </form>
                       <div className={`armed-card ${armed ? "active" : ""}`}>
                         <Zap aria-hidden="true" size={18} />
-                        <span><b>{armed ? t("exploitArmed") : t("exploitDormant")}</b><small>{armed ? t("clockMultiplier", { scale: chosenTimeScale.toFixed(2) }) : t("completeRitual")}</small></span>
+                        <span>
+                          <b>{armed ? t("exploitArmed") : t("exploitDormant")}</b>
+                          <small>
+                            {armed && suggestedEffectLabel
+                              ? suggestedEffectLabel
+                              : ritualProgress
+                                ? t("ritualProgress", { current: ritualProgress.currentStep, total: ritualProgress.totalSteps })
+                                : t("completeRitual")}
+                          </small>
+                          {ritualProgress?.resetReason ? (
+                            <small>{t(ritualProgress.resetReason === "timing-reset" ? "ritualTimingReset" : "ritualSequenceReset")}</small>
+                          ) : null}
+                        </span>
                       </div>
                     </>
                   ) : <p className="classified-copy">{t("pureBrief")}</p>}
@@ -599,7 +642,17 @@ export function TimeHackerApp() {
         {result && (status === "SUCCESS" || status === "FAILED") ? (
           <motion.section className={`result-drawer ${result.success ? "success" : "failure"}`} initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} role="status" aria-live="assertive">
             <div><p>{result.success ? t("breachConfirmed") : t("outsideTolerance")}</p><h2>{result.success ? t("timeHacked") : t("tryAgain")}</h2></div>
-            <div className="result-measurement"><span>{resultCopy?.duration}</span><b>{resultCopy?.error}</b><small>{result.mode} {result.usedCheat ? `· ${locale === "zh" ? result.usedCheat.nameZh ?? result.usedCheat.name : result.usedCheat.name}` : `· ${t("unassisted")}`}</small></div>
+            <div className="result-measurement">
+              <span>{resultCopy?.duration}</span>
+              <b>{resultCopy?.error}</b>
+              <small>
+                {result.assistanceType
+                  ? t("hackerAssisted", { type: result.assistanceType })
+                  : `${t(result.mode === "PURE" ? "modePure" : "modeHacker")} · ${t("unassisted")}`}
+                {result.usedCheat ? ` · ${locale === "zh" ? result.usedCheat.nameZh ?? result.usedCheat.name : result.usedCheat.name}` : ""}
+              </small>
+              {result.wallDurationMs != null ? <small>{t("wallTime", { time: formatDuration(result.wallDurationMs) })} · {t("judgedTolerance", { tolerance: result.toleranceMs })}</small> : null}
+            </div>
             <div className="result-actions"><button type="button" onClick={() => void shareResult()}><Share2 aria-hidden="true" size={17} /> {t("shareReport")}</button><button type="button" onClick={prepareNext}>{t("runAgain")} <ChevronRight aria-hidden="true" size={17} /></button></div>
             {shareStatus ? <p className="share-status">{shareStatus}</p> : null}
             {manualShare ? <textarea aria-label={t("fieldReportText")} readOnly value={manualShare} /> : null}
