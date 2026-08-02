@@ -114,10 +114,11 @@ async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 
   for (const gesture of definition.triggerConfig.secretGesture) {
     await page.keyboard.press(keys[gesture]);
   }
-  await expect(page.getByText(/Time will be a little kinder/i)).toBeVisible();
+  await expect(page.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeVisible();
 }
 
-test.afterEach(async () => {
+test.afterEach(async ({ page }) => {
+  if (!page.isClosed()) await page.close();
   const ids = [...createdPlayers];
   createdPlayers.clear();
   if (ids.length > 0) {
@@ -140,7 +141,7 @@ test("responsive initial state has no serious accessibility, console, or overflo
   await openReadyGame(page);
 
   await expect(page.locator(".stopwatch-card")).toBeVisible();
-  await expect(page.locator('link[rel~="icon"][href*="icon.svg"]')).toHaveCount(1);
+  await expect(page.locator('link[rel~="icon"][href="/time-hacker-icon.svg"]')).toHaveCount(1);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBe(true);
@@ -155,7 +156,16 @@ test("language switch localizes the interface and persists across reload", async
   await openReadyGame(page);
   await page.getByRole("button", { name: "Open game menu" }).click();
   await page.getByRole("button", { name: /Language.*中文/ }).click();
-  await expect(page.getByRole("heading", { name: /让时间停在.*10\.00 秒/ })).toBeVisible();
+  const heading = page.getByRole("heading", { name: /让时间停在.*10\.00 秒/ });
+  await expect(heading).toBeVisible();
+  const headingMetrics = await heading.evaluate((element) => ({
+    height: element.getBoundingClientRect().height,
+    lineHeight: Number.parseFloat(getComputedStyle(element).lineHeight),
+  }));
+  expect(headingMetrics.height).toBeLessThanOrEqual(headingMetrics.lineHeight * 1.15);
+  await page.getByRole("button", { name: "关闭游戏菜单" }).click();
+  await expect(page.locator(".game-drawer")).toBeHidden();
+  await takeEvidence(page, testInfo.project.name, "zh-initial");
   await expect(page.getByRole("button", { name: /开始.*空格键或回车键/ })).toBeEnabled();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
   await page.reload();

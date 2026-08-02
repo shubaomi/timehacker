@@ -120,6 +120,7 @@ export function SecretGesture({ pattern, progress, armed, disabled, onEvent }: S
             <div className="gesture-progress" aria-label={t("secretProgress", { current: progress, total: pattern.length })}>
               {pattern.map((_, index) => <i key={index} className={index < progress ? "done" : ""} />)}
             </div>
+            <small className="gesture-step-copy">{t("secretProgress", { current: progress, total: pattern.length })}</small>
             <small className="keyboard-gesture-hint">{t("gestureKeyboardHint")}</small>
           </motion.div>
       ) : null}

@@ -162,7 +162,7 @@ describe("TimeHackerApp", () => {
     expect(screen.queryByText("Operator record")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Secrets" })).not.toBeInTheDocument();
     await completeSecretGesture(suggestedCheat.triggerConfig.secretGesture!);
-    expect(screen.getByText(/Time will be a little kinder/i)).toBeInTheDocument();
+    expect(screen.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeInTheDocument();
   });
 
   it(
@@ -174,7 +174,7 @@ describe("TimeHackerApp", () => {
       renderApp();
 
       const start = await screen.findByRole("button", { name: /START.*Space or Enter/i });
-      expect(await screen.findByText(/Time will be a little kinder/i, {}, { timeout: 4_000 })).toBeInTheDocument();
+      expect(await screen.findByText(/Secret active.*easier to stop at 10\.00.*Press Start/i, {}, { timeout: 4_000 })).toBeInTheDocument();
       await userEvent.click(start);
       await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
 

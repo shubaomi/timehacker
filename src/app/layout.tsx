@@ -8,6 +8,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Time Hacker | 时间黑客",
   description: "A tiny timing game with 100 playful secrets. 让时间停在10.00秒，并发现藏在页面里的100个小秘密。",
+  icons: {
+    icon: [{ url: "/time-hacker-icon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

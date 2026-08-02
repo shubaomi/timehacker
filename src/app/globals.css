@@ -257,6 +257,18 @@ textarea:focus-visible,
   text-wrap: balance;
 }
 
+@media (min-width: 901px) {
+  html[lang="zh-Hans"] .challenge-copy {
+    max-width: none;
+  }
+
+  html[lang="zh-Hans"] .challenge-copy h1 {
+    font-size: clamp(2.9rem, 4.6vw, 4.5rem);
+    white-space: nowrap;
+    text-wrap: nowrap;
+  }
+}
+
 .challenge-copy p {
   margin: 14px 0 0;
   color: var(--muted);
@@ -462,6 +474,15 @@ textarea:focus-visible,
 .gesture-progress i.done {
   background: var(--mint);
   transform: translateY(-1px);
+}
+
+.gesture-step-copy {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .keyboard-gesture-hint {

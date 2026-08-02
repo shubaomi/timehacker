@@ -58,12 +58,14 @@ describe("TimerStage", () => {
     surface.focus();
     await userEvent.keyboard("[ArrowUp]");
     expect(onEvent).toHaveBeenCalledWith("SECRET_GESTURE", "up", undefined);
-    expect(screen.getByText(/seems to lean up/i)).toBeInTheDocument();
+    expect(screen.getByText(/Next: swipe up/i)).toBeInTheDocument();
+    expect(screen.getByText(/Complete the 3–5 steps in order/i)).toBeInTheDocument();
+    expect(screen.getByText(/Completed 0 of 3 steps/i)).toBeInTheDocument();
   });
 
-  it("shows a gentle discovery message instead of technical effect controls", () => {
+  it("states that the secret is active and tells the player what to do next", () => {
     render(withLocale(<TimerStage {...baseProps} armed gestureProgress={3} />));
-    expect(screen.getByText(/Time will be a little kinder/i)).toBeInTheDocument();
+    expect(screen.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeInTheDocument();
     expect(screen.queryByText(/Accessible ritual controls/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/FULL DILATION/i)).not.toBeInTheDocument();
   });
