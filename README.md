@@ -1,20 +1,20 @@
 # Time Hacker
 
-Time Hacker is a bilingual, mobile-first timing game: stop the chamber at exactly `10.000` seconds, or discover one of 100 hidden rituals that transparently slow game time. It is an anonymous, casual field test—not a professional anti-cheat competition.
+Time Hacker is a bilingual, mobile-first timing game: stop the clock at exactly `10.00` seconds, or notice a tiny secret and discover one of 100 hidden gestures that bend game time.
 
 ## What V1 includes
 
 - Anonymous player identity persisted in local storage and PostgreSQL
-- English and Simplified Chinese UI with a persistent language switch and localized cheat archive
-- Hacker Mode with 100 server-verified cheats, 20 per difficulty tier and quality-led category distribution
-- Four transparent assistance families: full dilation, final-zone dilation, tolerance assist, and brake pulse
-- Ritual progress plus touch alternatives for sweep, focus, service keys, pulse patterns, and holds
+- English and Simplified Chinese UI with a persistent language switch and localized secrets collection
+- With Secrets mode containing 100 server-verified cheats, 20 per difficulty tier
+- Four assistance families: full dilation, final-zone dilation, tolerance assist, and brake pulse
+- A unique, server-verified 3-to-5-step swipe, tap, or hold sequence for every secret
 - Pure Mode unlocked after the first successful run
 - A strict `±10 ms` success window and a 50-start daily limit (UTC)
 - Progression, nickname, collection, three ranking views, sharing, and isolated reset
 - Keyboard-operable controls, reduced-motion support, responsive layouts, and accessible status feedback
 
-The visual system is documented in [`docs/design-brief.md`](docs/design-brief.md). It uses a classified chronology-lab direction: graphite, bone, and safety orange; one dominant physical instrument; asymmetric editorial panels; and restrained motion.
+The visual system is documented in [`docs/design-brief.md`](docs/design-brief.md). It uses a bright, playful stopwatch direction: a pale-sky canvas, deep-navy digits, one coral action, soft abstract shapes, and a deliberately quiet first screen. Language, mode, progress, secrets, ranking, nickname, and reset live in the menu instead of competing with the game.
 
 ## Requirements
 
@@ -90,9 +90,9 @@ The suites cover:
 - timer math, inclusive `±10 ms` boundary, progression, share text, deterministic selection
 - uniqueness, bilingual content, difficulty/category ranges, experience diversity, UI event reachability, and positive/negative trigger cases for all 100 cheats
 - loading/error/empty/locked/result/dialog component states and persistent English/Chinese switching
-- real migration presence, idempotent seed, anonymous-player idempotency, server-side cheat/effect verification, and Pure/Hacker judgment isolation
-- 49/50/51 concurrent daily-limit behavior, ranking order, reset isolation, foreign keys and uniqueness
-- initial, running, failed, armed, successful, collection, ranking, reset, persistence, Pure Mode, keyboard, daily-limit, reduced-motion, and share-fallback browser journeys (the browser harness fixes submitted target measurements at `10.000` while all eligibility, cheat events, database writes, and UI responses use production paths)
+- real migration presence, idempotent seed, anonymous-player idempotency, server-side cheat/effect verification, and Pure/Secrets judgment isolation
+- 49/50/51 concurrent daily-limit behavior, ranking order, reset isolation, foreign keys, and uniqueness
+- initial, running, failed, armed, successful, collection, ranking, reset, persistence, Pure Mode, keyboard, daily-limit, reduced-motion, and share-fallback browser journeys
 - serious/critical axe findings, browser console errors, horizontal overflow, 200% zoom, and screenshots at `360×800`, `390×844`, `768×1024`, and `1440×900`
 
 Integration and browser tests create uniquely identified players and delete only those exact rows afterward. Existing users and catalog data are not truncated or reset. Browser evidence is written to `artifacts/screenshots/`.
@@ -110,6 +110,9 @@ Keep the production-only connection string in `/data/prod/timehacker/.env.produc
 
 ```env
 DATABASE_URL="postgresql://timehacker:replace-me@localhost:5432/timehacker"
+PORT=3008
+HOSTNAME=127.0.0.1
+NODE_ENV=production
 ```
 
 The real credential must never be added to the source checkout or Git. Deploy from the server checkout with:

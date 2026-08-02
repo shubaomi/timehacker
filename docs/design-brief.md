@@ -1,76 +1,91 @@
-# Time Hacker V2 design brief
+# Time Hacker V3 design brief
 
-## Product value check
+## Product decision
 
-- Real problem: a plain ten-second timer is immediately understandable but has little reason to replay.
-- Audience: mobile and desktop visitors who enjoy short skill challenges, hidden mechanics, collection, and shareable results.
-- Session: a one-to-three-minute visit built around one obvious start/stop action.
-- Expected value: test whether discovery, mastery, and social comparison create replay and sharing intent.
-- Counter-case: a large catalog can become repetitive or inaccessible if it is only quantity. Accounts, payments, AI-generated live content, and admin tools still add cost without proving demand.
-- Decision: preserve the focused one-action game while maintaining 100 authored, testable cheats. Difficulty remains exactly 20 per tier, while category totals follow interaction quality instead of a forced 5×5 matrix. Commercial demand and subjective fun remain real-user validation gates.
+- Real problem: the previous interface made a five-second casual game feel like a control room. Labels, diagnostics, missions, service input, profiles, and navigation competed with the only action that mattered.
+- Audience and moment: a mobile or desktop visitor who should understand the game in seconds, play immediately, notice a small oddity, and feel clever for discovering it.
+- Counter-case: removing every secondary feature would waste working progression and collection systems. Making the hidden gestures too obscure would turn curiosity into frustration.
+- Decision: keep the deeper systems, but move them into a menu. The first screen is only the challenge, timer, primary button, and a subtle discoverable glimmer. Every assigned cheat is completed through direct interaction instead of form input.
+- Validation still required: automated tests prove usability mechanics and reliability, but only real-player sessions can prove that the glimmer is discoverable and the 100 gestures feel rewarding over time.
 
 ## UI concept
 
-**Classified Chronology Lab** is a precision instrument that has been quietly tampered with. The interface should feel manufactured rather than themed: graphite plates, warm bone labels, an amber safety accent, calibration ticks, registration marks, and a single oversized time readout.
+**Sunlit Stopwatch** feels like a tiny digital toy on a bright afternoon. The canvas is pale sky blue with soft coral, butter, mint, and lilac shapes. Deep navy keeps the digits crisp. The screen has one dominant action and no fictional laboratory vocabulary.
 
-The memorable moment is the timer housing changing its physical rhythm when a cheat is armed: calibration rails separate, the amber signal widens, and the status copy explicitly states that game time is being distorted.
+The memorable detail is a small glimmer near the clock. It is visible enough to invite a tap but quiet enough not to read as a second primary button. Tapping it reveals a compact gesture surface and only the next nudge. The user swipes, taps, or holds directly; the game never asks them to type a service code or solve a form.
 
-The bundled `ui-ux-pro-max` generator suggested retro-futurism and industrial safety orange. Its webinar layout and full pixel-font pairing were intentionally rejected because they conflict with a one-action game and reduce precision readability. `frontend-design` informed the asymmetric instrument layout, restrained high-impact motion, bilingual fit, and avoidance of generic dashboard cards. The product mark uses the same clock, fracture, graphite, bone, and signal-orange vocabulary at favicon scale.
+`ui-ux-pro-max` informed the accessibility, touch-target, responsive, contrast, and reduced-motion constraints. `frontend-design` informed the strong visual point of view, limited palette, non-dashboard composition, and restraint around secondary UI.
 
-## Reference patterns
+## Information architecture
 
-- [Braun BC24](https://us.braun-clocks.com/products/bc24b-braun-touch-display-digital-alarm-clock-black): negative LCD contrast and a single direct control.
-- [NASA launch countdown](https://www.nasa.gov/missions/artemis/orion/artemis-i-launch-countdown-101/): operational status language and milestone rhythm.
-- [Teenage Engineering TP-7](https://teenage.engineering/products/tp-7): compact instrument hierarchy and tactile industrial detailing.
+### First screen
 
-These are pattern references only; no visual asset or composition is copied.
+1. Time Hacker wordmark and a menu button.
+2. A one-line challenge: stop time at `10.00` seconds.
+3. A one-line instruction.
+4. The timer, showing seconds and two decimal places only.
+5. A single coral Start/Stop/Again button.
+6. A quiet glimmer that can open the assigned secret gesture.
+7. A compact result after stopping, with retry and share.
 
-## UX flow
+### Menu drawer
 
-1. Initializing: establish or resume an anonymous player and load the daily allowance.
-2. Ready: show the 10.000-second objective, mode, assigned clue, and one primary START control.
-3. Running: replace START with STOP, announce state, and keep secondary surfaces quiet.
-4. Result: show measured duration, signed error, success state, progress changes, and a concise next action.
-5. Discovery: failures reveal progressively stronger clues; a satisfied trigger arms one transparent effect family: full dilation, final-zone dilation, assisted tolerance, or a brake pulse.
-6. Mastery: first success unlocks nickname, difficulty selection, Pure Mode, collection, ranks, share, and reset.
+- English/Chinese switch
+- With secrets/Pure mode
+- Difficulty after it has been unlocked
+- Secrets collection and leaderboard
+- Personal plays, successes, secrets found, and best error
+- Remaining daily starts
+- Nickname after it has been unlocked
+- Reset behind a confirmation dialog
 
-All network surfaces have loading, empty, error, and retry states. Device-oriented cheats always have a service-input fallback; sweep, focus, service-key, pulse and hold rituals also expose explicit single-pointer controls. Ritual progress is announced in text with `aria-live`, including soft reset and timing feedback. Locale selection is stored locally and in a cookie; the root HTML language is updated for assistive technology.
+Opening the drawer softly blurs the game beneath it. Collection and ranking open inside the same drawer instead of becoming prominent home-page tabs.
 
-## Design tokens
+## Secret interaction model
+
+- Every one of the 100 cheats has a deterministic, unique sequence of 3 to 5 steps.
+- Steps use six universal gestures: up, down, left, right, tap, and hold.
+- Touch and mouse use pointer movement; keyboard uses arrow keys, Enter/Space, and H.
+- The surface reveals only the next gesture and progress dots. It does not expose a task title or all answers.
+- A wrong step softly resets progress. Completing the sequence arms the real assigned cheat through the existing event API.
+- The server independently validates event order, values, timing window, assigned cheat, and applied effect. The client cannot award itself a success.
+- The original trigger definitions remain supported for compatibility and test coverage, but are not exposed as service controls in the main UI.
+
+## Visual tokens
 
 ### Color
 
-- `ink-950`: `#080a09` — page ground
-- `ink-900`: `#101311` — instrument housing
-- `ink-800`: `#1b201d` — raised surface
-- `bone-100`: `#f1eadb` — primary text
-- `bone-300`: `#c8c0b1` — secondary text
-- `signal-500`: `#ff6a1a` — primary action and armed state
-- `signal-300`: `#ffad73` — focus and highlight
-- `mint-400`: `#6ee7b7` — successful measurement
-- `danger-400`: `#fb7185` — failed measurement
-- `line`: `rgba(241, 234, 219, 0.16)` — instrument rules
+- Sky: `#dff4ff` — page canvas
+- Paper: `#fffdf7` — timer and drawer surface
+- Navy: `#20243f` — timer digits and primary text
+- Coral: `#ff735d` — primary action
+- Butter: `#ffd96a` — playful accent
+- Mint: `#9be8ca` — success/support accent
+- Lilac: `#cfc3ff` — secondary decorative accent
 
-Text and controls must meet WCAG AA contrast; success and failure also use labels and symbols.
+Text and controls meet WCAG AA contrast. Meaning never depends on color alone.
 
-### Type
+### Type and hierarchy
 
-- Display/time: Azeret Mono Variable, tabular numerals, 56-120px responsive scale.
-- Labels/body: Bricolage Grotesque Variable, 12-18px.
-- Simplified Chinese fallback: Microsoft YaHei, PingFang SC, or Noto Sans CJK SC.
-- Other fallbacks remain readable monospace/sans-serif families but are not the intended presentation.
+- Time digits use tabular numerals and the largest responsive type on the page.
+- Headings use a friendly, substantial sans serif rather than sci-fi or terminal styling.
+- Body copy is short and conversational in both languages.
+- No status rail, UTC label, operator identity, experiment numbering, or diagnostics appear.
 
-### Space, radius, and motion
+### Shape and motion
 
-- Spacing scale: 4, 8, 12, 16, 24, 32, 48, 64.
-- Radius: 2px for calibration details, 10px for controls, 20px for major housings.
-- Focus: 3px signal ring with a 3px dark offset.
-- Motion: 160ms control response, 420ms panel transition, one 700ms success sequence.
-- Reduced motion: remove transforms, scanning lines, and stagger; retain immediate opacity/state changes.
+- Large rounded timer card and pill-like primary control.
+- Decorative shapes are few, soft, and asymmetrical.
+- The glimmer uses a slow opacity pulse, not continuous spatial movement.
+- Success feedback is short and celebratory; ordinary transitions remain quiet.
+- With reduced motion enabled, transforms and repeated motion are removed while state remains clear.
 
-## Responsive composition
+## Responsive and accessibility acceptance
 
-- Mobile: status rail, timer housing, primary control, then a horizontal section selector and one surface at a time.
-- Tablet: timer remains dominant; progression and assigned cheat sit beneath it.
-- Desktop: asymmetric 7/5 grid, with the timer instrument left and the active intelligence panel right.
-- No interaction depends on hover, drag, orientation, or multi-touch.
+- At `360x800`, the challenge, timer, primary action, and glimmer fit without horizontal scrolling.
+- At desktop widths, the game remains centered instead of expanding into a dashboard.
+- All controls have visible focus, accessible names, and at least a practical touch target.
+- The primary game is keyboard operable.
+- Gesture discovery has keyboard equivalents and textual next-step feedback.
+- Status changes are announced without forcing focus.
+- English and Simplified Chinese fit without truncating the core action.

@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Time Hacker | 时间黑客",
-  description: "A bilingual precision timing experiment with 100 hidden ways to bend the clock. 中英双语精准计时与百种时间漏洞挑战。",
+  description: "A tiny timing game with 100 playful secrets. 让时间停在10.00秒，并发现藏在页面里的100个小秘密。",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

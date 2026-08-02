@@ -28,7 +28,7 @@ export function CollectionPanel({ collection }: { collection: CollectionEntry[] 
             <div className="archive-index">{String(index + 1).padStart(2, "0")}</div>
             <div>
               <span>{category(entry.category)} · D{entry.difficulty}</span>
-              <h3>{locale === "zh" ? entry.nameZh : entry.name}</h3>
+              <h3>{entry.unlocked ? (locale === "zh" ? (entry.nameZh ?? entry.name) : entry.name) : t("classified")}</h3>
               <p>{(locale === "zh" ? entry.descriptionZh : entry.description) ?? t("classifiedDescription")}</p>
             </div>
             {entry.unlocked ? <Check aria-label={t("unlocked")} size={18} /> : <LockKeyhole aria-label={t("locked")} size={16} />}

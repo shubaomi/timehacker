@@ -80,6 +80,18 @@ describe("the one hundred cheat definitions", () => {
     });
   });
 
+  it("gives all one hundred cheats a unique server-verifiable gesture trail", () => {
+    const patterns = CHEAT_DEFINITIONS.map(({ triggerConfig }) => triggerConfig.secretGesture);
+    expect(patterns.every((pattern) => pattern && pattern.length >= 3 && pattern.length <= 5)).toBe(true);
+    expect(new Set(patterns.map((pattern) => JSON.stringify(pattern)))).toHaveLength(100);
+    for (const definition of CHEAT_DEFINITIONS) {
+      const pattern = definition.triggerConfig.secretGesture!;
+      const events = pattern.map((value, index) => ({ type: "SECRET_GESTURE", value, at: index * 300 }));
+      expect(evaluateCheatTrigger(definition.triggerConfig, events), definition.slug).toBe(true);
+      expect(evaluateCheatTrigger(definition.triggerConfig, events.slice(0, -1)), definition.slug).toBe(false);
+    }
+  });
+
   it("keeps every difficulty at twenty while allowing quality-led category totals", () => {
     for (const difficulty of [1, 2, 3, 4, 5]) {
       expect(CHEAT_DEFINITIONS.filter((definition) => definition.difficulty === difficulty)).toHaveLength(20);

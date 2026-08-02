@@ -2,18 +2,18 @@
 
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
-  Activity,
   Archive,
-  ChevronRight,
+  BarChart3,
+  ChevronLeft,
   CircleHelp,
-  Copy,
-  FlaskConical,
+  Clock3,
   Languages,
+  Menu,
   RotateCcw,
   Share2,
   Trophy,
   UserRoundPen,
-  Zap,
+  X,
 } from "lucide-react";
 import {
   useCallback,
@@ -24,12 +24,9 @@ import {
   type FormEvent,
 } from "react";
 import { evaluateCheatProgress, evaluateCheatTrigger, type CheatProgress } from "@/game/cheats";
-import {
-  effectElapsedTime,
-  type CheatEffectConfig,
-} from "@/game/effects";
+import { effectElapsedTime, type CheatEffectConfig } from "@/game/effects";
 import { buildShareText } from "@/game/share";
-import { formatDuration, formatSignedError } from "@/game/timer";
+import { formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
 import { localeTag, type MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
@@ -37,7 +34,7 @@ import type { CompletedGame, DashboardData, RankingsData } from "@/types/api";
 import { CollectionPanel } from "./collection-panel";
 import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
-import { TimerStage } from "./timer-stage";
+import { formatStopwatch, TimerStage } from "./timer-stage";
 
 type GameStatus =
   | "LOADING"
@@ -60,7 +57,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
   const payload = (await response.json()) as T & { error?: string; code?: string };
   if (!response.ok) {
-    const error = new Error(payload.error ?? "The time lab did not respond.");
+    const error = new Error(payload.error ?? "Time Hacker did not respond.");
     Object.assign(error, { code: payload.code });
     throw error;
   }
@@ -78,12 +75,13 @@ export function TimeHackerApp() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [rankings, setRankings] = useState<RankingsData | null>(null);
-  const [rankingsLoading, setRankingsLoading] = useState(true);
+  const [rankingsLoading, setRankingsLoading] = useState(false);
   const [rankingsError, setRankingsError] = useState<string | null>(null);
   const [status, setStatus] = useState<GameStatus>("LOADING");
   const [mode, setMode] = useState<GameMode>("HACKER");
   const [difficulty, setDifficulty] = useState(1);
   const [panel, setPanel] = useState<Panel>("game");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [armed, setArmed] = useState(false);
   const [ritualProgress, setRitualProgress] = useState<CheatProgress | null>(null);
@@ -92,7 +90,6 @@ export function TimeHackerApp() {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [manualShare, setManualShare] = useState<string | null>(null);
   const [nickname, setNickname] = useState("");
-  const [serviceCommand, setServiceCommand] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const eventsRef = useRef<CheatEvent[]>([]);
@@ -127,26 +124,21 @@ export function TimeHackerApp() {
     try {
       setRankings(await requestJson<RankingsData>("/api/rankings"));
     } catch (rankingError) {
-      setRankingsError(
-        localizeError(rankingError, "rankUnavailable"),
-      );
+      setRankingsError(localizeError(rankingError, "rankUnavailable"));
     } finally {
       setRankingsLoading(false);
     }
   }, [localizeError]);
 
-  const loadDashboard = useCallback(
-    async (id: string, selectedDifficulty: number) => {
-      const data = await requestJson<DashboardData>(
-        `/api/dashboard?playerId=${encodeURIComponent(id)}&difficulty=${selectedDifficulty}`,
-      );
-      setDashboard(data);
-      setDifficulty(data.difficulty);
-      setNickname(data.player.nickname ?? "");
-      return data;
-    },
-    [],
-  );
+  const loadDashboard = useCallback(async (id: string, selectedDifficulty: number) => {
+    const data = await requestJson<DashboardData>(
+      `/api/dashboard?playerId=${encodeURIComponent(id)}&difficulty=${selectedDifficulty}`,
+    );
+    setDashboard(data);
+    setDifficulty(data.difficulty);
+    setNickname(data.player.nickname ?? "");
+    return data;
+  }, []);
 
   const emitCheatEvent = useCallback(
     (type: string, value?: string | number, durationMs?: number) => {
@@ -162,20 +154,18 @@ export function TimeHackerApp() {
       if (!isIdleSample) idleStartRef.current = now;
       const retainedEvents = type === "READY_WAIT"
         ? eventsRef.current.filter(({ type: existingType }) => existingType !== "READY_WAIT")
-        : isIdleSample
+        : isIdleSample || armedRef.current
           ? eventsRef.current
-          : armedRef.current
-            ? eventsRef.current
-            : eventsRef.current.filter(({ type: existingType }) => existingType !== "READY_WAIT");
+          : eventsRef.current.filter(({ type: existingType }) => existingType !== "READY_WAIT");
       const nextEvents = [...retainedEvents, event].slice(-100);
       eventsRef.current = nextEvents;
       if (dashboard?.suggestedCheat) {
         const progress = evaluateCheatProgress(dashboard.suggestedCheat.triggerConfig, nextEvents);
         setRitualProgress(progress);
-      }
-      if (dashboard?.suggestedCheat && evaluateCheatTrigger(dashboard.suggestedCheat.triggerConfig, nextEvents)) {
-        armedRef.current = true;
-        setArmed(true);
+        if (evaluateCheatTrigger(dashboard.suggestedCheat.triggerConfig, nextEvents)) {
+          armedRef.current = true;
+          setArmed(true);
+        }
       }
     },
     [dashboard, status],
@@ -233,10 +223,7 @@ export function TimeHackerApp() {
       if (document.visibilityState === "visible") emitCheatEvent("VISIBILITY_RETURN");
     };
     const handleOrientation = () => {
-      emitCheatEvent(
-        "ORIENTATION",
-        window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait",
-      );
+      emitCheatEvent("ORIENTATION", window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait");
     };
     window.addEventListener("keydown", handleKey);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -247,6 +234,15 @@ export function TimeHackerApp() {
       window.removeEventListener("orientationchange", handleOrientation);
     };
   }, [emitCheatEvent]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
 
   useEffect(() => {
     if (status !== "RUNNING") return;
@@ -291,15 +287,13 @@ export function TimeHackerApp() {
           clientRequestId: crypto.randomUUID(),
           mode,
           difficulty,
-          assignedCheatSlug:
-            mode === "HACKER" ? dashboard.suggestedCheat?.slug ?? null : null,
+          assignedCheatSlug: mode === "HACKER" ? dashboard.suggestedCheat?.slug ?? null : null,
         }),
       });
       activeGameRef.current = response.game.id;
-      effectRef.current =
-        mode === "HACKER" && armedRef.current && dashboard.suggestedCheat
-          ? dashboard.suggestedCheat.effectConfig
-          : null;
+      effectRef.current = mode === "HACKER" && armedRef.current && dashboard.suggestedCheat
+        ? dashboard.suggestedCheat.effectConfig
+        : null;
       wallStartRef.current = performance.now();
       setElapsedMs(0);
       setStatus("RUNNING");
@@ -345,11 +339,13 @@ export function TimeHackerApp() {
     emitCheatEvent("MODE_TOGGLE", nextMode.toLowerCase());
     modeRef.current = nextMode;
     setMode(nextMode);
+    prepareNext();
   };
 
   const switchPanel = (nextPanel: Panel) => {
     emitCheatEvent("PANEL_OPEN", nextPanel);
     setPanel(nextPanel);
+    setMenuOpen(true);
     if (nextPanel === "ranks") void loadRankings();
   };
 
@@ -418,6 +414,7 @@ export function TimeHackerApp() {
       modeRef.current = "HACKER";
       setMode("HACKER");
       setResetOpen(false);
+      setMenuOpen(false);
       prepareNext();
       setStatus("READY");
     } catch (resetError) {
@@ -427,45 +424,17 @@ export function TimeHackerApp() {
     }
   };
 
-  const chosenEffect =
-    mode === "HACKER" && dashboard?.suggestedCheat
-      ? dashboard.suggestedCheat.effectConfig
-      : null;
-  const hintStrength = Math.min(3, Math.floor((dashboard?.player.totalGames ?? 0) / 2) + 1);
-  const resultCopy = useMemo(() => {
-    if (!result) return null;
-    return {
-      duration: formatDuration(result.durationMs),
-      error: formatSignedError(result.errorMs),
-    };
-  }, [result]);
-  const suggestedCheatName = dashboard?.suggestedCheat
-    ? locale === "zh" ? dashboard.suggestedCheat.nameZh : dashboard.suggestedCheat.name
-    : null;
-  const suggestedCheatHint = dashboard?.suggestedCheat
-    ? locale === "zh" ? dashboard.suggestedCheat.hintZh : dashboard.suggestedCheat.hint
-    : null;
-  const suggestedEffectLabel = dashboard?.suggestedCheat
-    ? locale === "zh"
-      ? dashboard.suggestedCheat.effectConfig.labelZh
-      : dashboard.suggestedCheat.effectConfig.label
-    : null;
-
-  const submitServiceCommand = (event: FormEvent) => {
-    event.preventDefault();
-    for (const value of serviceCommand.trim().toUpperCase()) {
-      emitCheatEvent("KEY", value);
-    }
-    setServiceCommand("");
-  };
+  const resultCopy = useMemo(() => result ? {
+    duration: formatStopwatch(result.durationMs),
+    error: formatSignedError(result.errorMs),
+  } : null, [result]);
 
   if (!dashboard && status === "LOADING") {
     return (
       <main className="boot-screen" aria-busy="true">
-        <div className="boot-mark"><FlaskConical aria-hidden="true" /></div>
-        <p>{t("bootUnit")}</p>
-        <h1>{t("bootOpening")}</h1>
-        <div className="boot-line"><span /></div>
+        <Clock3 aria-hidden="true" size={38} />
+        <h1>{t("bootOpeningSimple")}</h1>
+        <div className="boot-dots" aria-hidden="true"><i /><i /><i /></div>
       </main>
     );
   }
@@ -473,208 +442,197 @@ export function TimeHackerApp() {
   if (!dashboard) {
     return (
       <main className="boot-screen error-state" role="alert">
-        <CircleHelp aria-hidden="true" size={32} />
-        <h1>{t("linkUnavailable")}</h1>
+        <CircleHelp aria-hidden="true" size={34} />
+        <h1>{t("gameUnavailable")}</h1>
         <p>{error ?? t("databaseUnavailable")}</p>
-        <button type="button" onClick={() => void initialize()}>{t("retryInitialization")}</button>
+        <button type="button" onClick={() => void initialize()}>{t("tryAgainSimple")}</button>
       </main>
     );
   }
 
+  const gesturePattern = dashboard.suggestedCheat?.triggerConfig.secretGesture ?? ["up", "right", "down"];
+  const drawerTitle = panel === "cheats" ? t("cheatArchive") : panel === "ranks" ? t("globalRanks") : t("menuTitle");
+
   return (
     <MotionConfig reducedMotion="user">
-    <main className="lab-shell">
-      <div className="ambient-grid" aria-hidden="true" />
-      <header className="site-header">
-        <a href="#game" className="brand-lockup" aria-label={t("brandReturn")}>
-          <span><FlaskConical aria-hidden="true" size={19} /></span>
-          <div><b>TIME HACKER</b><small>{t("unitLabel")}</small></div>
-        </a>
-        <div className="header-status">
-          <span><i /> {t("labOnline")}</span>
-          <span>{dashboard.player.displayName}</span>
-          <span>{t("utcChannel")}</span>
+      <main className="game-shell">
+        <div className="playful-sky" aria-hidden="true"><i /><i /><i /></div>
+
+        <header className="minimal-header">
+          <a href="#play" className="simple-brand" aria-label={t("brandReturn")}>
+            <span><Clock3 aria-hidden="true" size={19} /></span>
+            <b>TIME HACKER</b>
+          </a>
           <button
             type="button"
-            className="language-switch"
-            aria-label={t("switchLanguage")}
+            className="menu-button"
+            aria-label={t("openMenu")}
+            aria-expanded={menuOpen}
             onClick={() => {
-              const nextLocale = locale === "en" ? "zh" : "en";
-              emitCheatEvent("LOCALE_TOGGLE", nextLocale);
-              setLocale(nextLocale);
+              setPanel("game");
+              setMenuOpen(true);
             }}
           >
-            <Languages aria-hidden="true" size={14} /> {locale === "en" ? "中文" : "EN"}
+            <Menu aria-hidden="true" size={22} />
           </button>
-        </div>
-      </header>
+        </header>
 
-      <section className="mission-strip" aria-label={t("missionStatus")}>
-        <p><Activity aria-hidden="true" size={15} /> {t("activeExperiment")}</p>
-        <h1>{t("missionLead")} <em>{t("missionTime")}</em></h1>
-        <p>{t("missionDescription")}</p>
-      </section>
+        <section className="play-screen" id="play">
+          <motion.div
+            className="challenge-copy"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1>{t("simpleChallenge")}</h1>
+            <p>{t("simpleInstruction")}</p>
+          </motion.div>
 
-      <nav className="section-tabs" aria-label={t("labSections")}>
-        {([
-          ["game", Zap, t("experiment")],
-          ["cheats", Archive, t("cheatArchive")],
-          ["ranks", Trophy, t("globalRanks")],
-        ] as const).map(([value, Icon, label]) => (
-          <button key={value} type="button" aria-current={panel === value ? "page" : undefined} onClick={() => switchPanel(value)}>
-            <Icon aria-hidden="true" size={16} /> {label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="lab-grid" id="game">
-        <div className="experiment-column">
-          <div className="mode-row">
-            <div className="mode-switch" aria-label={t("gameMode")}>
-              <button type="button" className={mode === "HACKER" ? "active" : ""} onClick={() => switchMode("HACKER")} onFocus={() => emitCheatEvent("FOCUS", "mode")}>{t("hackerMode")}</button>
-              <button type="button" className={mode === "PURE" ? "active" : ""} disabled={!dashboard.player.firstSuccessAt} title={!dashboard.player.firstSuccessAt ? t("pureModeLocked") : undefined} onClick={() => switchMode("PURE")} onFocus={() => emitCheatEvent("FOCUS", "mode")}>{t("pureMode")}</button>
-            </div>
-            <div className="attempt-counter"><span>{t("dailySignals")}</span><strong>{dashboard.daily.remaining}<small> / {dashboard.daily.limit}</small></strong></div>
-          </div>
-
-          <TimerStage elapsedMs={elapsedMs} status={status} armed={mode === "HACKER" && armed} effect={chosenEffect} disabled={status === "LIMIT_REACHED"} onPrimary={handlePrimary} onEvent={emitCheatEvent} />
+          <TimerStage
+            elapsedMs={elapsedMs}
+            status={status}
+            armed={mode === "HACKER" && armed}
+            secretEnabled={mode === "HACKER" && Boolean(dashboard.suggestedCheat)}
+            gesturePattern={gesturePattern}
+            gestureProgress={ritualProgress?.currentStep ?? 0}
+            disabled={status === "LIMIT_REACHED"}
+            onPrimary={handlePrimary}
+            onEvent={emitCheatEvent}
+          />
 
           <div className="live-message" aria-live="polite" role="status">
             {error ? <span className="error-copy">{error}</span> : null}
-            {status === "LIMIT_REACHED" ? <span>{t("dailyComplete")} {t("resetAt", { date: new Intl.DateTimeFormat(localeTag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(dashboard.daily.resetsAt)) })}</span> : null}
-            {status === "RUNNING" ? <span>{t("chamberMeasuring")}</span> : null}
-            {armed && status === "READY" && suggestedEffectLabel ? <span>{t("gameTimeSlow", { label: suggestedEffectLabel })}</span> : null}
-          </div>
-        </div>
-
-        <aside className="intelligence-column">
-          <AnimatePresence mode="wait">
-            {panel === "game" ? (
-              <motion.div key="game-panel" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-                <section className="intel-panel briefing-panel">
-                  <header className="panel-heading">
-                    <div><p>{t("currentAssignment")}</p><h2>{mode === "PURE" ? t("unassistedTiming") : suggestedCheatName ?? t("archiveComplete")}</h2></div>
-                    <span className="difficulty-stamp">D{mode === "PURE" ? 0 : dashboard.suggestedCheat?.difficulty ?? 5}</span>
-                  </header>
-                  {mode === "HACKER" && dashboard.suggestedCheat ? (
-                    <>
-                      <p className="classified-copy">{t("triggerBrief")}</p>
-                      <button className="clue-block" type="button" onClick={() => emitCheatEvent("CLUE_TAP")}>
-                        <CircleHelp aria-hidden="true" size={18} />
-                        <span><small>{t("clueLevel", { level: hintStrength })}</small>{suggestedCheatHint}</span>
-                        <ChevronRight aria-hidden="true" size={16} />
-                      </button>
-                      <div className="cipher-words" aria-label={t("clueCipherWords")}>
-                        {["time", "bends", "here"].map((word) => <button key={word} type="button" onClick={() => emitCheatEvent("CLUE_TOKEN", word)}>{word}</button>)}
-                      </div>
-                      <form className="service-console" onSubmit={submitServiceCommand}>
-                        <label htmlFor="service-command">{t("serviceInput")}</label>
-                        <div>
-                          <input
-                            id="service-command"
-                            value={serviceCommand}
-                            onChange={(event) => setServiceCommand(event.target.value)}
-                            autoComplete="off"
-                            spellCheck={false}
-                            aria-describedby="service-command-hint"
-                          />
-                          <button type="submit" disabled={!serviceCommand.trim()}>{t("applyCommand")}</button>
-                        </div>
-                        <small id="service-command-hint">{t("serviceInputHint")}</small>
-                      </form>
-                      <div className={`armed-card ${armed ? "active" : ""}`}>
-                        <Zap aria-hidden="true" size={18} />
-                        <span>
-                          <b>{armed ? t("exploitArmed") : t("exploitDormant")}</b>
-                          <small>
-                            {armed && suggestedEffectLabel
-                              ? suggestedEffectLabel
-                              : ritualProgress
-                                ? t("ritualProgress", { current: ritualProgress.currentStep, total: ritualProgress.totalSteps })
-                                : t("completeRitual")}
-                          </small>
-                          {ritualProgress?.resetReason ? (
-                            <small>{t(ritualProgress.resetReason === "timing-reset" ? "ritualTimingReset" : "ritualSequenceReset")}</small>
-                          ) : null}
-                        </span>
-                      </div>
-                    </>
-                  ) : <p className="classified-copy">{t("pureBrief")}</p>}
-
-                  {dashboard.player.firstSuccessAt ? (
-                    <label className="difficulty-control">
-                      <span>{t("unlockedDifficulty")}</span>
-                      <select value={difficulty} onChange={async (event) => {
-                        const next = Number(event.target.value);
-                        if (playerId) await loadDashboard(playerId, next);
-                        prepareNext();
-                      }}>
-                        {Array.from({ length: dashboard.maximumDifficulty }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{t("difficulty", { value })}</option>)}
-                      </select>
-                    </label>
-                  ) : null}
-                </section>
-
-                <section className="intel-panel operator-panel">
-                  <header className="panel-heading"><div><p>{t("operatorRecord")}</p><h2>{dashboard.player.displayName}</h2></div><strong>L{String(dashboard.player.currentLevel).padStart(2, "0")}</strong></header>
-                  <div className="metric-grid">
-                    <div><span>{t("runs")}</span><b>{dashboard.player.totalGames}</b></div>
-                    <div><span>{t("wins")}</span><b>{dashboard.player.successGames}</b></div>
-                    <div><span>{t("cheats")}</span><b>{dashboard.player.unlockedCheats}/{dashboard.collection.length}</b></div>
-                    <div><span>{t("bestDelta")}</span><b>{dashboard.player.bestErrorMs === null ? "—" : `${dashboard.player.bestErrorMs}ms`}</b></div>
-                  </div>
-                  {dashboard.player.firstSuccessAt ? (
-                    <form className="nickname-form" onSubmit={saveNickname}>
-                      <UserRoundPen aria-hidden="true" size={16} /><label htmlFor="nickname">{t("fieldName")}</label><input id="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} minLength={2} maxLength={24} /><button type="submit">{t("save")}</button>
-                    </form>
-                  ) : <p className="unlock-note">{t("firstSuccessUnlocks")}</p>}
-                </section>
-              </motion.div>
+            {status === "LIMIT_REACHED" ? (
+              <span>{t("dailyComplete")} {t("resetAt", { date: new Intl.DateTimeFormat(localeTag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(dashboard.daily.resetsAt)) })}</span>
             ) : null}
+            {status === "RUNNING" ? <span>{t("runningNudge")}</span> : null}
+          </div>
 
-            {panel === "cheats" ? <motion.div key="cheats-panel" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}><CollectionPanel collection={dashboard.collection} /></motion.div> : null}
-            {panel === "ranks" ? <motion.div key="ranks-panel" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}><RankingsPanel rankings={rankings} loading={rankingsLoading} error={rankingsError} onRetry={() => void loadRankings()} /></motion.div> : null}
+          <AnimatePresence mode="wait">
+            {result && (status === "SUCCESS" || status === "FAILED") ? (
+              <motion.section
+                className={`simple-result ${result.success ? "success" : "failure"}`}
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10 }}
+                role="status"
+                aria-live="assertive"
+              >
+                <div>
+                  <h2>{result.success ? t("successSimple") : t("missSimple")}</h2>
+                  <p>{result.assistanceType ? t("secretHelped") : t("allYou")}</p>
+                </div>
+                <div className="simple-result-number">
+                  <span>{resultCopy?.duration}<small>s</small></span>
+                  <b>{resultCopy?.error}</b>
+                </div>
+                <button type="button" onClick={() => void shareResult()}><Share2 aria-hidden="true" size={17} /> {t("shareResultSimple")}</button>
+                {shareStatus ? <p className="share-status">{shareStatus}</p> : null}
+                {manualShare ? <textarea aria-label={t("fieldReportText")} readOnly value={manualShare} /> : null}
+              </motion.section>
+            ) : null}
           </AnimatePresence>
-        </aside>
-      </div>
+        </section>
 
-      <AnimatePresence>
-        {result && (status === "SUCCESS" || status === "FAILED") ? (
-          <motion.section className={`result-drawer ${result.success ? "success" : "failure"}`} initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} role="status" aria-live="assertive">
-            <div><p>{result.success ? t("breachConfirmed") : t("outsideTolerance")}</p><h2>{result.success ? t("timeHacked") : t("tryAgain")}</h2></div>
-            <div className="result-measurement">
-              <span>{resultCopy?.duration}</span>
-              <b>{resultCopy?.error}</b>
-              <small>
-                {result.assistanceType
-                  ? t("hackerAssisted", { type: result.assistanceType })
-                  : `${t(result.mode === "PURE" ? "modePure" : "modeHacker")} · ${t("unassisted")}`}
-                {result.usedCheat ? ` · ${locale === "zh" ? result.usedCheat.nameZh ?? result.usedCheat.name : result.usedCheat.name}` : ""}
-              </small>
-              {result.wallDurationMs != null ? <small>{t("wallTime", { time: formatDuration(result.wallDurationMs) })} · {t("judgedTolerance", { tolerance: result.toleranceMs })}</small> : null}
-            </div>
-            <div className="result-actions"><button type="button" onClick={() => void shareResult()}><Share2 aria-hidden="true" size={17} /> {t("shareReport")}</button><button type="button" onClick={prepareNext}>{t("runAgain")} <ChevronRight aria-hidden="true" size={17} /></button></div>
-            {shareStatus ? <p className="share-status">{shareStatus}</p> : null}
-            {manualShare ? <textarea aria-label={t("fieldReportText")} readOnly value={manualShare} /> : null}
-          </motion.section>
-        ) : null}
-      </AnimatePresence>
+        <AnimatePresence>
+          {menuOpen ? (
+            <motion.div className="drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onPointerDown={() => setMenuOpen(false)}>
+              <motion.aside
+                className="game-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label={drawerTitle}
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", stiffness: 340, damping: 34 }}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <header className="drawer-header">
+                  {panel !== "game" ? (
+                    <button type="button" onClick={() => switchPanel("game")} aria-label={t("backToMenu")}><ChevronLeft aria-hidden="true" size={20} /></button>
+                  ) : <span className="drawer-clock"><Clock3 aria-hidden="true" size={19} /></span>}
+                  <h2>{drawerTitle}</h2>
+                  <button type="button" onClick={() => setMenuOpen(false)} aria-label={t("closeMenu")}><X aria-hidden="true" size={20} /></button>
+                </header>
 
-      <footer className="site-footer">
-        <p>{t("footer")}</p>
-        <div>
-          <button type="button" onClick={async () => {
-            const text = locale === "zh"
-              ? `操作员 ${dashboard.player.displayName} · 已发现 ${dashboard.player.unlockedCheats}/${dashboard.collection.length} 个漏洞`
-              : `Player ${dashboard.player.displayName} · ${dashboard.player.unlockedCheats}/${dashboard.collection.length} cheats`;
-            try { await navigator.clipboard.writeText(text); setShareStatus(t("operatorSummaryCopied")); } catch { setManualShare(text); }
-          }}><Copy aria-hidden="true" size={14} /> {t("copyIdSummary")}</button>
-          <button type="button" onClick={() => setResetOpen(true)}><RotateCcw aria-hidden="true" size={14} /> {t("resetProgress")}</button>
-        </div>
-      </footer>
+                <div className="drawer-content">
+                  {panel === "game" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="drawer-row language-row"
+                        onClick={() => {
+                          const nextLocale = locale === "en" ? "zh" : "en";
+                          emitCheatEvent("LOCALE_TOGGLE", nextLocale);
+                          setLocale(nextLocale);
+                        }}
+                      >
+                        <Languages aria-hidden="true" size={19} />
+                        <span>{t("language")}</span>
+                        <b>{locale === "en" ? "中文" : "English"}</b>
+                      </button>
 
-      <ResetDialog open={resetOpen} busy={resetBusy} onCancel={() => setResetOpen(false)} onConfirm={() => void confirmReset()} />
-    </main>
+                      <section className="drawer-section">
+                        <h3>{t("playMode")}</h3>
+                        <div className="mode-switch" aria-label={t("gameMode")}>
+                          <button type="button" className={mode === "HACKER" ? "active" : ""} onClick={() => switchMode("HACKER")}>{t("playfulMode")}</button>
+                          <button type="button" className={mode === "PURE" ? "active" : ""} disabled={!dashboard.player.firstSuccessAt} onClick={() => switchMode("PURE")}>{t("pureMode")}</button>
+                        </div>
+                        {dashboard.player.firstSuccessAt ? (
+                          <label className="difficulty-control">
+                            <span>{t("difficultyLabel")}</span>
+                            <select value={difficulty} onChange={async (event) => {
+                              const next = Number(event.target.value);
+                              if (playerId) await loadDashboard(playerId, next);
+                              prepareNext();
+                            }}>
+                              {Array.from({ length: dashboard.maximumDifficulty }, (_, index) => index + 1).map((value) => (
+                                <option key={value} value={value}>{t("difficulty", { value })}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : null}
+                      </section>
+
+                      <nav className="drawer-nav" aria-label={t("moreGameOptions")}>
+                        <button type="button" onClick={() => switchPanel("cheats")}><Archive aria-hidden="true" size={20} /><span>{t("cheatArchive")}</span><b>{dashboard.player.unlockedCheats}/{dashboard.collection.length}</b></button>
+                        <button type="button" onClick={() => switchPanel("ranks")}><Trophy aria-hidden="true" size={20} /><span>{t("globalRanks")}</span><ChevronLeft className="forward-chevron" aria-hidden="true" size={18} /></button>
+                      </nav>
+
+                      <section className="drawer-section progress-section">
+                        <div className="drawer-section-title"><div><BarChart3 aria-hidden="true" size={20} /><h3>{t("myProgress")}</h3></div><strong>L{dashboard.player.currentLevel}</strong></div>
+                        <div className="metric-grid">
+                          <div><span>{t("runs")}</span><b>{dashboard.player.totalGames}</b></div>
+                          <div><span>{t("wins")}</span><b>{dashboard.player.successGames}</b></div>
+                          <div><span>{t("bestDelta")}</span><b>{dashboard.player.bestErrorMs === null ? "—" : `${dashboard.player.bestErrorMs}ms`}</b></div>
+                        </div>
+                        <small>{t("attemptsLeft", { count: dashboard.daily.remaining })}</small>
+                      </section>
+
+                      {dashboard.player.firstSuccessAt ? (
+                        <form className="nickname-form" onSubmit={saveNickname}>
+                          <UserRoundPen aria-hidden="true" size={17} />
+                          <label htmlFor="nickname">{t("playerName")}</label>
+                          <input id="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} minLength={2} maxLength={24} placeholder={t("playerName")} />
+                          <button type="submit">{t("save")}</button>
+                        </form>
+                      ) : null}
+
+                      <button type="button" className="reset-link" onClick={() => setResetOpen(true)}><RotateCcw aria-hidden="true" size={16} /> {t("resetProgress")}</button>
+                    </>
+                  ) : null}
+
+                  {panel === "cheats" ? <CollectionPanel collection={dashboard.collection} /> : null}
+                  {panel === "ranks" ? <RankingsPanel rankings={rankings} loading={rankingsLoading} error={rankingsError} onRetry={() => void loadRankings()} /> : null}
+                </div>
+              </motion.aside>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <ResetDialog open={resetOpen} busy={resetBusy} onCancel={() => setResetOpen(false)} onConfirm={() => void confirmReset()} />
+      </main>
     </MotionConfig>
   );
 }

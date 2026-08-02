@@ -21,7 +21,7 @@ describe("secondary panels", () => {
       />),
     );
     expect(screen.getByText("Recovered")).toBeInTheDocument();
-    expect(screen.getByText("CLASSIFIED")).toBeInTheDocument();
+    expect(screen.getByText("MYSTERY")).toBeInTheDocument();
     expect(screen.getByLabelText("Unlocked")).toBeInTheDocument();
     expect(screen.getByLabelText("Locked")).toBeInTheDocument();
   });
@@ -29,9 +29,9 @@ describe("secondary panels", () => {
   it("covers rank loading, error with retry, and empty data", async () => {
     const retry = vi.fn();
     const { rerender } = render(withLocale(<RankingsPanel rankings={null} loading error={null} onRetry={retry} />));
-    expect(screen.getByText(/Decrypting/)).toBeInTheDocument();
+    expect(screen.getByText(/Loading the leaderboard/)).toBeInTheDocument();
     rerender(withLocale(<RankingsPanel rankings={null} loading={false} error="Offline" onRetry={retry} />));
-    await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Try again/ }));
     expect(retry).toHaveBeenCalledOnce();
     rerender(withLocale(<RankingsPanel rankings={{ timeHackers: [], perfectTiming: [], cheatMasters: [] }} loading={false} error={null} onRetry={retry} />));
     expect(screen.getAllByText(/Be the first/)).toHaveLength(3);
