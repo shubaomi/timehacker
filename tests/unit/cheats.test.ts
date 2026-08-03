@@ -7,7 +7,12 @@ import {
   type CheatTriggerConfig,
 } from "@/game/cheats";
 import type { CheatEvent, EventPattern } from "@/game/types";
-import { SECRET_INTERACTION_FAMILIES } from "@/game/secret-interactions";
+import {
+  SECRET_DISCOVERY_ACTIONS,
+  SECRET_DISCOVERY_SLOTS,
+  SECRET_DISCOVERY_VISUALS,
+  SECRET_INTERACTION_FAMILIES,
+} from "@/game/secret-interactions";
 import {
   experienceArchetype,
   experienceSurfaces,
@@ -98,11 +103,22 @@ describe("the one hundred cheat definitions", () => {
     }
   });
 
+  it("gives every cheat a unique two-move discovery instead of one universal entrance", () => {
+    const discoveries = CHEAT_DEFINITIONS.map(({ triggerConfig }) => triggerConfig.secretInteraction!.discovery);
+    expect(discoveries).toHaveLength(100);
+    expect(new Set(discoveries.map(({ steps }) => JSON.stringify(steps)))).toHaveLength(100);
+    expect(new Set(discoveries.flatMap(({ steps }) => steps))).toEqual(new Set(SECRET_DISCOVERY_ACTIONS));
+    expect(new Set(discoveries.map(({ visual }) => visual))).toEqual(new Set(SECRET_DISCOVERY_VISUALS));
+    expect(new Set(discoveries.map(({ slot }) => slot))).toEqual(new Set(SECRET_DISCOVERY_SLOTS));
+    expect(discoveries.filter(({ slot }) => slot === "top-right").length).toBeLessThan(20);
+  });
+
   it("scales progressive guidance from D1 to D5", () => {
     for (const definition of CHEAT_DEFINITIONS) {
       const interaction = definition.triggerConfig.secretInteraction!;
       expect(interaction.steps).toHaveLength(definition.difficulty >= 5 ? 5 : definition.difficulty >= 3 ? 4 : 3);
       expect(interaction.hintDelayMs).toBe([1_200, 1_800, 2_600, 3_400, 4_200][definition.difficulty - 1]);
+      expect(interaction.discovery.hintDelayMs).toBe([1_200, 1_800, 2_600, 3_400, 4_200][definition.difficulty - 1]);
     }
   });
 

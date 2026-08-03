@@ -487,7 +487,7 @@ export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = PRE_REVISION_CHEATS
     ...revised,
     triggerConfig: {
       ...revised.triggerConfig,
-      secretInteraction: makeSecretInteraction(family, occurrence, revised.difficulty),
+      secretInteraction: makeSecretInteraction(family, occurrence, revised.difficulty, index),
     },
     effectConfig: makeCatalogEffect(
       revised.slug,

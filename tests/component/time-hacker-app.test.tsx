@@ -74,7 +74,25 @@ function installFetchMock(success = true, suggestedCheat = CHEAT_DEFINITIONS[0])
 }
 
 async function completeSecretInteraction(interaction: NonNullable<(typeof CHEAT_DEFINITIONS)[number]["triggerConfig"]["secretInteraction"]>) {
-  await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+  const discoveryKeys: Record<string, string> = {
+    tap: "[Enter]",
+    "double-tap": "d",
+    hold: "h",
+    "swipe-up": "[ArrowUp]",
+    "swipe-right": "[ArrowRight]",
+    "swipe-down": "[ArrowDown]",
+    "swipe-left": "[ArrowLeft]",
+    "orbit-clockwise": "c",
+    "orbit-counterclockwise": "a",
+    "rub-horizontal": "x",
+    "rub-vertical": "y",
+    zigzag: "z",
+  };
+  const anomaly = screen.getByRole("button", { name: /Hidden anomaly/i });
+  anomaly.focus();
+  for (const action of interaction.discovery.steps) {
+    await userEvent.keyboard(discoveryKeys[action]);
+  }
   const keys: Record<string, string> = {
     "swipe-up": "[ArrowUp]",
     "swipe-right": "[ArrowRight]",
@@ -178,7 +196,7 @@ describe("TimeHackerApp", () => {
     expect(screen.queryByText("Operator record")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Secrets" })).not.toBeInTheDocument();
     await completeSecretInteraction(suggestedCheat.triggerConfig.secretInteraction!);
-    expect(screen.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeInTheDocument();
+    expect(screen.getByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i)).toBeInTheDocument();
   });
 
   it(
@@ -190,7 +208,7 @@ describe("TimeHackerApp", () => {
       renderApp();
 
       const start = await screen.findByRole("button", { name: /START.*Space or Enter/i });
-      expect(await screen.findByText(/Secret active.*easier to stop at 10\.00.*Press Start/i, {}, { timeout: 4_000 })).toBeInTheDocument();
+      expect(await screen.findByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i, {}, { timeout: 4_000 })).toBeInTheDocument();
       await userEvent.click(start);
       await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
 

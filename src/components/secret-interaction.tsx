@@ -13,6 +13,7 @@ import {
 } from "react";
 import {
   SECRET_FAMILY_ACTIONS,
+  type SecretDiscoveryAction,
   type SecretInteractionConfig,
   type SecretInteractionFamily,
 } from "@/game/secret-interactions";
@@ -55,6 +56,34 @@ const FAMILY_LABELS: Record<SecretInteractionFamily, MessageKey> = {
   orbit: "familyOrbit",
   balance: "familyBalance",
 };
+
+const DISCOVERY_ACTION_LABELS: Record<SecretDiscoveryAction, MessageKey> = {
+  tap: "discoveryTap",
+  "double-tap": "discoveryDoubleTap",
+  hold: "discoveryHold",
+  "swipe-up": "discoverySwipeUp",
+  "swipe-right": "discoverySwipeRight",
+  "swipe-down": "discoverySwipeDown",
+  "swipe-left": "discoverySwipeLeft",
+  "orbit-clockwise": "discoveryOrbitClockwise",
+  "orbit-counterclockwise": "discoveryOrbitCounterclockwise",
+  "rub-horizontal": "discoveryRubHorizontal",
+  "rub-vertical": "discoveryRubVertical",
+  zigzag: "discoveryZigzag",
+};
+
+const DISCOVERY_GLYPHS = {
+  glint: "✦",
+  smudge: "◌",
+  bubble: "○",
+  seam: "—",
+  speck: "·",
+  ripple: "◎",
+  crack: "⌁",
+  knot: "⌘",
+  dust: "⁙",
+  halo: "◉",
+} as const;
 
 const ACTION_LABELS: Record<string, MessageKey> = {
   "swipe-up": "actionSwipeUp",
@@ -148,9 +177,83 @@ function actionForDirection(family: SecretInteractionFamily, direction: string) 
   return `${prefix}-${direction}`;
 }
 
+interface DiscoveryPoint {
+  x: number;
+  y: number;
+  at: number;
+}
+
+function travel(points: readonly DiscoveryPoint[]) {
+  return points.slice(1).reduce(
+    (total, point, index) => total + Math.hypot(point.x - points[index].x, point.y - points[index].y),
+    0,
+  );
+}
+
+function directionChanges(points: readonly DiscoveryPoint[], axis: "x" | "y") {
+  let previous = 0;
+  let changes = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    const delta = points[index][axis] - points[index - 1][axis];
+    if (Math.abs(delta) < 8) continue;
+    const direction = Math.sign(delta);
+    if (previous !== 0 && direction !== previous) changes += 1;
+    previous = direction;
+  }
+  return changes;
+}
+
+function orbitAction(
+  points: readonly DiscoveryPoint[],
+  centerX: number,
+  centerY: number,
+): SecretDiscoveryAction | null {
+  if (points.length < 6 || travel(points) < 90) return null;
+  let rotation = 0;
+  let previous = Math.atan2(points[0].y - centerY, points[0].x - centerX);
+  for (const point of points.slice(1)) {
+    const angle = Math.atan2(point.y - centerY, point.x - centerX);
+    let delta = angle - previous;
+    if (delta > Math.PI) delta -= Math.PI * 2;
+    if (delta < -Math.PI) delta += Math.PI * 2;
+    rotation += delta;
+    previous = angle;
+  }
+  if (rotation > Math.PI * 1.05) return "orbit-clockwise";
+  if (rotation < -Math.PI * 1.05) return "orbit-counterclockwise";
+  return null;
+}
+
+function pathAction(
+  points: readonly DiscoveryPoint[],
+  centerX: number,
+  centerY: number,
+): SecretDiscoveryAction | null {
+  const orbit = orbitAction(points, centerX, centerY);
+  if (orbit) return orbit;
+  const first = points[0];
+  const last = points.at(-1)!;
+  const dx = last.x - first.x;
+  const dy = last.y - first.y;
+  const distance = Math.hypot(dx, dy);
+  const xChanges = directionChanges(points, "x");
+  const yChanges = directionChanges(points, "y");
+  const totalTravel = travel(points);
+  if (totalTravel > 110 && xChanges >= 2 && yChanges >= 1) return "zigzag";
+  if (totalTravel > 100 && xChanges >= 2 && Math.abs(dx) > Math.abs(dy)) return "rub-horizontal";
+  if (totalTravel > 100 && yChanges >= 2 && Math.abs(dy) > Math.abs(dx)) return "rub-vertical";
+  if (distance < 42) return null;
+  if (Math.abs(dx) > Math.abs(dy) * 1.15) return dx > 0 ? "swipe-right" : "swipe-left";
+  if (Math.abs(dy) > Math.abs(dx) * 1.15) return dy > 0 ? "swipe-down" : "swipe-up";
+  return null;
+}
+
 export function SecretInteraction({ interaction, progress, armed, onEvent }: SecretInteractionProps) {
   const { t } = useLocale();
   const dragInstructionId = useId();
+  const [discovered, setDiscovered] = useState(false);
+  const [discoveryProgress, setDiscoveryProgress] = useState(0);
+  const [showDiscoveryHint, setShowDiscoveryHint] = useState(false);
   const [open, setOpen] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [softReset, setSoftReset] = useState(false);
@@ -159,12 +262,22 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
   const choiceDrag = useRef({ active: false, moved: false, startX: 0, startY: 0, startAction: null as string | null });
   const lastDragAction = useRef<string | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const discoveryPointer = useRef<DiscoveryPoint[]>([]);
+  const discoveryTap = useRef({ count: 0, at: 0 });
+  const discovery = interaction.discovery;
+  const currentDiscoveryAction = discovery.steps[Math.min(discoveryProgress, discovery.steps.length - 1)];
   const current = interaction.steps[Math.min(progress, interaction.steps.length - 1)] ?? interaction.steps[0];
   const actionLabel = t(ACTION_LABELS[current] ?? "actionTryAgain");
   const familyLabel = t(FAMILY_LABELS[interaction.family]);
   const usesDirectTargets = !GESTURE_FAMILIES.has(interaction.family) && interaction.family !== "pressure";
   const guidanceOpacity = Math.max(0.24, 0.72 - (interaction.hintDelayMs - 1_200) / 8_000);
   const choiceMinOpacity = Math.min(0.7, 0.4 + (interaction.hintDelayMs - 1_200) / 10_000);
+
+  useEffect(() => {
+    if (discovered || armed) return;
+    const timer = window.setTimeout(() => setShowDiscoveryHint(true), discovery.hintDelayMs);
+    return () => window.clearTimeout(timer);
+  }, [armed, discovered, discovery.hintDelayMs, discoveryProgress]);
 
   useEffect(() => {
     if (!open || armed) return;
@@ -175,6 +288,91 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
   useEffect(() => () => {
     if (resetTimer.current) clearTimeout(resetTimer.current);
   }, []);
+
+  const submitDiscovery = (action: SecretDiscoveryAction) => {
+    if (action !== currentDiscoveryAction) {
+      setShowDiscoveryHint(true);
+      return;
+    }
+    const next = discoveryProgress + 1;
+    setDiscoveryProgress(next);
+    setShowDiscoveryHint(false);
+    if (next >= discovery.steps.length) {
+      setDiscovered(true);
+      setOpen(true);
+    }
+  };
+
+  const onDiscoveryPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    discoveryPointer.current = [{ x: event.clientX, y: event.clientY, at: event.timeStamp }];
+  };
+
+  const onDiscoveryPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (discoveryPointer.current.length === 0) return;
+    const previous = discoveryPointer.current.at(-1)!;
+    if (Math.hypot(event.clientX - previous.x, event.clientY - previous.y) < 5) return;
+    discoveryPointer.current.push({ x: event.clientX, y: event.clientY, at: event.timeStamp });
+  };
+
+  const onDiscoveryPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const points = [
+      ...discoveryPointer.current,
+      { x: event.clientX, y: event.clientY, at: event.timeStamp },
+    ];
+    discoveryPointer.current = [];
+    const first = points[0];
+    const duration = event.timeStamp - first.at;
+    const distance = Math.hypot(event.clientX - first.x, event.clientY - first.y);
+    const rect = event.currentTarget.getBoundingClientRect();
+    const traced = pathAction(points, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    if (traced) {
+      submitDiscovery(traced);
+      return;
+    }
+    if (duration >= 650 && distance < 24) {
+      submitDiscovery("hold");
+      return;
+    }
+    if (distance >= 24) {
+      setShowDiscoveryHint(true);
+      return;
+    }
+    if (currentDiscoveryAction === "double-tap") {
+      const recent = event.timeStamp - discoveryTap.current.at <= 360;
+      discoveryTap.current = { count: recent ? discoveryTap.current.count + 1 : 1, at: event.timeStamp };
+      if (discoveryTap.current.count >= 2) {
+        discoveryTap.current = { count: 0, at: 0 };
+        submitDiscovery("double-tap");
+      }
+      return;
+    }
+    discoveryTap.current = { count: 0, at: 0 };
+    submitDiscovery("tap");
+  };
+
+  const onDiscoveryKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const keyboardActions: Record<string, SecretDiscoveryAction> = {
+      Enter: "tap",
+      " ": "tap",
+      d: "double-tap",
+      h: "hold",
+      ArrowUp: "swipe-up",
+      ArrowRight: "swipe-right",
+      ArrowDown: "swipe-down",
+      ArrowLeft: "swipe-left",
+      c: "orbit-clockwise",
+      a: "orbit-counterclockwise",
+      x: "rub-horizontal",
+      y: "rub-vertical",
+      z: "zigzag",
+    };
+    const action = keyboardActions[event.key.length === 1 ? event.key.toLowerCase() : event.key];
+    if (!action) return;
+    event.preventDefault();
+    submitDiscovery(action);
+  };
 
   const submit = (action: string, durationMs?: number) => {
     const correct = action === current;
@@ -292,7 +490,7 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
 
   if (armed) {
     return (
-      <div className={`secret-discovery is-found family-${interaction.family}`}>
+      <div className={`secret-discovery is-found family-${interaction.family} slot-${discovery.slot}`}>
         <div className="secret-active-badge" role="status" aria-label={t("secretFound")}>
           <Check aria-hidden="true" size={18} />
           <span>{t("secretActiveShort")}</span>
@@ -301,25 +499,58 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
     );
   }
 
+  if (!discovered) {
+    const discoveryLabel = t(DISCOVERY_ACTION_LABELS[currentDiscoveryAction]);
+    return (
+      <div
+        className={`secret-discovery is-searching family-${interaction.family} slot-${discovery.slot} visual-${discovery.visual}`}
+      >
+        <motion.div
+          role="button"
+          tabIndex={0}
+          className={`discovery-anomaly discovery-action-${currentDiscoveryAction}`}
+          aria-label={t("discoveryAccessibleHint", { action: discoveryLabel })}
+          onPointerDown={onDiscoveryPointerDown}
+          onPointerMove={onDiscoveryPointerMove}
+          onPointerUp={onDiscoveryPointerUp}
+          onPointerCancel={() => { discoveryPointer.current = []; }}
+          onKeyDown={onDiscoveryKeyDown}
+          animate={{ opacity: [0.58, 0.94, 0.58] }}
+          transition={{ duration: 2.1 + (discovery.variant % 5) * 0.16, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <span aria-hidden="true">{DISCOVERY_GLYPHS[discovery.visual]}</span>
+          {showDiscoveryHint ? (
+            <motion.small role="status" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}>
+              {t("discoveryNudge", { action: discoveryLabel })}
+            </motion.small>
+          ) : null}
+          <i aria-hidden="true" className="discovery-step">{discoveryProgress + 1}/{discovery.steps.length}</i>
+        </motion.div>
+      </div>
+    );
+  }
+
   const choiceActions = SECRET_FAMILY_ACTIONS[interaction.family];
   const clueStyle = { "--clue-opacity": guidanceOpacity } as CSSProperties;
 
   return (
-    <div className={`secret-discovery ${open ? "is-open" : ""} family-${interaction.family}`} style={clueStyle}>
-      <motion.button
-        type="button"
-        className="secret-trigger"
-        aria-label={t("noticeSomething")}
-        aria-expanded={open}
-        onClick={() => {
-          setShowHint(false);
-          setOpen(true);
-        }}
-        animate={{ opacity: [0.66, 1, 0.66] }}
-        transition={{ duration: 2.4 + (interaction.variant % 4) * 0.2, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <span aria-hidden="true">{FAMILY_GLYPHS[interaction.family]}</span>
-      </motion.button>
+    <div className={`secret-discovery is-discovered ${open ? "is-open" : ""} family-${interaction.family} slot-${discovery.slot}`} style={clueStyle}>
+      {!open ? (
+        <motion.button
+          type="button"
+          className="secret-unlock-trigger"
+          aria-label={t("reopenSecret")}
+          aria-expanded={false}
+          onClick={() => {
+            setShowHint(false);
+            setOpen(true);
+          }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+        >
+          <span aria-hidden="true">{FAMILY_GLYPHS[interaction.family]}</span>
+        </motion.button>
+      ) : null}
 
       {open ? (
         <motion.div

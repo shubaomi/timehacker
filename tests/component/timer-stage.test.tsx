@@ -21,6 +21,17 @@ const baseProps = {
   onEvent: vi.fn(),
 };
 
+const withDefaultDiscovery = (
+  interaction: Omit<typeof DEFAULT_SECRET_INTERACTION, "discovery">,
+) => ({ ...interaction, discovery: DEFAULT_SECRET_INTERACTION.discovery });
+
+async function discoverDefaultAnomaly() {
+  const anomaly = screen.getByRole("button", { name: /Hidden anomaly.*tap it once/i });
+  anomaly.focus();
+  await userEvent.keyboard("[Enter]");
+  await userEvent.keyboard("h");
+}
+
 describe("TimerStage", () => {
   it("shows only hundredths and exposes the primary start/stop control", async () => {
     const onPrimary = vi.fn();
@@ -54,7 +65,7 @@ describe("TimerStage", () => {
   it("reveals progressive guidance and emits real secret actions", async () => {
     const onEvent = vi.fn();
     render(withLocale(<TimerStage {...baseProps} onEvent={onEvent} />));
-    await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+    await discoverDefaultAnomaly();
     const surface = screen.getByRole("group", { name: /Follow the drifting trail.*Next: swipe up/i });
     surface.focus();
     await userEvent.keyboard("[ArrowUp]");
@@ -66,7 +77,7 @@ describe("TimerStage", () => {
 
   it("states that the secret is active and tells the player what to do next", () => {
     render(withLocale(<TimerStage {...baseProps} armed secretProgress={3} />));
-    expect(screen.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeInTheDocument();
+    expect(screen.getByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i)).toBeInTheDocument();
     expect(screen.queryByText(/Accessible ritual controls/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/FULL DILATION/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Secret found" })).not.toBeInTheDocument();
@@ -75,21 +86,50 @@ describe("TimerStage", () => {
 
   it("hides secret discovery while the clock is running", () => {
     render(withLocale(<TimerStage {...baseProps} status="RUNNING" />));
-    expect(screen.queryByRole("button", { name: "Something unusual is hiding here" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Hidden anomaly/i })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["swipe-right", [[10, 50], [70, 50]]],
+    ["rub-horizontal", [[10, 50], [55, 50], [15, 50], [60, 50], [20, 50]]],
+    ["rub-vertical", [[50, 10], [50, 55], [50, 15], [50, 60], [50, 20]]],
+    ["zigzag", [[10, 50], [40, 20], [15, 65], [58, 28], [20, 72]]],
+    ["orbit-clockwise", [[90, 50], [50, 90], [10, 50], [50, 10], [90, 50], [50, 90]]],
+    ["orbit-counterclockwise", [[90, 50], [50, 10], [10, 50], [50, 90], [90, 50], [50, 10]]],
+  ] as const)("recognizes the %s discovery gesture with a real pointer path", (action, points) => {
+    render(withLocale(<TimerStage
+      {...baseProps}
+      secretInteraction={{
+        ...DEFAULT_SECRET_INTERACTION,
+        discovery: { ...DEFAULT_SECRET_INTERACTION.discovery, steps: [action, "tap"] },
+      }}
+    />));
+    const anomaly = screen.getByRole("button", { name: /Hidden anomaly/i });
+    vi.spyOn(anomaly, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerDown(anomaly, { pointerId: 1, clientX: points[0][0], clientY: points[0][1] });
+    points.slice(1, -1).forEach(([clientX, clientY]) => {
+      fireEvent.pointerMove(anomaly, { pointerId: 1, clientX, clientY });
+    });
+    const last = points.at(-1)!;
+    fireEvent.pointerUp(anomaly, { pointerId: 1, clientX: last[0], clientY: last[1] });
+    expect(screen.getByRole("button", { name: /Next discovery move: tap it once/i })).toBeInTheDocument();
   });
 
   it("renders a spatial family and emits its selected target", async () => {
     const onEvent = vi.fn();
-    render(withLocale(<TimerStage {...baseProps} secretInteraction={{ family: "corners", steps: ["corner-nw", "corner-se", "corner-ne"], variant: 0, hintDelayMs: 1_200 }} onEvent={onEvent} />));
-    await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+    render(withLocale(<TimerStage {...baseProps} secretInteraction={withDefaultDiscovery({ family: "corners", steps: ["corner-nw", "corner-se", "corner-ne"], variant: 0, hintDelayMs: 1_200 })} onEvent={onEvent} />));
+    await discoverDefaultAnomaly();
     await userEvent.click(screen.getByRole("button", { name: "touch the upper-left corner" }));
     expect(onEvent).toHaveBeenCalledWith("SECRET_ACTION", "corner-nw", undefined);
   });
 
   it("lets pointer users drag through spatial targets instead of solving by button clicks alone", async () => {
     const onEvent = vi.fn();
-    render(withLocale(<TimerStage {...baseProps} secretInteraction={{ family: "corners", steps: ["corner-nw", "corner-se", "corner-ne"], variant: 0, hintDelayMs: 1_200 }} onEvent={onEvent} />));
-    await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+    render(withLocale(<TimerStage {...baseProps} secretInteraction={withDefaultDiscovery({ family: "corners", steps: ["corner-nw", "corner-se", "corner-ne"], variant: 0, hintDelayMs: 1_200 })} onEvent={onEvent} />));
+    await discoverDefaultAnomaly();
     const surface = screen.getByRole("group", { name: /corners/i });
     const target = screen.getByRole("button", { name: "touch the upper-left corner" });
     vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
@@ -110,8 +150,8 @@ describe("TimerStage", () => {
     ["echo", "echo-up"],
   ] as const)("supports keyboard motion for the %s family", async (family, action) => {
     const onEvent = vi.fn();
-    render(withLocale(<TimerStage {...baseProps} secretInteraction={{ family, steps: [action, action, action], variant: 0, hintDelayMs: 1_200 }} onEvent={onEvent} />));
-    await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+    render(withLocale(<TimerStage {...baseProps} secretInteraction={withDefaultDiscovery({ family, steps: [action, action, action], variant: 0, hintDelayMs: 1_200 })} onEvent={onEvent} />));
+    await discoverDefaultAnomaly();
     const surface = screen.getByRole("group", { name: /Next:/i });
     surface.focus();
     await userEvent.keyboard("[ArrowUp]");
@@ -120,8 +160,8 @@ describe("TimerStage", () => {
 
   it("supports distinct pressure depths from the keyboard", async () => {
     const onEvent = vi.fn();
-    render(withLocale(<TimerStage {...baseProps} secretInteraction={{ family: "pressure", steps: ["press-hold", "press-tap", "press-deep"], variant: 0, hintDelayMs: 1_200 }} onEvent={onEvent} />));
-    await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+    render(withLocale(<TimerStage {...baseProps} secretInteraction={withDefaultDiscovery({ family: "pressure", steps: ["press-hold", "press-tap", "press-deep"], variant: 0, hintDelayMs: 1_200 })} onEvent={onEvent} />));
+    await discoverDefaultAnomaly();
     const surface = screen.getByRole("group", { name: /pressure.*Next:/i });
     surface.focus();
     await userEvent.keyboard("h");
@@ -140,10 +180,10 @@ describe("TimerStage", () => {
     const onEvent = vi.fn();
     render(withLocale(<TimerStage
       {...baseProps}
-      secretInteraction={{ family: family as SecretInteractionFamily, steps: [action, action, action], variant: 0, hintDelayMs: 1_200 }}
+      secretInteraction={withDefaultDiscovery({ family: family as SecretInteractionFamily, steps: [action, action, action], variant: 0, hintDelayMs: 1_200 })}
       onEvent={onEvent}
     />));
-    await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+    await discoverDefaultAnomaly();
     await userEvent.click(document.querySelector(`[data-secret-action="${action}"]`) as HTMLElement);
     expect(onEvent).toHaveBeenCalledWith("SECRET_ACTION", action, undefined);
   });

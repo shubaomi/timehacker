@@ -18,6 +18,63 @@ export const SECRET_INTERACTION_FAMILIES = [
 
 export type SecretInteractionFamily = (typeof SECRET_INTERACTION_FAMILIES)[number];
 
+export const SECRET_DISCOVERY_ACTIONS = [
+  "tap",
+  "double-tap",
+  "hold",
+  "swipe-up",
+  "swipe-right",
+  "swipe-down",
+  "swipe-left",
+  "orbit-clockwise",
+  "orbit-counterclockwise",
+  "rub-horizontal",
+  "rub-vertical",
+  "zigzag",
+] as const;
+
+export type SecretDiscoveryAction = (typeof SECRET_DISCOVERY_ACTIONS)[number];
+
+export const SECRET_DISCOVERY_VISUALS = [
+  "glint",
+  "smudge",
+  "bubble",
+  "seam",
+  "speck",
+  "ripple",
+  "crack",
+  "knot",
+  "dust",
+  "halo",
+] as const;
+
+export type SecretDiscoveryVisual = (typeof SECRET_DISCOVERY_VISUALS)[number];
+
+export const SECRET_DISCOVERY_SLOTS = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "middle-left",
+  "middle-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+  "readout-left",
+  "readout-right",
+] as const;
+
+export type SecretDiscoverySlot = (typeof SECRET_DISCOVERY_SLOTS)[number];
+
+export const secretDiscoveryConfigSchema = z.object({
+  visual: z.enum(SECRET_DISCOVERY_VISUALS),
+  slot: z.enum(SECRET_DISCOVERY_SLOTS),
+  steps: z.array(z.enum(SECRET_DISCOVERY_ACTIONS)).length(2),
+  variant: z.number().int().nonnegative(),
+  hintDelayMs: z.number().int().min(1_000).max(6_000),
+});
+
+export type SecretDiscoveryConfig = z.infer<typeof secretDiscoveryConfigSchema>;
+
 export const SECRET_FAMILY_ACTIONS: Record<SecretInteractionFamily, readonly string[]> = {
   trail: ["swipe-up", "swipe-right", "swipe-down", "swipe-left"],
   smudge: ["wipe-up", "wipe-right", "wipe-down", "wipe-left"],
@@ -38,6 +95,7 @@ export const secretInteractionConfigSchema = z.object({
   steps: z.array(z.string().min(1)).min(3).max(5),
   variant: z.number().int().nonnegative(),
   hintDelayMs: z.number().int().min(800).max(6_000),
+  discovery: secretDiscoveryConfigSchema,
 }).superRefine((interaction, context) => {
   const allowedActions = SECRET_FAMILY_ACTIONS[interaction.family];
   interaction.steps.forEach((action, index) => {
@@ -58,6 +116,13 @@ export const DEFAULT_SECRET_INTERACTION: SecretInteractionConfig = {
   steps: ["swipe-up", "swipe-right", "swipe-down"],
   variant: 0,
   hintDelayMs: 1_200,
+  discovery: {
+    visual: "glint",
+    slot: "top-right",
+    steps: ["tap", "hold"],
+    variant: 0,
+    hintDelayMs: 1_200,
+  },
 };
 
 const CATEGORY_FAMILY_OFFSETS: Record<CheatCategory, number> = {
@@ -82,6 +147,7 @@ export function makeSecretInteraction(
   family: SecretInteractionFamily,
   occurrence: number,
   difficulty: number,
+  catalogIndex: number,
 ): SecretInteractionConfig {
   const actions = SECRET_FAMILY_ACTIONS[family];
   const length = difficulty >= 5 ? 5 : difficulty >= 3 ? 4 : 3;
@@ -93,6 +159,25 @@ export function makeSecretInteraction(
     family,
     steps,
     variant: occurrence,
+    hintDelayMs: HINT_DELAYS[Math.max(0, Math.min(4, difficulty - 1))],
+    discovery: makeSecretDiscovery(catalogIndex, difficulty),
+  };
+}
+
+export function makeSecretDiscovery(
+  catalogIndex: number,
+  difficulty: number,
+): SecretDiscoveryConfig {
+  const boundedIndex = Math.max(0, Math.floor(catalogIndex));
+  const first = SECRET_DISCOVERY_ACTIONS[boundedIndex % SECRET_DISCOVERY_ACTIONS.length];
+  const second = SECRET_DISCOVERY_ACTIONS[
+    Math.floor(boundedIndex / SECRET_DISCOVERY_ACTIONS.length) % SECRET_DISCOVERY_ACTIONS.length
+  ];
+  return {
+    visual: SECRET_DISCOVERY_VISUALS[(boundedIndex * 7) % SECRET_DISCOVERY_VISUALS.length],
+    slot: SECRET_DISCOVERY_SLOTS[(boundedIndex * 3 + Math.floor(boundedIndex / 10)) % SECRET_DISCOVERY_SLOTS.length],
+    steps: [first, second],
+    variant: boundedIndex,
     hintDelayMs: HINT_DELAYS[Math.max(0, Math.min(4, difficulty - 1))],
   };
 }

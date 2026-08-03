@@ -93,18 +93,19 @@ describe("real PostgreSQL integration", () => {
       at: index * 200,
     }));
     const effect = CHEAT_DEFINITIONS.find(({ slug }) => slug === "five-finger-echo")!.effectConfig;
-    const wallDurationMs = effectWallTimeToTarget(effect, 10_010);
+    const wallDurationMs = effectWallTimeToTarget(effect, 10_000) + 1_500;
     const first = await completeGame(
       database,
-      { playerId: id, gameId: game.id, durationMs: 10_010, wallDurationMs, events },
+      { playerId: id, gameId: game.id, durationMs: 9_000, wallDurationMs, events },
       new Date(fixedNow.getTime() + 15_000),
     );
     const second = await completeGame(
       database,
-      { playerId: id, gameId: game.id, durationMs: 10_010, wallDurationMs, events },
+      { playerId: id, gameId: game.id, durationMs: 9_000, wallDurationMs, events },
       new Date(fixedNow.getTime() + 16_000),
     );
     expect(first.success).toBe(true);
+    expect(first.durationMs).toBe(10_000);
     expect(second.id).toBe(first.id);
     expect(first.usedCheat?.slug).toBe("five-finger-echo");
     expect(first.assistanceType).toBe(effect.type);
@@ -116,7 +117,7 @@ describe("real PostgreSQL integration", () => {
     });
     expect(player.totalGames).toBe(1);
     expect(player.successGames).toBe(1);
-    expect(player.bestErrorMs).toBe(10);
+    expect(player.bestErrorMs).toBe(0);
     expect(player.unlockedCheats).toHaveLength(1);
   });
 

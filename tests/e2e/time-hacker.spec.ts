@@ -104,7 +104,25 @@ async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 
   if (expectedSlug) expect(slug).toBe(expectedSlug);
   const definition = CHEAT_DEFINITIONS.find((cheat) => cheat.slug === slug);
   if (!definition?.triggerConfig.secretInteraction) throw new Error(`Missing secret interaction for ${slug ?? "unknown"}`);
-  await page.getByRole("button", { name: "Something unusual is hiding here" }).click();
+  const discoveryKeys: Record<string, string> = {
+    tap: "Enter",
+    "double-tap": "d",
+    hold: "h",
+    "swipe-up": "ArrowUp",
+    "swipe-right": "ArrowRight",
+    "swipe-down": "ArrowDown",
+    "swipe-left": "ArrowLeft",
+    "orbit-clockwise": "c",
+    "orbit-counterclockwise": "a",
+    "rub-horizontal": "x",
+    "rub-vertical": "y",
+    zigzag: "z",
+  };
+  const anomaly = page.locator(".discovery-anomaly");
+  await anomaly.focus();
+  for (const action of definition.triggerConfig.secretInteraction.discovery.steps) {
+    await page.keyboard.press(discoveryKeys[action]);
+  }
   await expect(page.locator(".secret-card")).toHaveCSS("opacity", "1");
   if (onOpened) await onOpened();
   const keys: Record<string, string> = {
@@ -151,7 +169,7 @@ async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 
     }
     await page.mouse.up();
   }
-  await expect(page.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeVisible();
+  await expect(page.getByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i)).toBeVisible();
 }
 
 test.afterEach(async ({ page }) => {
@@ -268,10 +286,12 @@ test("an activated full-dilation secret visibly slows the running stopwatch", as
   await armAssignedCheat(page, definition.slug, 1);
   await page.getByRole("button", { name: /START.*Space or Enter/i }).click();
   await expect(page.getByRole("button", { name: /STOP.*Space or Enter/i })).toBeVisible();
-  await page.waitForTimeout(1_200);
-  const displayedSeconds = Number.parseFloat(await page.locator(".timer-readout > span").innerText());
-  expect(displayedSeconds).toBeGreaterThan(0.35);
-  expect(displayedSeconds).toBeLessThan(0.8);
+  const before = Number.parseFloat(await page.locator(".timer-readout > span").innerText());
+  await page.waitForTimeout(1_000);
+  const after = Number.parseFloat(await page.locator(".timer-readout > span").innerText());
+  const displayedDelta = after - before;
+  expect(displayedDelta).toBeGreaterThan(0.35);
+  expect(displayedDelta).toBeLessThan(0.65);
   await page.getByRole("button", { name: /STOP.*Space or Enter/i }).click();
   await expect(page.getByRole("heading", { name: "So close. Again?" })).toBeVisible();
 });
