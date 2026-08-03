@@ -535,6 +535,27 @@ textarea:focus-visible,
 }
 
 .choice-playground { display: block; }
+.choice-playground.is-dragging {
+  border-color: rgba(126, 105, 201, 0.42);
+  cursor: grabbing;
+}
+
+.secret-drag-cursor {
+  position: absolute;
+  z-index: 5;
+  width: 22px;
+  height: 22px;
+  translate: -50% -50%;
+  border: 4px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  background: var(--coral);
+  box-shadow:
+    0 0 0 9px rgba(255, 115, 93, 0.14),
+    -12px 7px 0 -7px rgba(126, 105, 201, 0.35),
+    -24px 12px 0 -9px rgba(126, 105, 201, 0.18);
+  pointer-events: none;
+}
+
 .choice-playground > button {
   position: absolute;
   width: 42px;
@@ -551,42 +572,42 @@ textarea:focus-visible,
 .choice-playground > button.is-current { box-shadow: 0 0 0 8px rgba(255, 217, 106, 0.2); }
 .choice-hint { position: absolute !important; left: 12px; right: 12px; bottom: 8px; text-align: center; }
 
-.choice-rhythm > button:nth-child(1), .choice-switchboard > button:nth-child(1), .choice-digits > button:nth-child(1) { left: 35px; top: 48px; }
-.choice-rhythm > button:nth-child(2), .choice-switchboard > button:nth-child(2), .choice-digits > button:nth-child(2) { left: calc(50% - 21px); top: 28px; }
-.choice-rhythm > button:nth-child(3), .choice-switchboard > button:nth-child(3), .choice-digits > button:nth-child(3) { right: 35px; top: 48px; }
-.choice-switchboard > button:nth-child(4), .choice-digits > button:nth-child(4) { left: calc(50% - 21px); top: 82px; }
-.choice-rhythm > button:nth-child(1) { width: 30px; height: 30px; top: 55px; }
-.choice-rhythm > button:nth-child(2) { width: 52px; height: 52px; }
-.choice-rhythm > button:nth-child(3) { width: 42px; height: 58px; border-radius: 18px; }
+.choice-rhythm > button:nth-of-type(1), .choice-switchboard > button:nth-of-type(1), .choice-digits > button:nth-of-type(1) { left: 35px; top: 48px; }
+.choice-rhythm > button:nth-of-type(2), .choice-switchboard > button:nth-of-type(2), .choice-digits > button:nth-of-type(2) { left: calc(50% - 21px); top: 28px; }
+.choice-rhythm > button:nth-of-type(3), .choice-switchboard > button:nth-of-type(3), .choice-digits > button:nth-of-type(3) { right: 35px; top: 48px; }
+.choice-switchboard > button:nth-of-type(4), .choice-digits > button:nth-of-type(4) { left: calc(50% - 21px); top: 82px; }
+.choice-rhythm > button:nth-of-type(1) { width: 30px; height: 30px; top: 55px; }
+.choice-rhythm > button:nth-of-type(2) { width: 52px; height: 52px; }
+.choice-rhythm > button:nth-of-type(3) { width: 42px; height: 58px; border-radius: 18px; }
 
 .choice-pulse > button { background: transparent; }
-.choice-pulse > button:nth-child(1) { width: 34px; height: 34px; left: 38px; top: 52px; }
-.choice-pulse > button:nth-child(2) { width: 52px; height: 52px; left: calc(50% - 26px); top: 43px; }
-.choice-pulse > button:nth-child(3) { width: 68px; height: 68px; right: 32px; top: 35px; }
+.choice-pulse > button:nth-of-type(1) { width: 34px; height: 34px; left: 38px; top: 52px; }
+.choice-pulse > button:nth-of-type(2) { width: 52px; height: 52px; left: calc(50% - 26px); top: 43px; }
+.choice-pulse > button:nth-of-type(3) { width: 68px; height: 68px; right: 32px; top: 35px; }
 
-.choice-corners > button:nth-child(1) { left: 14px; top: 14px; border-radius: 15px 50% 50%; }
-.choice-corners > button:nth-child(2) { right: 14px; top: 14px; border-radius: 50% 15px 50% 50%; }
-.choice-corners > button:nth-child(3) { right: 14px; bottom: 14px; border-radius: 50% 50% 15px 50%; }
-.choice-corners > button:nth-child(4) { left: 14px; bottom: 14px; border-radius: 50% 50% 50% 15px; }
+.choice-corners > button:nth-of-type(1) { left: 14px; top: 14px; border-radius: 15px 50% 50%; }
+.choice-corners > button:nth-of-type(2) { right: 14px; top: 14px; border-radius: 50% 15px 50% 50%; }
+.choice-corners > button:nth-of-type(3) { right: 14px; bottom: 14px; border-radius: 50% 50% 15px 50%; }
+.choice-corners > button:nth-of-type(4) { left: 14px; bottom: 14px; border-radius: 50% 50% 50% 15px; }
 
 .choice-constellation > button { width: 30px; height: 30px; border: 0; background: transparent; color: #dda12f; font-size: 0.62rem; }
-.choice-constellation > button:nth-child(1) { left: 25px; top: 22px; }
-.choice-constellation > button:nth-child(2) { left: 46%; top: 14px; }
-.choice-constellation > button:nth-child(3) { right: 25px; top: 50px; }
-.choice-constellation > button:nth-child(4) { left: 32%; bottom: 18px; }
-.choice-constellation > button:nth-child(5) { right: 30%; bottom: 14px; }
+.choice-constellation > button:nth-of-type(1) { left: 25px; top: 22px; }
+.choice-constellation > button:nth-of-type(2) { left: 46%; top: 14px; }
+.choice-constellation > button:nth-of-type(3) { right: 25px; top: 50px; }
+.choice-constellation > button:nth-of-type(4) { left: 32%; bottom: 18px; }
+.choice-constellation > button:nth-of-type(5) { right: 30%; bottom: 14px; }
 
 .choice-orbit::before { content: ""; position: absolute; width: 84px; height: 84px; left: 50%; top: 50%; translate: -50% -50%; border: 1px dashed rgba(112, 94, 181, 0.25); border-radius: 50%; }
-.choice-orbit > button:nth-child(1) { left: calc(50% - 21px); top: 4px; }
-.choice-orbit > button:nth-child(2) { right: 46px; top: calc(50% - 21px); }
-.choice-orbit > button:nth-child(3) { left: calc(50% - 21px); bottom: 4px; }
-.choice-orbit > button:nth-child(4) { left: 46px; top: calc(50% - 21px); }
+.choice-orbit > button:nth-of-type(1) { left: calc(50% - 21px); top: 4px; }
+.choice-orbit > button:nth-of-type(2) { right: 46px; top: calc(50% - 21px); }
+.choice-orbit > button:nth-of-type(3) { left: calc(50% - 21px); bottom: 4px; }
+.choice-orbit > button:nth-of-type(4) { left: 46px; top: calc(50% - 21px); }
 
 .choice-balance::before { content: ""; position: absolute; left: 30px; right: 30px; top: 50%; height: 4px; border-radius: 999px; background: #dce9ed; }
 .choice-balance > button { top: calc(50% - 21px); background: #d9f8ed; }
-.choice-balance > button:nth-child(1) { left: 25px; }
-.choice-balance > button:nth-child(2) { left: calc(50% - 21px); }
-.choice-balance > button:nth-child(3) { right: 25px; }
+.choice-balance > button:nth-of-type(1) { left: 25px; }
+.choice-balance > button:nth-of-type(2) { left: calc(50% - 21px); }
+.choice-balance > button:nth-of-type(3) { right: 25px; }
 
 .gesture-progress {
   display: flex;

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { TimerStage } from "@/components/timer-stage";
@@ -84,6 +84,25 @@ describe("TimerStage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
     await userEvent.click(screen.getByRole("button", { name: "touch the upper-left corner" }));
     expect(onEvent).toHaveBeenCalledWith("SECRET_ACTION", "corner-nw", undefined);
+  });
+
+  it("lets pointer users drag through spatial targets instead of solving by button clicks alone", async () => {
+    const onEvent = vi.fn();
+    render(withLocale(<TimerStage {...baseProps} secretInteraction={{ family: "corners", steps: ["corner-nw", "corner-se", "corner-ne"], variant: 0, hintDelayMs: 1_200 }} onEvent={onEvent} />));
+    await userEvent.click(screen.getByRole("button", { name: "Something unusual is hiding here" }));
+    const surface = screen.getByRole("group", { name: /corners/i });
+    const target = screen.getByRole("button", { name: "touch the upper-left corner" });
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
+      x: 40, y: 40, left: 40, top: 40, right: 82, bottom: 82, width: 42, height: 42,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.pointerDown(surface, { pointerId: 1, clientX: 120, clientY: 90 });
+    fireEvent.pointerMove(surface, { pointerId: 1, clientX: 60, clientY: 60 });
+    fireEvent.pointerUp(surface, { pointerId: 1, clientX: 60, clientY: 60 });
+
+    expect(onEvent).toHaveBeenCalledWith("SECRET_ACTION", "corner-nw", undefined);
+    expect(surface).toHaveAccessibleDescription(/drag through the glowing marks/i);
   });
 
   it.each([

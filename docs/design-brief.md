@@ -45,11 +45,12 @@ Opening the drawer softly blurs the game beneath it. Collection and ranking open
 
 - Every one of the 100 cheats has a deterministic, unique configuration of 3 to 5 steps across 12 interaction families.
 - The families mix directional traces, wiping, echoes, rhythm, pulse rings, pressure duration, spatial corners, stars, digits, pictogram switches, orbit points, and balance zones.
-- Touch and mouse use direct manipulation; keyboard equivalents remain available for every family.
+- Touch and mouse use direct manipulation: motion families are swiped, pressure is held, and spatial families are solved by pressing and dragging through glowing targets. Tapping remains a fallback, and keyboard equivalents remain available for every family.
 - The surface first gives a dynamic visual clue. It reveals the explicit next action only after a difficulty-scaled delay, a wrong action, or a player request. It never exposes the complete sequence.
 - A wrong step softly resets progress. Completing the sequence arms the real assigned cheat through the existing event API.
 - The server independently validates event order, values, timing window, assigned cheat, and applied effect. The client cannot award itself a success.
 - The original trigger definitions remain supported for compatibility and test coverage, but are not exposed as service controls in the main UI.
+- Every generated assistance effect provides at least 1.2 seconds of wall-clock reaction time between displayed `9.40` and `10.00`; tolerance assistance also visibly slows the final zone instead of changing only the hidden judgment window.
 
 ## Visual tokens
 

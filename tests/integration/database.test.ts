@@ -144,11 +144,13 @@ describe("real PostgreSQL integration", () => {
       { type: "RITUAL_PULSE", value: "short", at: 100 },
       { type: "RITUAL_PULSE", value: "long", at: 500 },
     ];
+    const toleranceEffect = CHEAT_DEFINITIONS.find(({ slug }) => slug === "double-relay")!.effectConfig;
+    expect(toleranceEffect.type).toBe("TOLERANCE_ASSIST");
     const hackerResult = await completeGame(database, {
       playerId: hackerId,
       gameId: hackerGame.id,
       durationMs: 10_015,
-      wallDurationMs: 10_015,
+      wallDurationMs: effectWallTimeToTarget(toleranceEffect, 10_015),
       events,
     });
     const pureResult = await completeGame(database, {

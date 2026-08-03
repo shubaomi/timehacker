@@ -4,6 +4,7 @@ import { Check, CircleHelp, X } from "lucide-react";
 import { motion } from "motion/react";
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -149,14 +150,19 @@ function actionForDirection(family: SecretInteractionFamily, direction: string) 
 
 export function SecretInteraction({ interaction, progress, armed, onEvent }: SecretInteractionProps) {
   const { t } = useLocale();
+  const dragInstructionId = useId();
   const [open, setOpen] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [softReset, setSoftReset] = useState(false);
+  const [dragPoint, setDragPoint] = useState({ active: false, x: 0, y: 0 });
   const pointerStart = useRef({ x: 0, y: 0, at: 0 });
+  const choiceDrag = useRef({ active: false, moved: false, startX: 0, startY: 0, startAction: null as string | null });
+  const lastDragAction = useRef<string | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const current = interaction.steps[Math.min(progress, interaction.steps.length - 1)] ?? interaction.steps[0];
   const actionLabel = t(ACTION_LABELS[current] ?? "actionTryAgain");
   const familyLabel = t(FAMILY_LABELS[interaction.family]);
+  const usesDirectTargets = !GESTURE_FAMILIES.has(interaction.family) && interaction.family !== "pressure";
   const guidanceOpacity = Math.max(0.24, 0.72 - (interaction.hintDelayMs - 1_200) / 8_000);
   const choiceMinOpacity = Math.min(0.7, 0.4 + (interaction.hintDelayMs - 1_200) / 10_000);
 
@@ -201,6 +207,59 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
     const durationMs = event.timeStamp - pointerStart.current.at;
     const action = durationMs >= 1_250 ? "press-deep" : durationMs >= 650 ? "press-hold" : "press-tap";
     submit(action, durationMs);
+  };
+
+  const choiceActionAt = (surface: HTMLDivElement, clientX: number, clientY: number) => {
+    for (const target of surface.querySelectorAll<HTMLElement>("[data-secret-action]")) {
+      const rect = target.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        return target.dataset.secretAction ?? null;
+      }
+    }
+    return null;
+  };
+
+  const onChoicePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const surfaceRect = event.currentTarget.getBoundingClientRect();
+    const startTarget = (event.target as HTMLElement).closest<HTMLElement>("[data-secret-action]");
+    choiceDrag.current = {
+      active: true,
+      moved: false,
+      startX: event.clientX,
+      startY: event.clientY,
+      startAction: startTarget?.dataset.secretAction ?? null,
+    };
+    lastDragAction.current = null;
+    setDragPoint({ active: true, x: event.clientX - surfaceRect.left, y: event.clientY - surfaceRect.top });
+  };
+
+  const onChoicePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!choiceDrag.current.active) return;
+    const surfaceRect = event.currentTarget.getBoundingClientRect();
+    const distance = Math.hypot(event.clientX - choiceDrag.current.startX, event.clientY - choiceDrag.current.startY);
+    if (distance >= 10) choiceDrag.current.moved = true;
+    setDragPoint({ active: true, x: event.clientX - surfaceRect.left, y: event.clientY - surfaceRect.top });
+    if (!choiceDrag.current.moved) return;
+    const action = choiceActionAt(event.currentTarget, event.clientX, event.clientY);
+    if (!action) {
+      lastDragAction.current = null;
+      return;
+    }
+    if (action !== lastDragAction.current) {
+      lastDragAction.current = action;
+      submit(action);
+    }
+  };
+
+  const finishChoicePointer = () => {
+    if (choiceDrag.current.active && !choiceDrag.current.moved && choiceDrag.current.startAction) {
+      submit(choiceDrag.current.startAction);
+    }
+    choiceDrag.current.active = false;
+    lastDragAction.current = null;
+    setDragPoint((point) => ({ ...point, active: false }));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -273,7 +332,12 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
           </button>
           <div className="secret-card-heading">
             <span aria-hidden="true">{FAMILY_GLYPHS[interaction.family]}</span>
-            <div><b>{familyLabel}</b><p>{t("secretObserve")}</p></div>
+            <div>
+              <b>{familyLabel}</b>
+              <p id={usesDirectTargets ? dragInstructionId : undefined}>
+                {t(usesDirectTargets ? "dragThroughTargets" : "secretObserve")}
+              </p>
+            </div>
           </div>
 
           {GESTURE_FAMILIES.has(interaction.family) ? (
@@ -303,7 +367,25 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
               {showHint ? <strong>{actionLabel}</strong> : <small>{t("feelThePressure")}</small>}
             </div>
           ) : (
-            <div className={`secret-playground choice-playground choice-${interaction.family}`} role="group" aria-label={familyLabel}>
+            <div
+              className={`secret-playground choice-playground choice-${interaction.family} ${dragPoint.active ? "is-dragging" : ""}`}
+              role="group"
+              aria-label={familyLabel}
+              aria-describedby={dragInstructionId}
+              onPointerDown={onChoicePointerDown}
+              onPointerMove={onChoicePointerMove}
+              onPointerUp={finishChoicePointer}
+              onPointerCancel={finishChoicePointer}
+            >
+              {dragPoint.active ? (
+                <motion.i
+                  className="secret-drag-cursor"
+                  aria-hidden="true"
+                  style={{ left: dragPoint.x, top: dragPoint.y }}
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                />
+              ) : null}
               {choiceActions.map((action, index) => (
                 <motion.button
                   type="button"
@@ -311,7 +393,9 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
                   data-secret-action={action}
                   className={action === current ? "is-current" : ""}
                   aria-label={t(ACTION_LABELS[action] ?? "actionTryAgain")}
-                  onClick={() => submit(action)}
+                  onClick={(event) => {
+                    if (event.detail === 0) submit(action);
+                  }}
                   animate={action === current ? { opacity: [choiceMinOpacity, 1, choiceMinOpacity] } : { opacity: 0.7 }}
                   transition={{ duration: 1.5 + index * 0.08, repeat: action === current ? Infinity : 0 }}
                 >

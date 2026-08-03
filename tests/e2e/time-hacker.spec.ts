@@ -7,6 +7,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../src/generated/prisma/client";
 import { Pool } from "pg";
 import { CHEAT_DEFINITIONS } from "../../src/game/cheats";
+import { effectWallTimeToTarget } from "../../src/game/effects";
 import { SECRET_INTERACTION_FAMILIES } from "../../src/game/secret-interactions";
 import { selectNextCheat } from "../../src/game/selection";
 import { config } from "dotenv";
@@ -123,15 +124,32 @@ async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 
     "press-hold": "h",
     "press-deep": "d",
   };
-  for (const action of definition.triggerConfig.secretInteraction.steps) {
-    const key = keys[action];
-    if (key) {
+  const steps = definition.triggerConfig.secretInteraction.steps;
+  if (steps.every((action) => Boolean(keys[action]))) {
+    for (const action of steps) {
       const surface = page.locator(".secret-playground");
       await surface.focus();
-      await page.keyboard.press(key);
-    } else {
-      await page.locator(`[data-secret-action="${action}"]`).click();
+      await page.keyboard.press(keys[action]);
     }
+  } else {
+    const surface = page.locator(".choice-playground");
+    const surfaceBox = await surface.boundingBox();
+    if (!surfaceBox) throw new Error("Could not find the direct-manipulation surface");
+    const neutralPoint = { x: surfaceBox.x + 5, y: surfaceBox.y + surfaceBox.height / 2 };
+    await page.mouse.move(neutralPoint.x, neutralPoint.y);
+    await page.mouse.down();
+    for (const [index, action] of steps.entries()) {
+      const target = page.locator(`[data-secret-action="${action}"]`);
+      const targetBox = await target.boundingBox();
+      if (!targetBox) throw new Error(`Could not drag to ${action}`);
+      const targetPoint = { x: targetBox.x + targetBox.width / 2, y: targetBox.y + targetBox.height / 2 };
+      await page.mouse.move(targetPoint.x, targetPoint.y);
+      if (index < steps.length - 1) {
+        await expect(page.getByText(`Completed ${index + 1} of ${steps.length} steps`)).toBeVisible();
+      }
+      await page.mouse.move(neutralPoint.x, neutralPoint.y);
+    }
+    await page.mouse.up();
   }
   await expect(page.getByText(/Secret active.*easier to stop at 10\.00.*Press Start/i)).toBeVisible();
 }
@@ -215,7 +233,8 @@ test("game journey verifies failure, cheat success, share fallback, and persiste
   await page.getByRole("button", { name: /Run again.*Space or Enter/i }).click();
   await armAssignedCheat(page);
   await takeEvidence(page, testInfo.project.name, "armed");
-  await normalizeNextCompletionToTarget(page, 10_500);
+  const journeyEffect = CHEAT_DEFINITIONS.find(({ slug }) => slug === "five-finger-echo")!.effectConfig;
+  await normalizeNextCompletionToTarget(page, effectWallTimeToTarget(journeyEffect));
   const armedPrimary = page.getByRole("button", { name: /START.*Space or Enter/i });
   await armedPrimary.click();
   await expect(page.getByRole("button", { name: /STOP.*Space or Enter/i })).toBeVisible();
@@ -236,6 +255,25 @@ test("game journey verifies failure, cheat success, share fallback, and persiste
   await page.getByRole("button", { name: "Open game menu" }).click();
   await expect(page.getByRole("button", { name: /Secrets.*1.*100/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeEnabled();
+});
+
+test("an activated full-dilation secret visibly slows the running stopwatch", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "Timing effect measurement runs once on desktop.");
+  const definition = CHEAT_DEFINITIONS.find(({ difficulty, effectConfig }) =>
+    difficulty === 1 && effectConfig.type === "FULL_DILATION",
+  );
+  if (!definition) throw new Error("No D1 full-dilation secret is available");
+  await createBrowserPlayer(page, playerIdForAssignment(definition.slug, 0, 1));
+  await openReadyGame(page);
+  await armAssignedCheat(page, definition.slug, 1);
+  await page.getByRole("button", { name: /START.*Space or Enter/i }).click();
+  await expect(page.getByRole("button", { name: /STOP.*Space or Enter/i })).toBeVisible();
+  await page.waitForTimeout(1_200);
+  const displayedSeconds = Number.parseFloat(await page.locator(".timer-readout > span").innerText());
+  expect(displayedSeconds).toBeGreaterThan(0.35);
+  expect(displayedSeconds).toBeLessThan(0.8);
+  await page.getByRole("button", { name: /STOP.*Space or Enter/i }).click();
+  await expect(page.getByRole("heading", { name: "So close. Again?" })).toBeVisible();
 });
 
 test("unlocked journey verifies Pure Mode keyboard control, collection, ranks, and isolated reset", async ({ page }, testInfo) => {

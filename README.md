@@ -7,8 +7,8 @@ Time Hacker is a bilingual, mobile-first timing game: stop the clock at exactly 
 - Anonymous player identity persisted in local storage and PostgreSQL
 - English and Simplified Chinese UI with a persistent language switch and localized secrets collection
 - With Secrets mode containing 100 server-verified cheats, 20 per difficulty tier
-- Four assistance families: full dilation, final-zone dilation, tolerance assist, and brake pulse
-- Twelve playful interaction families with unique, server-verified 3-to-5-step configurations and progressive hints
+- Four assistance families with a perceptible reaction window near `10.00`: full dilation, final-zone dilation, tolerance assist, and brake pulse
+- Twelve playful interaction families with unique, server-verified 3-to-5-step configurations, progressive hints, and drag-first spatial controls
 - Pure Mode unlocked after the first successful run
 - A strict `±10 ms` success window and a 50-start daily limit (UTC)
 - Progression, nickname, collection, three ranking views, sharing, and isolated reset
