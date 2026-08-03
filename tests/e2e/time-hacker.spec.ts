@@ -125,6 +125,10 @@ async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 
   }
   await expect(page.locator(".secret-card")).toHaveCSS("opacity", "1");
   if (onOpened) await onOpened();
+  if (definition.triggerConfig.secretInteraction.cameraGesture) {
+    await expect(page.getByRole("button", { name: "Enable camera" })).toBeVisible();
+    await page.getByRole("button", { name: "Use touch instead" }).click();
+  }
   const keys: Record<string, string> = {
     "swipe-up": "ArrowUp",
     "swipe-right": "ArrowRight",
@@ -294,6 +298,29 @@ test("an activated full-dilation secret visibly slows the running stopwatch", as
   expect(displayedDelta).toBeLessThan(0.65);
   await page.getByRole("button", { name: /STOP.*Space or Enter/i }).click();
   await expect(page.getByRole("heading", { name: "So close. Again?" })).toBeVisible();
+});
+
+test("a camera-enabled secret offers opt-in and preserves the touch fallback", async ({ page }, testInfo) => {
+  test.skip(
+    !["desktop-1440", "mobile-390"].includes(testInfo.project.name),
+    "Camera fallback runs on representative desktop and mobile viewports.",
+  );
+  const definition = CHEAT_DEFINITIONS.find(({ slug }) => slug === "quiet-circuit")!;
+  const playerId = playerIdForAssignment(definition.slug, 0, definition.difficulty);
+  await createBrowserPlayer(page, playerId);
+  await database.user.create({
+    data: { playerId, currentLevel: 20, successGames: 1, firstSuccessAt: new Date() },
+  });
+  await openReadyGame(page);
+  await page.getByRole("button", { name: "Open game menu" }).click();
+  await page.getByRole("combobox").selectOption(String(definition.difficulty));
+  await page.getByRole("button", { name: "Close game menu" }).click();
+  await armAssignedCheat(
+    page,
+    definition.slug,
+    definition.difficulty,
+    () => takeEvidence(page, testInfo.project.name, "camera-secret-opt-in"),
+  );
 });
 
 test("unlocked journey verifies Pure Mode keyboard control, collection, ranks, and isolated reset", async ({ page }, testInfo) => {

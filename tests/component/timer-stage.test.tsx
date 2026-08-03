@@ -75,6 +75,18 @@ describe("TimerStage", () => {
     expect(screen.getByText("swipe up")).toBeInTheDocument();
   });
 
+  it("offers an explicit camera opt-in and keeps touch as a fallback", async () => {
+    render(withLocale(<TimerStage
+      {...baseProps}
+      secretInteraction={{ ...DEFAULT_SECRET_INTERACTION, cameraGesture: "air-loop" }}
+    />));
+    await discoverDefaultAnomaly();
+    expect(screen.getByText("A gesture can open this secret")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enable camera" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: "Use touch instead" }));
+    expect(screen.getByRole("group", { name: /Follow the drifting trail.*Next: swipe up/i })).toBeInTheDocument();
+  });
+
   it("states that the secret is active and tells the player what to do next", () => {
     render(withLocale(<TimerStage {...baseProps} armed secretProgress={3} />));
     expect(screen.getByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i)).toBeInTheDocument();

@@ -766,6 +766,139 @@ textarea:focus-visible,
   text-align: center;
 }
 
+.camera-unlock {
+  display: grid;
+  gap: 10px;
+}
+
+.camera-surface {
+  position: relative;
+  min-height: 190px;
+  overflow: hidden;
+  border: 2px solid rgba(126, 105, 201, 0.18);
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 226, 130, 0.22), transparent 30%),
+    #eaf6f8;
+  isolation: isolate;
+}
+
+.camera-surface video,
+.camera-surface canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-surface video { transform: scaleX(-1); }
+.camera-surface canvas { z-index: 2; pointer-events: none; }
+
+.camera-empty-state,
+.camera-status-panel {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  padding: 28px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.camera-empty-state > span {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(255, 226, 130, 0.72);
+  box-shadow: 0 9px 20px rgba(121, 101, 46, 0.12);
+}
+
+.camera-empty-state strong,
+.camera-status-panel strong { font-size: 0.82rem; }
+.camera-empty-state p { max-width: 250px; margin: 0; color: var(--muted); font-size: 0.7rem; line-height: 1.45; }
+
+.camera-status-panel { background: rgba(238, 248, 250, 0.92); }
+.camera-status-panel.is-success { background: rgba(224, 251, 240, 0.94); color: #2f7f63; }
+.camera-status-panel.is-error { background: rgba(255, 242, 238, 0.95); color: #a6493e; }
+.camera-spinner { animation: camera-spin 1s linear infinite; }
+@keyframes camera-spin { to { transform: rotate(360deg); } }
+
+.camera-live-hint {
+  position: absolute;
+  z-index: 4;
+  left: 10px;
+  top: 10px;
+  max-width: calc(100% - 20px);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  box-shadow: 0 6px 18px rgba(40, 57, 83, 0.15);
+  font-size: 0.66rem;
+  font-weight: 720;
+}
+
+.camera-progress {
+  position: absolute;
+  z-index: 5;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.camera-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--coral);
+  transition: width 120ms linear;
+}
+
+.camera-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.camera-actions button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font-size: 0.69rem;
+  font-weight: 760;
+}
+
+.camera-enable { border: 0; background: var(--coral); color: var(--ink); }
+.camera-fallback { border: 1px solid rgba(85, 104, 143, 0.17); background: #edf6fb; color: var(--ink); }
+
+.camera-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.61rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
 .secret-found-note {
   position: absolute;
   left: 20px;

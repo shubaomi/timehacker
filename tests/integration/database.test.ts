@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
-import { CHEAT_DEFINITIONS } from "@/game/cheats";
+import { CHEAT_DEFINITIONS, cheatTriggerConfigSchema } from "@/game/cheats";
 import { effectWallTimeToTarget } from "@/game/effects";
 import { completeGame, startGame } from "@/server/game-service";
 import {
@@ -59,6 +59,11 @@ describe("real PostgreSQL integration", () => {
       await database.cheatMethod.groupBy({ by: ["slug"], _count: { slug: true } }),
     ).toHaveLength(100);
     expect(await database.cheatMethod.count({ where: { nameZh: { not: null } } })).toBe(100);
+    const persistedCameraGestures = (await database.cheatMethod.findMany({ select: { triggerConfig: true } }))
+      .map(({ triggerConfig }) => cheatTriggerConfigSchema.parse(triggerConfig).secretInteraction?.cameraGesture)
+      .filter(Boolean);
+    expect(persistedCameraGestures).toHaveLength(6);
+    expect(new Set(persistedCameraGestures)).toHaveProperty("size", 6);
   });
 
   it("creates an anonymous player idempotently and exposes a non-repeating assignment", async () => {

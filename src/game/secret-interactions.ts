@@ -65,6 +65,26 @@ export const SECRET_DISCOVERY_SLOTS = [
 
 export type SecretDiscoverySlot = (typeof SECRET_DISCOVERY_SLOTS)[number];
 
+export const CAMERA_GESTURES = [
+  "air-loop",
+  "air-zigzag",
+  "open-palm",
+  "fist-open",
+  "victory",
+  "pinch-drag",
+] as const;
+
+export type CameraGesture = (typeof CAMERA_GESTURES)[number];
+
+const CAMERA_GESTURE_CHEATS: Readonly<Record<string, CameraGesture>> = {
+  "archive-figure-eight": "air-loop",
+  "cipher-knot": "air-zigzag",
+  "quiet-circuit": "open-palm",
+  "split-operator": "fist-open",
+  "silent-constellation": "victory",
+  "pressure-singularity": "pinch-drag",
+};
+
 export const secretDiscoveryConfigSchema = z.object({
   visual: z.enum(SECRET_DISCOVERY_VISUALS),
   slot: z.enum(SECRET_DISCOVERY_SLOTS),
@@ -96,6 +116,7 @@ export const secretInteractionConfigSchema = z.object({
   variant: z.number().int().nonnegative(),
   hintDelayMs: z.number().int().min(800).max(6_000),
   discovery: secretDiscoveryConfigSchema,
+  cameraGesture: z.enum(CAMERA_GESTURES).optional(),
 }).superRefine((interaction, context) => {
   const allowedActions = SECRET_FAMILY_ACTIONS[interaction.family];
   interaction.steps.forEach((action, index) => {
@@ -148,6 +169,7 @@ export function makeSecretInteraction(
   occurrence: number,
   difficulty: number,
   catalogIndex: number,
+  slug?: string,
 ): SecretInteractionConfig {
   const actions = SECRET_FAMILY_ACTIONS[family];
   const length = difficulty >= 5 ? 5 : difficulty >= 3 ? 4 : 3;
@@ -161,6 +183,7 @@ export function makeSecretInteraction(
     variant: occurrence,
     hintDelayMs: HINT_DELAYS[Math.max(0, Math.min(4, difficulty - 1))],
     discovery: makeSecretDiscovery(catalogIndex, difficulty),
+    ...(slug && CAMERA_GESTURE_CHEATS[slug] ? { cameraGesture: CAMERA_GESTURE_CHEATS[slug] } : {}),
   };
 }
 

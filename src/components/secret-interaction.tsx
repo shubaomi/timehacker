@@ -19,6 +19,7 @@ import {
 } from "@/game/secret-interactions";
 import type { MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
+import { CameraGestureUnlock } from "./camera-gesture-unlock";
 
 interface SecretInteractionProps {
   interaction: SecretInteractionConfig;
@@ -257,6 +258,9 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
   const [open, setOpen] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [softReset, setSoftReset] = useState(false);
+  const [unlockMode, setUnlockMode] = useState<"camera" | "touch">(
+    interaction.cameraGesture ? "camera" : "touch",
+  );
   const [dragPoint, setDragPoint] = useState({ active: false, x: 0, y: 0 });
   const pointerStart = useRef({ x: 0, y: 0, at: 0 });
   const choiceDrag = useRef({ active: false, moved: false, startX: 0, startY: 0, startAction: null as string | null });
@@ -566,11 +570,23 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
             <div>
               <b>{familyLabel}</b>
               <p id={usesDirectTargets ? dragInstructionId : undefined}>
-                {t(usesDirectTargets ? "dragThroughTargets" : "secretObserve")}
+                {interaction.cameraGesture && unlockMode === "camera"
+                  ? t("cameraIntro")
+                  : t(usesDirectTargets ? "dragThroughTargets" : "secretObserve")}
               </p>
             </div>
           </div>
 
+          {interaction.cameraGesture && unlockMode === "camera" ? (
+            <CameraGestureUnlock
+              gesture={interaction.cameraGesture}
+              onComplete={() => {
+                interaction.steps.forEach((action) => onEvent("SECRET_ACTION", action));
+              }}
+              onFallback={() => setUnlockMode("touch")}
+            />
+          ) : (
+            <>
           {GESTURE_FAMILIES.has(interaction.family) ? (
             <div
               className={`secret-playground gesture-playground action-${directionFromAction(current)}`}
@@ -649,6 +665,8 @@ export function SecretInteraction({ interaction, progress, armed, onEvent }: Sec
             ) : null}
           </div>
           <small className="keyboard-gesture-hint">{t("interactionKeyboardHint")}</small>
+            </>
+          )}
         </motion.div>
       ) : null}
     </div>

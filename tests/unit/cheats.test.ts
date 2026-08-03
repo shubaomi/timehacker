@@ -8,6 +8,7 @@ import {
 } from "@/game/cheats";
 import type { CheatEvent, EventPattern } from "@/game/types";
 import {
+  CAMERA_GESTURES,
   SECRET_DISCOVERY_ACTIONS,
   SECRET_DISCOVERY_SLOTS,
   SECRET_DISCOVERY_VISUALS,
@@ -111,6 +112,15 @@ describe("the one hundred cheat definitions", () => {
     expect(new Set(discoveries.map(({ visual }) => visual))).toEqual(new Set(SECRET_DISCOVERY_VISUALS));
     expect(new Set(discoveries.map(({ slot }) => slot))).toEqual(new Set(SECRET_DISCOVERY_SLOTS));
     expect(discoveries.filter(({ slot }) => slot === "top-right").length).toBeLessThan(20);
+  });
+
+  it("reserves six distinct optional camera gestures for advanced secrets", () => {
+    const cameraCheats = CHEAT_DEFINITIONS.filter(({ triggerConfig }) => triggerConfig.secretInteraction?.cameraGesture);
+    expect(cameraCheats).toHaveLength(6);
+    expect(new Set(cameraCheats.map(({ triggerConfig }) => triggerConfig.secretInteraction!.cameraGesture))).toEqual(
+      new Set(CAMERA_GESTURES),
+    );
+    expect(cameraCheats.every(({ difficulty }) => difficulty >= 4)).toBe(true);
   });
 
   it("scales progressive guidance from D1 to D5", () => {
