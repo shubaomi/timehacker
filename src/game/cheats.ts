@@ -7,10 +7,11 @@ import {
   type CheatEffectConfig,
 } from "./effects";
 import {
-  makeSecretInteraction,
-  secretInteractionConfigSchema,
-  selectSecretFamily,
-} from "./secret-interactions";
+  PUZZLE_SCENES,
+  puzzleSceneConfigSchema,
+  puzzleSolutionEvents,
+  serializePuzzleEvent,
+} from "./puzzle-scenes";
 import type { CheatCategory, CheatEvent, EventPattern } from "./types";
 
 const eventPatternSchema = z.object({
@@ -99,15 +100,15 @@ const accessibleHoldSchema = z.object({
   alternative: sequenceSchema,
 });
 
-const secretInteractionExtension = z.object({
-  secretInteraction: secretInteractionConfigSchema,
+const puzzleSceneExtension = z.object({
+  puzzleScene: puzzleSceneConfigSchema,
 });
 
 export const cheatTriggerConfigSchema = z.intersection(z.union([
   simpleTriggerSchema,
   fallbackSchema,
   accessibleHoldSchema,
-]), secretInteractionExtension.partial());
+]), puzzleSceneExtension.partial());
 
 export type CheatTriggerConfig = z.infer<typeof cheatTriggerConfigSchema>;
 export { cheatEffectConfigSchema } from "./effects";
@@ -476,18 +477,16 @@ const PRE_REVISION_CHEATS: readonly CheatDefinition[] = [
   ...ADDITIONAL_CHEAT_DEFINITIONS,
 ];
 
-const secretFamilyOccurrences = new Map<string, number>();
-export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = PRE_REVISION_CHEATS.map((definition, index) => {
+export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = PRE_REVISION_CHEATS.map((definition) => {
   const revision = CHEAT_REVISIONS[definition.slug];
   const revised = revision ? { ...definition, ...revision } : definition;
-  const family = selectSecretFamily(revised.category, index);
-  const occurrence = secretFamilyOccurrences.get(family) ?? 0;
-  secretFamilyOccurrences.set(family, occurrence + 1);
+  const puzzleScene = PUZZLE_SCENES.find(({ slug }) => slug === revised.slug);
+  if (!puzzleScene) throw new RangeError(`Missing puzzle scene for ${revised.slug}`);
   return {
     ...revised,
     triggerConfig: {
       ...revised.triggerConfig,
-      secretInteraction: makeSecretInteraction(family, occurrence, revised.difficulty, index, revised.slug),
+      puzzleScene,
     },
     effectConfig: makeCatalogEffect(
       revised.slug,
@@ -532,12 +531,15 @@ function evaluateSequence(
   return false;
 }
 
-function secretInteractionSequence(config: CheatTriggerConfig) {
-  return config.secretInteraction
+function puzzleSceneSequence(config: CheatTriggerConfig) {
+  return config.puzzleScene
     ? {
         kind: "sequence" as const,
-        pattern: config.secretInteraction.steps.map((value) => ({ type: "SECRET_ACTION", value })),
-        windowMs: 20_000,
+        pattern: puzzleSolutionEvents(config.puzzleScene).map((event) => ({
+          type: "PUZZLE_STEP",
+          value: serializePuzzleEvent(event),
+        })),
+        windowMs: 240_000,
       }
     : null;
 }
@@ -645,10 +647,9 @@ export function evaluateCheatProgress(rawConfig: unknown, events: readonly Cheat
   let resetReason: CheatProgress["resetReason"] = null;
   let rhythmDeviation: number | null = null;
 
-  const secretSequence = secretInteractionSequence(config);
-  const hasSecretInteractionInput = events.some(({ type }) => type === "SECRET_ACTION");
-  if (secretSequence && hasSecretInteractionInput) {
-    ({ currentStep, totalSteps, resetReason } = sequenceProgress(secretSequence.pattern, events));
+  const puzzleSequence = puzzleSceneSequence(config);
+  if (puzzleSequence) {
+    ({ currentStep, totalSteps, resetReason } = sequenceProgress(puzzleSequence.pattern, events));
     if (matched) currentStep = totalSteps;
     return { matched, currentStep, totalSteps, resetReason, rhythmDeviation, armed: matched };
   }
@@ -712,8 +713,8 @@ export function evaluateCheatTrigger(
   events: readonly CheatEvent[],
 ): boolean {
   const config = cheatTriggerConfigSchema.parse(rawConfig);
-  const secretSequence = secretInteractionSequence(config);
-  if (secretSequence && evaluateSequence(secretSequence, events)) return true;
+  const puzzleSequence = puzzleSceneSequence(config);
+  if (puzzleSequence) return evaluateSequence(puzzleSequence, events);
   if (config.kind === "fallback") {
     return (
       evaluateSequence(config.primary, events) ||

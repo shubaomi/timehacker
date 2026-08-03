@@ -5,10 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   advanceCameraGesture,
   INITIAL_CAMERA_GESTURE_STATE,
+  type CameraGesture,
   type CameraGestureFrame,
   type CameraGestureState,
 } from "@/game/camera-gestures";
-import type { CameraGesture } from "@/game/secret-interactions";
 import type { MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
 

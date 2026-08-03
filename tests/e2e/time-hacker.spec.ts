@@ -8,7 +8,11 @@ import { PrismaClient } from "../../src/generated/prisma/client";
 import { Pool } from "pg";
 import { CHEAT_DEFINITIONS } from "../../src/game/cheats";
 import { effectWallTimeToTarget } from "../../src/game/effects";
-import { SECRET_INTERACTION_FAMILIES } from "../../src/game/secret-interactions";
+import {
+  PUZZLE_MECHANICS,
+  puzzleSolutionEvents,
+  type PuzzleSceneEvent,
+} from "../../src/game/puzzle-scenes";
 import { selectNextCheat } from "../../src/game/selection";
 import { config } from "dotenv";
 import { retryTransientDatabaseOperation } from "../database-retry";
@@ -94,6 +98,102 @@ async function assertNoHighImpactAxeFindings(page: Page) {
   expect(highImpact, JSON.stringify(highImpact, null, 2)).toEqual([]);
 }
 
+async function performPuzzleEvent(page: Page, event: PuzzleSceneEvent) {
+  const object = page.locator(`[data-puzzle-target="${event.target}"]`);
+  const moveObject = async () => {
+    const box = await object.boundingBox();
+    if (!box) throw new Error(`Puzzle target ${event.target} is not visible`);
+    const viewport = page.viewportSize() ?? { width: 1440, height: 900 };
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    const endX = startX + (startX < viewport.width / 2 ? 72 : -72);
+    const endY = startY + (startY < viewport.height / 2 ? 18 : -18);
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(endX, endY, { steps: 6 });
+    await page.mouse.up();
+  };
+
+  switch (event.mechanic) {
+    case "tap":
+    case "sequence":
+    case "toggle":
+    case "sort":
+      await object.click();
+      break;
+    case "double-tap":
+      await object.dblclick();
+      break;
+    case "hold": {
+      const box = await object.boundingBox();
+      if (!box) throw new Error(`Puzzle target ${event.target} is not visible`);
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(700);
+      await page.mouse.up();
+      break;
+    }
+    case "drag":
+    case "align":
+    case "rotate":
+    case "trace":
+    case "orbit":
+    case "rub":
+    case "balance":
+    case "assemble":
+      await moveObject();
+      break;
+    case "rhythm":
+      await object.click();
+      await page.waitForTimeout(160);
+      await object.click();
+      break;
+    case "interval":
+      await object.click();
+      await page.waitForTimeout(520);
+      await object.click();
+      break;
+    case "wait":
+      await page.waitForTimeout(2_550);
+      break;
+    case "focus":
+      await object.focus();
+      break;
+    case "keyboard":
+      await object.focus();
+      await page.keyboard.press("Enter");
+      break;
+    case "wheel":
+      await object.hover();
+      await page.mouse.wheel(0, 180);
+      break;
+    case "orientation":
+      await page.evaluate(() => window.dispatchEvent(new Event("orientationchange")));
+      await page.waitForTimeout(450);
+      break;
+    case "visibility":
+      await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+      await page.waitForTimeout(450);
+      break;
+    case "locale":
+      await page.locator(".menu-button").click();
+      await page.locator(".language-row").click();
+      await page.locator(".drawer-header button").last().click();
+      break;
+    case "camera":
+      await object.click();
+      await page.locator(".camera-fallback").click();
+      await expect(page.locator(".scene-camera-backdrop")).toHaveCount(0);
+      break;
+    case "resize": {
+      const viewport = page.viewportSize() ?? { width: 1440, height: 900 };
+      await page.setViewportSize({ width: viewport.width - 80, height: viewport.height });
+      await page.waitForTimeout(450);
+      break;
+    }
+  }
+}
+
 async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 1, onOpened?: () => Promise<void>) {
   const slug = await page.evaluate(async ([storageKey, difficulty]) => {
     const playerId = localStorage.getItem(storageKey);
@@ -103,77 +203,18 @@ async function armAssignedCheat(page: Page, expectedSlug?: string, difficulty = 
   }, [storageKey, difficulty] as const);
   if (expectedSlug) expect(slug).toBe(expectedSlug);
   const definition = CHEAT_DEFINITIONS.find((cheat) => cheat.slug === slug);
-  if (!definition?.triggerConfig.secretInteraction) throw new Error(`Missing secret interaction for ${slug ?? "unknown"}`);
-  const discoveryKeys: Record<string, string> = {
-    tap: "Enter",
-    "double-tap": "d",
-    hold: "h",
-    "swipe-up": "ArrowUp",
-    "swipe-right": "ArrowRight",
-    "swipe-down": "ArrowDown",
-    "swipe-left": "ArrowLeft",
-    "orbit-clockwise": "c",
-    "orbit-counterclockwise": "a",
-    "rub-horizontal": "x",
-    "rub-vertical": "y",
-    zigzag: "z",
-  };
-  const anomaly = page.locator(".discovery-anomaly");
-  await anomaly.focus();
-  for (const action of definition.triggerConfig.secretInteraction.discovery.steps) {
-    await page.keyboard.press(discoveryKeys[action]);
-  }
-  await expect(page.locator(".secret-card")).toHaveCSS("opacity", "1");
+  const scene = definition?.triggerConfig.puzzleScene;
+  if (!scene) throw new Error(`Missing puzzle scene for ${slug ?? "unknown"}`);
+  await expect(page.locator(`[data-scene-id="${scene.sceneId}"]`)).toBeVisible();
   if (onOpened) await onOpened();
-  if (definition.triggerConfig.secretInteraction.cameraGesture) {
-    await expect(page.getByRole("button", { name: "Enable camera" })).toBeVisible();
-    await page.getByRole("button", { name: "Use touch instead" }).click();
+  const sceneRoot = page.locator(".puzzle-scene");
+  for (const [index, event] of puzzleSolutionEvents(scene).entries()) {
+    const completedSteps = Number(await sceneRoot.getAttribute("data-puzzle-step"));
+    if (completedSteps >= index + 1) continue;
+    await performPuzzleEvent(page, event);
+    await expect.poll(async () => Number(await sceneRoot.getAttribute("data-puzzle-step"))).toBeGreaterThanOrEqual(index + 1);
   }
-  const keys: Record<string, string> = {
-    "swipe-up": "ArrowUp",
-    "swipe-right": "ArrowRight",
-    "swipe-down": "ArrowDown",
-    "swipe-left": "ArrowLeft",
-    "wipe-up": "ArrowUp",
-    "wipe-right": "ArrowRight",
-    "wipe-down": "ArrowDown",
-    "wipe-left": "ArrowLeft",
-    "echo-up": "ArrowUp",
-    "echo-right": "ArrowRight",
-    "echo-down": "ArrowDown",
-    "echo-left": "ArrowLeft",
-    "press-tap": "Enter",
-    "press-hold": "h",
-    "press-deep": "d",
-  };
-  const steps = definition.triggerConfig.secretInteraction.steps;
-  if (steps.every((action) => Boolean(keys[action]))) {
-    for (const action of steps) {
-      const surface = page.locator(".secret-playground");
-      await surface.focus();
-      await page.keyboard.press(keys[action]);
-    }
-  } else {
-    const surface = page.locator(".choice-playground");
-    const surfaceBox = await surface.boundingBox();
-    if (!surfaceBox) throw new Error("Could not find the direct-manipulation surface");
-    const neutralPoint = { x: surfaceBox.x + 5, y: surfaceBox.y + surfaceBox.height / 2 };
-    await page.mouse.move(neutralPoint.x, neutralPoint.y);
-    await page.mouse.down();
-    for (const [index, action] of steps.entries()) {
-      const target = page.locator(`[data-secret-action="${action}"]`);
-      const targetBox = await target.boundingBox();
-      if (!targetBox) throw new Error(`Could not drag to ${action}`);
-      const targetPoint = { x: targetBox.x + targetBox.width / 2, y: targetBox.y + targetBox.height / 2 };
-      await page.mouse.move(targetPoint.x, targetPoint.y);
-      if (index < steps.length - 1) {
-        await expect(page.getByText(`Completed ${index + 1} of ${steps.length} steps`)).toBeVisible();
-      }
-      await page.mouse.move(neutralPoint.x, neutralPoint.y);
-    }
-    await page.mouse.up();
-  }
-  await expect(page.getByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i)).toBeVisible();
+  await expect(sceneRoot).toHaveClass(/is-armed/);
 }
 
 test.afterEach(async ({ page }) => {
@@ -195,6 +236,10 @@ test.afterAll(async () => {
 });
 
 test("responsive initial state has no serious accessibility, console, or overflow failure", async ({ page }, testInfo) => {
+  test.skip(
+    testInfo.project.name === "webkit-desktop",
+    "WebKit UI coverage uses the deterministic mocked-API suite; PostgreSQL is covered by Edge and integration tests.",
+  );
   const browserErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") browserErrors.push(message.text());
@@ -261,21 +306,20 @@ test("game journey verifies failure, cheat success, share fallback, and persiste
   await armedPrimary.click();
   await expect(page.getByRole("button", { name: /STOP.*Space or Enter/i })).toBeVisible();
   await page.getByRole("button", { name: /STOP.*Space or Enter/i }).click();
-  await expect(page.getByRole("heading", { name: "You stopped it!" })).toBeVisible();
-  await expect(page.getByText(/tiny secret helped/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Perfect hit! You conquered time." })).toBeVisible();
   await takeEvidence(page, testInfo.project.name, "success");
 
   await page.getByRole("button", { name: "Open game menu" }).click();
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeEnabled();
   await page.getByRole("button", { name: "Close game menu" }).click();
   await page.getByRole("button", { name: /Share result/i }).click();
-  await expect(page.getByText(/Field report (copied|shared)|Copy the field report manually/)).toBeVisible();
+  await expect(page.getByText(/Result (copied|shared)|Copy the result manually/)).toBeVisible();
 
   const persistedId = await page.evaluate((key) => localStorage.getItem(key), storageKey);
   expect(persistedId).toBe(playerId);
   await page.reload();
   await page.getByRole("button", { name: "Open game menu" }).click();
-  await expect(page.getByRole("button", { name: /Secrets.*1.*100/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Cheat Catalog.*1.*100/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeEnabled();
 });
 
@@ -305,7 +349,7 @@ test("a camera-enabled secret offers opt-in and preserves the touch fallback", a
     !["desktop-1440", "mobile-390"].includes(testInfo.project.name),
     "Camera fallback runs on representative desktop and mobile viewports.",
   );
-  const definition = CHEAT_DEFINITIONS.find(({ slug }) => slug === "quiet-circuit")!;
+  const definition = CHEAT_DEFINITIONS.find(({ slug }) => slug === "ten-thousand-glyph")!;
   const playerId = playerIdForAssignment(definition.slug, 0, definition.difficulty);
   await createBrowserPlayer(page, playerId);
   await database.user.create({
@@ -315,6 +359,10 @@ test("a camera-enabled secret offers opt-in and preserves the touch fallback", a
   await page.getByRole("button", { name: "Open game menu" }).click();
   await page.getByRole("combobox").selectOption(String(definition.difficulty));
   await page.getByRole("button", { name: "Close game menu" }).click();
+  const cameraTarget = page.locator(`[data-puzzle-target="${definition.triggerConfig.puzzleScene?.discoveryRule.target}"]`);
+  await cameraTarget.click();
+  await expect(page.getByRole("button", { name: "Enable camera" })).toBeVisible();
+  await page.getByRole("button", { name: "Use touch instead" }).click();
   await armAssignedCheat(
     page,
     definition.slug,
@@ -354,12 +402,12 @@ test("unlocked journey verifies Pure Mode keyboard control, collection, ranks, a
   await expect(stop).toBeVisible();
   await stop.focus();
   await page.keyboard.press("Space");
-  await expect(page.getByRole("heading", { name: "You stopped it!" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Perfect hit! You conquered time." })).toBeVisible();
   await page.getByRole("button", { name: /Run again.*Space or Enter/i }).click();
 
   await page.getByRole("button", { name: "Open game menu" }).click();
-  await page.getByRole("button", { name: /Secrets.*1.*100/ }).click();
-  await expect(page.locator(".collection-panel h2")).toHaveText("Secrets");
+  await page.getByRole("button", { name: /Cheat Catalog.*1.*100/ }).click();
+  await expect(page.locator(".collection-panel h2")).toHaveText("Cheat Catalog");
   await takeEvidence(page, testInfo.project.name, "collection");
 
   await page.getByRole("button", { name: "Back to game menu" }).click();
@@ -374,7 +422,7 @@ test("unlocked journey verifies Pure Mode keyboard control, collection, ranks, a
   await takeEvidence(page, testInfo.project.name, "reset-dialog");
   await page.getByRole("button", { name: "Reset my progress" }).click();
   await page.getByRole("button", { name: "Open game menu" }).click();
-  await expect(page.getByRole("button", { name: /Secrets.*0.*100/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Cheat Catalog.*0.*100/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeDisabled();
 });
 
@@ -411,18 +459,18 @@ test("reduced-motion preference keeps the game usable", async ({ page }, testInf
   await expect(page.getByRole("button", { name: /STOP.*Space or Enter/i })).toBeVisible();
 });
 
-test("all twelve interaction families are reachable across D1 through D5", async ({ browser }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop-1440", "Difficulty coverage runs once on desktop.");
-  const cases = SECRET_INTERACTION_FAMILIES.map((family, index) => {
-    const desiredDifficulty = (index % 5) + 1;
-    const candidates = CHEAT_DEFINITIONS.filter((definition) => definition.triggerConfig.secretInteraction?.family === family);
-    const definition = candidates.find(({ difficulty }) => difficulty === desiredDifficulty) ?? candidates[0];
-    if (!definition) throw new Error(`No secret definition for ${family}`);
-    return { family, difficulty: definition.difficulty, slug: definition.slug };
-  });
-  expect(new Set(cases.map(({ difficulty }) => difficulty))).toEqual(new Set([1, 2, 3, 4, 5]));
+const mechanicCases = PUZZLE_MECHANICS.map((mechanic, index) => {
+  const desiredDifficulty = (index % 5) + 1;
+  const candidates = CHEAT_DEFINITIONS.filter((definition) => definition.triggerConfig.puzzleScene?.primaryMechanic === mechanic);
+  const definition = candidates.find(({ difficulty }) => difficulty === desiredDifficulty) ?? candidates[0];
+  if (!definition) throw new Error(`No puzzle definition for ${mechanic}`);
+  return { mechanic, difficulty: definition.difficulty, slug: definition.slug };
+});
 
-  for (const entry of cases) {
+for (const entry of mechanicCases) {
+  test(`puzzle mechanic ${entry.mechanic} is reachable with its native browser interaction`, async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-1440", "Mechanic coverage runs once on desktop.");
+    expect(new Set(mechanicCases.map(({ difficulty }) => difficulty))).toEqual(new Set([1, 2, 3, 4, 5]));
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
     const playerId = playerIdForAssignment(entry.slug, 0, entry.difficulty);
@@ -442,8 +490,8 @@ test("all twelve interaction families are reachable across D1 through D5", async
       page,
       entry.slug,
       entry.difficulty,
-      () => takeEvidence(page, "secret-families", entry.family),
+      () => takeEvidence(page, "puzzle-mechanics", entry.mechanic),
     );
     await context.close();
-  }
-});
+  });
+}

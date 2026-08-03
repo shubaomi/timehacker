@@ -1,4 +1,13 @@
-import type { CameraGesture } from "./secret-interactions";
+export const CAMERA_GESTURES = [
+  "air-loop",
+  "air-zigzag",
+  "open-palm",
+  "fist-open",
+  "victory",
+  "pinch-drag",
+] as const;
+
+export type CameraGesture = (typeof CAMERA_GESTURES)[number];
 
 export interface CameraPoint {
   x: number;

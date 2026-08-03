@@ -19,7 +19,7 @@ export function CollectionPanel({ collection }: { collection: CollectionEntry[] 
   return (
     <section className="intel-panel collection-panel" aria-labelledby="collection-title">
       <header className="panel-heading">
-        <div><p>{t("recoveredExploits")}</p><h2 id="collection-title">{t("cheatArchive")}</h2></div>
+        <div><h2 className="sr-only" id="collection-title">{t("cheatArchive")}</h2><p>{t("recoveredExploits")}</p></div>
         <strong>{String(unlocked).padStart(2, "0")} / {collection.length}</strong>
       </header>
       <div className="collection-grid">
@@ -29,7 +29,7 @@ export function CollectionPanel({ collection }: { collection: CollectionEntry[] 
             <div>
               <span>{category(entry.category)} · D{entry.difficulty}</span>
               <h3>{entry.unlocked ? (locale === "zh" ? (entry.nameZh ?? entry.name) : entry.name) : t("classified")}</h3>
-              <p>{(locale === "zh" ? entry.descriptionZh : entry.description) ?? t("classifiedDescription")}</p>
+              {entry.unlocked ? <p>{(locale === "zh" ? entry.descriptionZh : entry.description) ?? ""}</p> : null}
             </div>
             {entry.unlocked ? <Check aria-label={t("unlocked")} size={18} /> : <LockKeyhole aria-label={t("locked")} size={16} />}
           </article>

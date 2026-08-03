@@ -33,7 +33,7 @@ The memorable detail is a small anomaly near the clock. Its form changes with th
 - English/Chinese switch
 - With secrets/Pure mode
 - Difficulty after it has been unlocked
-- Secrets collection and leaderboard
+- Cheat Catalog and leaderboard
 - Personal plays, successes, secrets found, and best error
 - Remaining daily starts
 - Nickname after it has been unlocked

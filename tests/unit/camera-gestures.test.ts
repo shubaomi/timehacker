@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   advanceCameraGesture,
   INITIAL_CAMERA_GESTURE_STATE,
+  type CameraGesture,
   type CameraGestureFrame,
   type CameraGestureState,
 } from "@/game/camera-gestures";
-import type { CameraGesture } from "@/game/secret-interactions";
 
 function run(gesture: CameraGesture, frames: CameraGestureFrame[]) {
   return frames.reduce<CameraGestureState>(

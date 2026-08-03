@@ -46,11 +46,20 @@ function renderApp() {
   );
 }
 
-function installFetchMock(success = true, suggestedCheat = CHEAT_DEFINITIONS[0]) {
+function installFetchMock(
+  success = true,
+  suggestedCheat = CHEAT_DEFINITIONS[0],
+  nextSuggestedCheat = suggestedCheat,
+) {
+  let dashboardCalls = 0;
   const mock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     void _init;
     const url = typeof input === "string" ? input : input.toString();
-    if (url.startsWith("/api/dashboard")) return Response.json(dashboard(suggestedCheat));
+    if (url.startsWith("/api/dashboard")) {
+      const assigned = dashboardCalls === 0 ? suggestedCheat : nextSuggestedCheat;
+      dashboardCalls += 1;
+      return Response.json(dashboard(assigned));
+    }
     if (url === "/api/rankings") return Response.json({ timeHackers: [], perfectTiming: [], cheatMasters: [] });
     if (url === "/api/games/start") return Response.json({ game: { id: "game-1" } }, { status: 201 });
     if (url === "/api/games/game-1/complete") {
@@ -73,55 +82,6 @@ function installFetchMock(success = true, suggestedCheat = CHEAT_DEFINITIONS[0])
   return mock;
 }
 
-async function completeSecretInteraction(interaction: NonNullable<(typeof CHEAT_DEFINITIONS)[number]["triggerConfig"]["secretInteraction"]>) {
-  const discoveryKeys: Record<string, string> = {
-    tap: "[Enter]",
-    "double-tap": "d",
-    hold: "h",
-    "swipe-up": "[ArrowUp]",
-    "swipe-right": "[ArrowRight]",
-    "swipe-down": "[ArrowDown]",
-    "swipe-left": "[ArrowLeft]",
-    "orbit-clockwise": "c",
-    "orbit-counterclockwise": "a",
-    "rub-horizontal": "x",
-    "rub-vertical": "y",
-    zigzag: "z",
-  };
-  const anomaly = screen.getByRole("button", { name: /Hidden anomaly/i });
-  anomaly.focus();
-  for (const action of interaction.discovery.steps) {
-    await userEvent.keyboard(discoveryKeys[action]);
-  }
-  const keys: Record<string, string> = {
-    "swipe-up": "[ArrowUp]",
-    "swipe-right": "[ArrowRight]",
-    "swipe-down": "[ArrowDown]",
-    "swipe-left": "[ArrowLeft]",
-    "wipe-up": "[ArrowUp]",
-    "wipe-right": "[ArrowRight]",
-    "wipe-down": "[ArrowDown]",
-    "wipe-left": "[ArrowLeft]",
-    "echo-up": "[ArrowUp]",
-    "echo-right": "[ArrowRight]",
-    "echo-down": "[ArrowDown]",
-    "echo-left": "[ArrowLeft]",
-    "press-tap": "[Enter]",
-    "press-hold": "h",
-    "press-deep": "d",
-  };
-  for (const action of interaction.steps) {
-    const key = keys[action];
-    if (key) {
-      const surface = screen.getByRole("group", { name: new RegExp(interaction.family === "pressure" ? "pressure" : "next", "i") });
-      surface.focus();
-      await userEvent.keyboard(key);
-    } else {
-      await userEvent.click(document.querySelector(`[data-secret-action="${action}"]`) as HTMLElement);
-    }
-  }
-}
-
 describe("TimeHackerApp", () => {
   beforeEach(() => {
     localStorage.setItem("time-hacker.player-id.v1", fixedPlayerId);
@@ -139,7 +99,7 @@ describe("TimeHackerApp", () => {
     await userEvent.click(start);
     const stop = await screen.findByRole("button", { name: /STOP.*Space or Enter/i });
     await userEvent.click(stop);
-    expect(await screen.findByText("You stopped it!")).toBeInTheDocument();
+    expect(await screen.findByText("Perfect hit! You conquered time.")).toBeInTheDocument();
     expect(screen.getAllByText("10.00")).toHaveLength(2);
   });
 
@@ -161,7 +121,7 @@ describe("TimeHackerApp", () => {
     await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
     await userEvent.click(await screen.findByRole("button", { name: /Share result/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(screen.getByText("Field report copied.")).toBeInTheDocument();
+    expect(screen.getByText("Result copied.")).toBeInTheDocument();
   });
 
   it("shows and cancels the scoped reset confirmation", async () => {
@@ -187,48 +147,29 @@ describe("TimeHackerApp", () => {
     expect(localStorage.getItem("time-hacker.locale.v1")).toBe("zh");
   });
 
-  it("keeps the home simple and arms through the hidden gesture interaction", async () => {
+  it("keeps the home simple without automatic helper copy", async () => {
     const suggestedCheat = CHEAT_DEFINITIONS[0];
     installFetchMock(true, suggestedCheat);
     renderApp();
     await screen.findByRole("button", { name: /START.*Space or Enter/i });
     expect(screen.queryByText("Service input")).not.toBeInTheDocument();
     expect(screen.queryByText("Operator record")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Secrets" })).not.toBeInTheDocument();
-    await completeSecretInteraction(suggestedCheat.triggerConfig.secretInteraction!);
-    expect(screen.getByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cheat Catalog" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Tap once to start. Tap again to stop.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Stop as close to 10.00 as you can.")).not.toBeInTheDocument();
+    expect(screen.queryByText(/hundredths move once per second/i)).not.toBeInTheDocument();
   });
 
-  it(
-    "retains a completed READY wait as server-verifiable evidence after START",
-    async () => {
-      const breathGap = CHEAT_DEFINITIONS.find(({ slug }) => slug === "breath-gap");
-      expect(breathGap).toBeDefined();
-      const fetchMock = installFetchMock(true, breathGap);
-      renderApp();
-
-      const start = await screen.findByRole("button", { name: /START.*Space or Enter/i });
-      expect(await screen.findByText(/Secret active.*9\.95.*10\.00.*three seconds.*Press Start/i, {}, { timeout: 4_000 })).toBeInTheDocument();
-      await userEvent.click(start);
-      await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
-
-      const completionCall = fetchMock.mock.calls.find(([input]) =>
-        String(input).includes("/api/games/game-1/complete"),
-      );
-      expect(completionCall).toBeDefined();
-      const request = completionCall?.[1] as RequestInit;
-      const body = JSON.parse(String(request.body)) as {
-        events: Array<{ type: string; durationMs?: number }>;
-      };
-      expect(body.events).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ type: "READY_WAIT", durationMs: expect.any(Number) }),
-        ]),
-      );
-      expect(
-        body.events.find(({ type }) => type === "READY_WAIT")?.durationMs,
-      ).toBeGreaterThanOrEqual(3_000);
-    },
-    10_000,
-  );
+  it("keeps the active scene fixed until Run again and hides it in result states", async () => {
+    const first = CHEAT_DEFINITIONS[0];
+    const second = CHEAT_DEFINITIONS[1];
+    installFetchMock(true, first, second);
+    renderApp();
+    expect(await screen.findByTestId("puzzle-scene", {}, { timeout: 4_000 })).toHaveAttribute("data-scene-id", first.triggerConfig.puzzleScene?.sceneId);
+    await userEvent.click(screen.getByRole("button", { name: /START.*Space or Enter/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
+    expect(screen.queryByTestId("puzzle-scene")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Run again.*Space or Enter/i }));
+    expect(await screen.findByTestId("puzzle-scene")).toHaveAttribute("data-scene-id", second.triggerConfig.puzzleScene?.sceneId);
+  });
 });

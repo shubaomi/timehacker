@@ -18,6 +18,8 @@
     "prisma:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:check": "tsx scripts/check-database-catalog.ts",
+    "audit:puzzles": "tsx scripts/generate-puzzle-audit.ts",
     "verify": "pnpm check:deploy && pnpm prisma:validate && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build && pnpm test:e2e"
   },
   "dependencies": {

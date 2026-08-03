@@ -25,6 +25,7 @@ import {
 } from "react";
 import { evaluateCheatProgress, evaluateCheatTrigger, type CheatProgress } from "@/game/cheats";
 import { effectElapsedTime, type CheatEffectConfig } from "@/game/effects";
+import { puzzleSolutionEvents, serializePuzzleEvent } from "@/game/puzzle-scenes";
 import { buildShareText } from "@/game/share";
 import { formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
@@ -35,7 +36,7 @@ import { CollectionPanel } from "./collection-panel";
 import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
 import { formatStopwatch, TimerStage } from "./timer-stage";
-import { DEFAULT_SECRET_INTERACTION } from "@/game/secret-interactions";
+import { PuzzleScene } from "./puzzle-scene";
 
 type GameStatus =
   | "LOADING"
@@ -75,6 +76,7 @@ export function TimeHackerApp() {
   const { locale, setLocale, t } = useLocale();
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [activeRoundCheat, setActiveRoundCheat] = useState<DashboardData["suggestedCheat"]>(null);
   const [rankings, setRankings] = useState<RankingsData | null>(null);
   const [rankingsLoading, setRankingsLoading] = useState(false);
   const [rankingsError, setRankingsError] = useState<string | null>(null);
@@ -90,6 +92,7 @@ export function TimeHackerApp() {
   const [error, setError] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [manualShare, setManualShare] = useState<string | null>(null);
+  const [hintLevel, setHintLevel] = useState<0 | 1 | 2>(0);
   const [nickname, setNickname] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
@@ -101,6 +104,7 @@ export function TimeHackerApp() {
   const wallStartRef = useRef(0);
   const effectRef = useRef<CheatEffectConfig | null>(null);
   const activeGameRef = useRef<string | null>(null);
+  const initializationStartedRef = useRef(false);
 
   const localizeError = useCallback(
     (cause: unknown, fallback: MessageKey) => {
@@ -160,16 +164,16 @@ export function TimeHackerApp() {
           : eventsRef.current.filter(({ type: existingType }) => existingType !== "READY_WAIT");
       const nextEvents = [...retainedEvents, event].slice(-100);
       eventsRef.current = nextEvents;
-      if (dashboard?.suggestedCheat) {
-        const progress = evaluateCheatProgress(dashboard.suggestedCheat.triggerConfig, nextEvents);
+      if (activeRoundCheat) {
+        const progress = evaluateCheatProgress(activeRoundCheat.triggerConfig, nextEvents);
         setRitualProgress(progress);
-        if (evaluateCheatTrigger(dashboard.suggestedCheat.triggerConfig, nextEvents)) {
+        if (evaluateCheatTrigger(activeRoundCheat.triggerConfig, nextEvents)) {
           armedRef.current = true;
           setArmed(true);
         }
       }
     },
-    [dashboard, status],
+    [activeRoundCheat, status],
   );
 
   const initialize = useCallback(async () => {
@@ -185,6 +189,7 @@ export function TimeHackerApp() {
         body: JSON.stringify({ playerId: id }),
       });
       const data = await loadDashboard(id, 1);
+      setActiveRoundCheat(data.suggestedCheat);
       setStatus(data.daily.remaining > 0 ? "READY" : "LIMIT_REACHED");
     } catch (initializationError) {
       setError(localizeError(initializationError, "initializationFailed"));
@@ -193,7 +198,11 @@ export function TimeHackerApp() {
   }, [loadDashboard, localizeError]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void initialize(), 0);
+    if (initializationStartedRef.current) return;
+    const timer = window.setTimeout(() => {
+      initializationStartedRef.current = true;
+      void initialize();
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [initialize]);
 
@@ -203,17 +212,10 @@ export function TimeHackerApp() {
     readyEpochRef.current = now;
     idleStartRef.current = now;
     eventsRef.current = [{ type: "READY_MARK", at: 0 }];
-    if (dashboard?.suggestedCheat) {
-      setRitualProgress(evaluateCheatProgress(dashboard.suggestedCheat.triggerConfig, eventsRef.current));
+    if (activeRoundCheat) {
+      setRitualProgress(evaluateCheatProgress(activeRoundCheat.triggerConfig, eventsRef.current));
     }
-    const triggerJson = JSON.stringify(dashboard?.suggestedCheat?.triggerConfig ?? {});
-    if (!triggerJson.includes("READY_WAIT") && !triggerJson.includes("READY_MARK")) return;
-    const idleTimer = window.setInterval(() => {
-      const elapsed = Math.max(0, performance.now() - idleStartRef.current);
-      emitCheatEvent("READY_WAIT", undefined, elapsed);
-    }, 100);
-    return () => window.clearInterval(idleTimer);
-  }, [dashboard?.suggestedCheat, emitCheatEvent, status]);
+  }, [activeRoundCheat, status]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -257,7 +259,7 @@ export function TimeHackerApp() {
     return () => cancelAnimationFrame(frame);
   }, [status]);
 
-  const prepareNext = useCallback(() => {
+  const prepareNext = useCallback((nextDashboard = dashboard) => {
     eventsRef.current = [];
     armedRef.current = false;
     activeGameRef.current = null;
@@ -269,7 +271,9 @@ export function TimeHackerApp() {
     setError(null);
     setShareStatus(null);
     setManualShare(null);
-    setStatus(dashboard && dashboard.daily.remaining <= 0 ? "LIMIT_REACHED" : "READY");
+    setHintLevel(0);
+    setActiveRoundCheat(nextDashboard?.suggestedCheat ?? null);
+    setStatus(nextDashboard && nextDashboard.daily.remaining <= 0 ? "LIMIT_REACHED" : "READY");
   }, [dashboard]);
 
   const startChallenge = useCallback(async () => {
@@ -288,12 +292,12 @@ export function TimeHackerApp() {
           clientRequestId: crypto.randomUUID(),
           mode,
           difficulty,
-          assignedCheatSlug: mode === "HACKER" ? dashboard.suggestedCheat?.slug ?? null : null,
+          assignedCheatSlug: mode === "HACKER" ? activeRoundCheat?.slug ?? null : null,
         }),
       });
       activeGameRef.current = response.game.id;
-      effectRef.current = mode === "HACKER" && armedRef.current && dashboard.suggestedCheat
-        ? dashboard.suggestedCheat.effectConfig
+      effectRef.current = mode === "HACKER" && armedRef.current && activeRoundCheat
+        ? activeRoundCheat.effectConfig
         : null;
       wallStartRef.current = performance.now();
       setElapsedMs(0);
@@ -303,7 +307,7 @@ export function TimeHackerApp() {
       setStatus(code === "DAILY_LIMIT_REACHED" ? "LIMIT_REACHED" : "READY");
       setError(localizeError(startError, "challengeStartFailed"));
     }
-  }, [dashboard, difficulty, localizeError, mode, playerId]);
+  }, [activeRoundCheat, dashboard, difficulty, localizeError, mode, playerId]);
 
   const stopChallenge = useCallback(async () => {
     if (!playerId || !activeGameRef.current) return;
@@ -410,13 +414,13 @@ export function TimeHackerApp() {
         method: "POST",
         body: JSON.stringify({ playerId }),
       });
-      await loadDashboard(playerId, 1);
+      const nextDashboard = await loadDashboard(playerId, 1);
       setDifficulty(1);
       modeRef.current = "HACKER";
       setMode("HACKER");
       setResetOpen(false);
       setMenuOpen(false);
-      prepareNext();
+      prepareNext(nextDashboard);
       setStatus("READY");
     } catch (resetError) {
       setError(localizeError(resetError, "resetFailed"));
@@ -451,7 +455,6 @@ export function TimeHackerApp() {
     );
   }
 
-  const secretInteraction = dashboard.suggestedCheat?.triggerConfig.secretInteraction ?? DEFAULT_SECRET_INTERACTION;
   const drawerTitle = panel === "cheats" ? t("cheatArchive") : panel === "ranks" ? t("globalRanks") : t("menuTitle");
 
   return (
@@ -486,16 +489,23 @@ export function TimeHackerApp() {
             transition={{ duration: 0.5 }}
           >
             <h1>{t("simpleChallenge")}</h1>
-            <p>{t("simpleInstruction")}</p>
           </motion.div>
+
+          {status === "READY" && mode === "HACKER" && activeRoundCheat?.triggerConfig.puzzleScene ? (
+            <PuzzleScene
+              key={activeRoundCheat.slug}
+              scene={activeRoundCheat.triggerConfig.puzzleScene}
+              currentStep={ritualProgress?.currentStep ?? 0}
+              armed={armed}
+              hintLevel={hintLevel}
+              onEvent={emitCheatEvent}
+            />
+          ) : null}
 
           <TimerStage
             elapsedMs={elapsedMs}
             status={status}
             armed={mode === "HACKER" && armed}
-            secretEnabled={mode === "HACKER" && Boolean(dashboard.suggestedCheat)}
-            secretInteraction={secretInteraction}
-            secretProgress={ritualProgress?.currentStep ?? 0}
             disabled={status === "LIMIT_REACHED"}
             onPrimary={handlePrimary}
             onEvent={emitCheatEvent}
@@ -506,7 +516,6 @@ export function TimeHackerApp() {
             {status === "LIMIT_REACHED" ? (
               <span>{t("dailyComplete")} {t("resetAt", { date: new Intl.DateTimeFormat(localeTag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(dashboard.daily.resetsAt)) })}</span>
             ) : null}
-            {status === "RUNNING" ? <span>{t("runningNudge")}</span> : null}
           </div>
 
           <AnimatePresence mode="wait">
@@ -521,7 +530,6 @@ export function TimeHackerApp() {
               >
                 <div>
                   <h2>{result.success ? t("successSimple") : t("missSimple")}</h2>
-                  <p>{result.assistanceType ? t("secretHelped") : t("allYou")}</p>
                 </div>
                 <div className="simple-result-number">
                   <span>{resultCopy?.duration}<small>s</small></span>
@@ -565,6 +573,13 @@ export function TimeHackerApp() {
                         className="drawer-row language-row"
                         onClick={() => {
                           const nextLocale = locale === "en" ? "zh" : "en";
+                          const scene = activeRoundCheat?.triggerConfig.puzzleScene;
+                          const expected = scene
+                            ? puzzleSolutionEvents(scene)[ritualProgress?.currentStep ?? 0]
+                            : null;
+                          if (expected?.mechanic === "locale") {
+                            emitCheatEvent("PUZZLE_STEP", serializePuzzleEvent(expected));
+                          }
                           emitCheatEvent("LOCALE_TOGGLE", nextLocale);
                           setLocale(nextLocale);
                         }}
@@ -585,8 +600,10 @@ export function TimeHackerApp() {
                             <span>{t("difficultyLabel")}</span>
                             <select value={difficulty} onChange={async (event) => {
                               const next = Number(event.target.value);
-                              if (playerId) await loadDashboard(playerId, next);
-                              prepareNext();
+                              const nextDashboard = playerId
+                                ? await loadDashboard(playerId, next)
+                                : dashboard;
+                              prepareNext(nextDashboard);
                             }}>
                               {Array.from({ length: dashboard.maximumDifficulty }, (_, index) => index + 1).map((value) => (
                                 <option key={value} value={value}>{t("difficulty", { value })}</option>
@@ -597,6 +614,13 @@ export function TimeHackerApp() {
                       </section>
 
                       <nav className="drawer-nav" aria-label={t("moreGameOptions")}>
+                        {status === "READY" && mode === "HACKER" && activeRoundCheat ? (
+                          <button type="button" onClick={() => setHintLevel((level) => level === 0 ? 1 : 2)}>
+                            <CircleHelp aria-hidden="true" size={20} />
+                            <span>{hintLevel === 0 ? t("hint") : t("showNextHint")}</span>
+                            <b>{hintLevel}/2</b>
+                          </button>
+                        ) : null}
                         <button type="button" onClick={() => switchPanel("cheats")}><Archive aria-hidden="true" size={20} /><span>{t("cheatArchive")}</span><b>{dashboard.player.unlockedCheats}/{dashboard.collection.length}</b></button>
                         <button type="button" onClick={() => switchPanel("ranks")}><Trophy aria-hidden="true" size={20} /><span>{t("globalRanks")}</span><ChevronLeft className="forward-chevron" aria-hidden="true" size={18} /></button>
                       </nav>

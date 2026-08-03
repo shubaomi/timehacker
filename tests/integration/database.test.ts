@@ -7,6 +7,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { CHEAT_DEFINITIONS, cheatTriggerConfigSchema } from "@/game/cheats";
 import { effectWallTimeToTarget } from "@/game/effects";
+import {
+  puzzleSolutionEvents,
+  serializePuzzleEvent,
+} from "@/game/puzzle-scenes";
 import { completeGame, startGame } from "@/server/game-service";
 import {
   createOrResumePlayer,
@@ -30,6 +34,20 @@ const fixedNow = new Date("2026-08-02T10:00:00.000Z");
 
 function playerId(label: string): string {
   return `${prefix}-${label}`;
+}
+
+function puzzleEvents(slug: string) {
+  const cheat = CHEAT_DEFINITIONS.find((definition) => definition.slug === slug);
+  const scene = cheat?.triggerConfig.puzzleScene;
+  if (!scene) {
+    throw new Error(`Missing puzzle scene for ${slug}`);
+  }
+
+  return puzzleSolutionEvents(scene).map((event, index) => ({
+    type: "PUZZLE_STEP",
+    value: serializePuzzleEvent(event),
+    at: index * 250,
+  }));
 }
 
 describe("real PostgreSQL integration", () => {
@@ -60,7 +78,7 @@ describe("real PostgreSQL integration", () => {
     ).toHaveLength(100);
     expect(await database.cheatMethod.count({ where: { nameZh: { not: null } } })).toBe(100);
     const persistedCameraGestures = (await database.cheatMethod.findMany({ select: { triggerConfig: true } }))
-      .map(({ triggerConfig }) => cheatTriggerConfigSchema.parse(triggerConfig).secretInteraction?.cameraGesture)
+      .map(({ triggerConfig }) => cheatTriggerConfigSchema.parse(triggerConfig).puzzleScene?.cameraGesture)
       .filter(Boolean);
     expect(persistedCameraGestures).toHaveLength(6);
     expect(new Set(persistedCameraGestures)).toHaveProperty("size", 6);
@@ -93,10 +111,7 @@ describe("real PostgreSQL integration", () => {
       },
       fixedNow,
     );
-    const events = Array.from({ length: 5 }, (_, index) => ({
-      type: "TIMER_TAP",
-      at: index * 200,
-    }));
+    const events = puzzleEvents("five-finger-echo");
     const effect = CHEAT_DEFINITIONS.find(({ slug }) => slug === "five-finger-echo")!.effectConfig;
     const wallDurationMs = effectWallTimeToTarget(effect, 10_000) + 1_500;
     const first = await completeGame(
@@ -146,10 +161,7 @@ describe("real PostgreSQL integration", () => {
       mode: "PURE",
       difficulty: 1,
     }, fixedNow);
-    const events = [
-      { type: "RITUAL_PULSE", value: "short", at: 100 },
-      { type: "RITUAL_PULSE", value: "long", at: 500 },
-    ];
+    const events = puzzleEvents("double-relay");
     const toleranceEffect = CHEAT_DEFINITIONS.find(({ slug }) => slug === "double-relay")!.effectConfig;
     expect(toleranceEffect.type).toBe("TOLERANCE_ASSIST");
     const hackerResult = await completeGame(database, {

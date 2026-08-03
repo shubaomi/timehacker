@@ -13,7 +13,7 @@ export const nicknameSchema = z
 export const cheatEventSchema = z.object({
   type: z.string().trim().min(1).max(32),
   at: z.number().finite().nonnegative().max(10 * 60 * 1_000),
-  value: z.union([z.string().max(32), z.number().finite()]).optional(),
+  value: z.union([z.string().max(128), z.number().finite()]).optional(),
   durationMs: z.number().finite().nonnegative().max(60_000).optional(),
 });
 

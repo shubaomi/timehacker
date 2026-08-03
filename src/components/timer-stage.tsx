@@ -2,17 +2,12 @@
 
 import { motion } from "motion/react";
 import { useRef } from "react";
-import type { SecretInteractionConfig } from "@/game/secret-interactions";
 import { useLocale } from "@/i18n/locale-provider";
-import { SecretInteraction } from "./secret-interaction";
 
 interface TimerStageProps {
   elapsedMs: number;
   status: string;
   armed: boolean;
-  secretEnabled: boolean;
-  secretInteraction: SecretInteractionConfig;
-  secretProgress: number;
   disabled: boolean;
   onPrimary: () => void;
   onEvent: (type: string, value?: string | number, durationMs?: number) => void;
@@ -26,9 +21,6 @@ export function TimerStage({
   elapsedMs,
   status,
   armed,
-  secretEnabled,
-  secretInteraction,
-  secretProgress,
   disabled,
   onPrimary,
   onEvent,
@@ -64,26 +56,6 @@ export function TimerStage({
           <small>s</small>
         </button>
 
-        {secretEnabled && !running && !busy && !disabled ? (
-          <SecretInteraction
-            key={`${secretInteraction.family}:${secretInteraction.variant}`}
-            interaction={secretInteraction}
-            progress={secretProgress}
-            armed={armed}
-            onEvent={onEvent}
-          />
-        ) : null}
-
-        {armed ? (
-          <motion.p
-            className="secret-found-note"
-            aria-live="polite"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {t("secretFoundNote")}
-          </motion.p>
-        ) : null}
       </div>
 
       <motion.button
@@ -91,7 +63,6 @@ export function TimerStage({
         className={`play-button ${running ? "is-running" : ""}`}
         disabled={disabled || busy}
         aria-label={`${primaryLabel}. ${t("keyboardShortcutSimple")}`}
-        whileHover={{ y: -2 }}
         whileTap={{ scale: 0.97, y: 1 }}
         onPointerDown={() => {
           holdStart.current = performance.now();

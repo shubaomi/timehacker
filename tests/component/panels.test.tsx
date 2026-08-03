@@ -11,7 +11,7 @@ const withLocale = (children: React.ReactNode) => (
 );
 
 describe("secondary panels", () => {
-  it("renders locked and unlocked archive states", () => {
+  it("renders visually distinct locked and unlocked catalog states", () => {
     render(
       withLocale(<CollectionPanel
         collection={[
@@ -20,10 +20,13 @@ describe("secondary panels", () => {
         ]}
       />),
     );
+    expect(screen.getByRole("heading", { name: "Cheat Catalog" })).toBeInTheDocument();
     expect(screen.getByText("Recovered")).toBeInTheDocument();
-    expect(screen.getByText("MYSTERY")).toBeInTheDocument();
+    expect(screen.getByText("Not unlocked")).toBeInTheDocument();
     expect(screen.getByLabelText("Unlocked")).toBeInTheDocument();
     expect(screen.getByLabelText("Locked")).toBeInTheDocument();
+    expect(screen.getByText("Recovered").closest("article")).toHaveClass("unlocked");
+    expect(screen.getByText("Not unlocked").closest("article")).toHaveClass("locked");
   });
 
   it("covers rank loading, error with retry, and empty data", async () => {
