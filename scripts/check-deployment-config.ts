@@ -16,11 +16,22 @@ function requirePattern(content: string, pattern: RegExp, label: string): void {
 }
 
 async function main(): Promise<void> {
-  const [deploy, nginx, nextConfig] = await Promise.all([
+  const [deploy, nginx, nextConfig, packageJsonText] = await Promise.all([
     readFile(path.join(root, "deploy.sh"), "utf8"),
     readFile(path.join(root, "docs", "nginx-timehacker.conf"), "utf8"),
     readFile(path.join(root, "next.config.ts"), "utf8"),
+    readFile(path.join(root, "package.json"), "utf8"),
   ]);
+  const packageJson = JSON.parse(packageJsonText) as { scripts?: Record<string, string> };
+  const unitTestScript = packageJson.scripts?.test ?? "";
+
+  for (const excludedDirectory of ["tests/integration/**", "tests/e2e/**"]) {
+    requireText(
+      unitTestScript,
+      `--exclude "${excludedDirectory}"`,
+      `shell-safe Vitest exclusion for ${excludedDirectory}`,
+    );
+  }
 
   for (const [value, label] of [
     ["/data/claude_project/timehacker", "source directory"],

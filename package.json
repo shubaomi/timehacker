@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --exclude tests/integration/** --exclude tests/e2e/**",
+    "test": "vitest run --exclude \"tests/integration/**\" --exclude \"tests/e2e/**\"",
     "test:watch": "vitest",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
