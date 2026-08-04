@@ -30,19 +30,6 @@ const createdPlayers = new Set<string>();
 const allCreatedPlayers = new Set<string>();
 const screenshotRoot = path.resolve("artifacts", "screenshots");
 
-async function installShareFallback(page: Page) {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", {
-      configurable: true,
-      value: undefined,
-    });
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText: async () => undefined },
-    });
-  });
-}
-
 function playerIdForAssignment(slug: string, totalGames: number, difficulty = 1) {
   const day = new Date().toISOString().slice(0, 10);
   for (let attempt = 0; attempt < 500; attempt += 1) {
@@ -281,9 +268,8 @@ test("language switch localizes the interface and persists across reload", async
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
 });
 
-test("game journey verifies failure, cheat success, share fallback, and persistence", async ({ page }, testInfo) => {
+test("game journey verifies failure, cheat success, image-card sharing, and persistence", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1440", "Game journey runs once on desktop.");
-  await installShareFallback(page);
   const playerId = await createBrowserPlayer(
     page,
     playerIdForAssignment("five-finger-echo", 1),
@@ -313,7 +299,16 @@ test("game journey verifies failure, cheat success, share fallback, and persiste
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeEnabled();
   await page.getByRole("button", { name: "Close game menu" }).click();
   await page.getByRole("button", { name: /Share result/i }).click();
-  await expect(page.getByText(/Result (copied|shared)|Copy the result manually/)).toBeVisible();
+  const shareDialog = page.getByRole("dialog", { name: "Result image card" });
+  await expect(shareDialog).toBeVisible();
+  await expect(shareDialog.getByRole("img", { name: "Time Hacker result image card preview" })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await shareDialog.getByRole("button", { name: "Download image" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^time-hacker-\d+\.png$/);
+  await expect(shareDialog.getByText("Image card downloaded.")).toBeVisible();
+  await shareDialog.getByRole("button", { name: "Close result image card" }).click();
+  await expect(shareDialog).toBeHidden();
 
   const persistedId = await page.evaluate((key) => localStorage.getItem(key), storageKey);
   expect(persistedId).toBe(playerId);
@@ -321,6 +316,27 @@ test("game journey verifies failure, cheat success, share fallback, and persiste
   await page.getByRole("button", { name: "Open game menu" }).click();
   await expect(page.getByRole("button", { name: /Cheat Catalog.*1.*100/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Pure mode" })).toBeEnabled();
+});
+
+test("result image card stays usable in a mobile viewport", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-390", "Mobile share-card layout runs once at 390px.");
+  await createBrowserPlayer(page);
+  await openReadyGame(page);
+  await page.getByRole("button", { name: /START.*Space or Enter/i }).click();
+  await page.getByRole("button", { name: /STOP.*Space or Enter/i }).click();
+  await page.getByRole("button", { name: /Share result/i }).click();
+
+  const shareDialog = page.getByRole("dialog", { name: "Result image card" });
+  await expect(shareDialog).toBeVisible();
+  await expect(shareDialog.getByRole("img", { name: "Time Hacker result image card preview" })).toBeVisible();
+  const bounds = await shareDialog.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+  await shareDialog.getByRole("button", { name: "Close result image card" }).click();
+  await expect(shareDialog).toBeHidden();
 });
 
 test("an activated full-dilation secret visibly slows the running stopwatch", async ({ page }, testInfo) => {

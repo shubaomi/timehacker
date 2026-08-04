@@ -1,9 +1,15 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TimeHackerApp } from "@/components/time-hacker-app";
 import { CHEAT_DEFINITIONS } from "@/game/cheats";
 import { LocaleProvider } from "@/i18n/locale-provider";
+
+vi.mock("@/game/share-card", () => ({
+  createShareCardDataUrl: vi.fn().mockResolvedValue("data:image/png;base64,iVBORw0KGgo="),
+  createShareCardBlob: vi.fn().mockResolvedValue(new Blob(["card"], { type: "image/png" })),
+  downloadShareCard: vi.fn(),
+}));
 
 const fixedPlayerId = "44c26e31-f4f7-4e01-9cbd-ecbd6bc4b8c1";
 
@@ -111,17 +117,18 @@ describe("TimeHackerApp", () => {
     expect(await screen.findByText("So close. Again?")).toBeInTheDocument();
   });
 
-  it("falls back to clipboard sharing", async () => {
+  it("opens an in-app image card without invoking native sharing", async () => {
     installFetchMock(true);
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
-    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const nativeShare = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: nativeShare });
     renderApp();
     await userEvent.click(await screen.findByRole("button", { name: /START.*Space or Enter/i }));
     await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
     await userEvent.click(await screen.findByRole("button", { name: /Share result/i }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(screen.getByText("Result copied.")).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Result image card" })).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Time Hacker result image card preview" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download image" })).toBeInTheDocument();
+    expect(nativeShare).not.toHaveBeenCalled();
   });
 
   it("shows and cancels the scoped reset confirmation", async () => {

@@ -709,24 +709,6 @@ textarea:focus-visible,
   font-weight: 700;
 }
 
-.share-status {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #418f78;
-  font-size: 0.75rem;
-}
-
-.simple-result textarea {
-  grid-column: 1 / -1;
-  width: 100%;
-  min-height: 90px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: white;
-  color: var(--ink);
-}
-
 .drawer-backdrop {
   position: fixed;
   z-index: 40;
@@ -1073,6 +1055,125 @@ textarea:focus-visible,
 .dialog-actions button { min-height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); }
 .dialog-actions .danger-button { border-color: var(--danger); background: var(--danger); color: white; font-weight: 750; }
 
+.share-card-backdrop {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(32, 36, 63, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.share-card-dialog {
+  width: min(430px, 100%);
+  max-height: min(92svh, 820px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 30px;
+  background: #f8fcff;
+  box-shadow: 0 28px 80px rgba(36, 45, 82, 0.3);
+}
+
+.share-card-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.share-card-dialog > header h2,
+.share-card-dialog > header p { margin: 0; }
+.share-card-dialog > header h2 { font-size: 1.08rem; letter-spacing: -0.025em; }
+.share-card-dialog > header p { margin-top: 3px; color: var(--muted); font-size: 0.72rem; }
+.share-card-dialog > header button {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #edf5fa;
+  color: var(--ink);
+}
+
+.share-card-preview {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 20px 8px;
+}
+
+.share-card-preview img,
+.share-card-placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  display: block;
+  border: 1px solid rgba(71, 83, 125, 0.12);
+  border-radius: 22px;
+  background: linear-gradient(145deg, #e5f8ff, #f8f5cc 52%, #dfe6ff);
+  box-shadow: 0 15px 40px rgba(62, 98, 130, 0.14);
+}
+
+.share-card-placeholder {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.share-card-placeholder svg,
+.share-card-dialog footer svg { animation: none; }
+.share-card-placeholder[aria-busy="true"] svg,
+.share-card-dialog footer button:disabled svg { animation: share-card-spin 0.85s linear infinite; }
+.share-card-placeholder.error { padding: 30px; color: var(--danger); text-align: center; }
+
+.share-card-hint {
+  margin: 8px 22px 14px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.share-card-dialog > footer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 9px;
+  padding: 0 20px 12px;
+}
+
+.share-card-dialog > footer button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+.share-card-dialog > footer button:disabled { cursor: wait; opacity: 0.65; }
+.share-card-dialog > footer .secondary { border: 1px solid var(--line); background: white; color: var(--ink); }
+.share-card-dialog > footer .primary { border: 1px solid var(--ink); background: var(--ink); color: white; }
+
+.share-card-status {
+  min-height: 29px;
+  padding: 0 20px 12px;
+  color: #278c72;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+@keyframes share-card-spin { to { transform: rotate(360deg); } }
+
 @media (max-width: 680px) {
   .minimal-header { width: calc(100% - 28px); min-height: 68px; }
   .simple-brand b { font-size: 0.72rem; }
@@ -1092,6 +1193,10 @@ textarea:focus-visible,
   .scene-hint { left: 12px; bottom: 12px; width: calc(100vw - 24px); }
   .game-drawer { width: 100%; }
   .drawer-content { padding: 18px; }
+  .share-card-backdrop { place-items: end center; padding: 10px; }
+  .share-card-dialog { max-height: 94svh; border-radius: 28px; }
+  .share-card-preview { padding: 14px 16px 6px; }
+  .share-card-dialog > footer { padding-inline: 16px; }
 }
 
 @media (max-width: 390px) {

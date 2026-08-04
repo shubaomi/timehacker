@@ -26,7 +26,7 @@ import {
 import { evaluateCheatProgress, evaluateCheatTrigger, type CheatProgress } from "@/game/cheats";
 import { effectElapsedTime, type CheatEffectConfig } from "@/game/effects";
 import { puzzleSolutionEvents, serializePuzzleEvent } from "@/game/puzzle-scenes";
-import { buildShareText } from "@/game/share";
+import type { ShareCardPayload } from "@/game/share-card";
 import { formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
 import { localeTag, type MessageKey } from "@/i18n/config";
@@ -35,6 +35,7 @@ import type { CompletedGame, DashboardData, RankingsData } from "@/types/api";
 import { CollectionPanel } from "./collection-panel";
 import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
+import { ShareCardDialog } from "./share-card-dialog";
 import { formatStopwatch, TimerStage } from "./timer-stage";
 import { PuzzleScene } from "./puzzle-scene";
 
@@ -90,8 +91,7 @@ export function TimeHackerApp() {
   const [ritualProgress, setRitualProgress] = useState<CheatProgress | null>(null);
   const [result, setResult] = useState<CompletedGame | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [shareStatus, setShareStatus] = useState<string | null>(null);
-  const [manualShare, setManualShare] = useState<string | null>(null);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2>(0);
   const [nickname, setNickname] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
@@ -269,8 +269,7 @@ export function TimeHackerApp() {
     setElapsedMs(0);
     setResult(null);
     setError(null);
-    setShareStatus(null);
-    setManualShare(null);
+    setShareCardOpen(false);
     setHintLevel(0);
     setActiveRoundCheat(nextDashboard?.suggestedCheat ?? null);
     setStatus(nextDashboard && nextDashboard.daily.remaining <= 0 ? "LIMIT_REACHED" : "READY");
@@ -369,42 +368,6 @@ export function TimeHackerApp() {
     }
   };
 
-  const shareResult = async () => {
-    if (!result || !dashboard) return;
-    const text = buildShareText({
-      durationMs: result.durationMs,
-      errorMs: result.errorMs,
-      level: dashboard.player.currentLevel,
-      unlockedCheats: dashboard.player.unlockedCheats,
-      mode: result.mode,
-      assistanceType: result.assistanceType,
-      locale,
-      totalCheats: dashboard.collection.length,
-    });
-    setManualShare(null);
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: t("shareTitle"), text });
-        setShareStatus(t("reportShared"));
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        setShareStatus(t("reportCopied"));
-      } else {
-        setManualShare(text);
-        setShareStatus(t("copyReportManually"));
-      }
-    } catch (shareError) {
-      if (shareError instanceof DOMException && shareError.name === "AbortError") return;
-      try {
-        await navigator.clipboard.writeText(text);
-        setShareStatus(t("reportCopied"));
-      } catch {
-        setManualShare(text);
-        setShareStatus(t("copyReportManually"));
-      }
-    }
-  };
-
   const confirmReset = async () => {
     if (!playerId) return;
     setResetBusy(true);
@@ -433,6 +396,16 @@ export function TimeHackerApp() {
     duration: formatStopwatch(result.durationMs),
     error: formatSignedError(result.errorMs),
   } : null, [result]);
+
+  const shareCardPayload = useMemo<ShareCardPayload | null>(() => result && dashboard ? {
+    durationMs: result.durationMs,
+    errorMs: result.errorMs,
+    success: result.success,
+    level: dashboard.player.currentLevel,
+    discoveredCheats: dashboard.player.unlockedCheats,
+    totalCheats: dashboard.collection.length,
+    mode: result.mode,
+  } : null, [dashboard, result]);
 
   if (!dashboard && status === "LOADING") {
     return (
@@ -535,9 +508,7 @@ export function TimeHackerApp() {
                   <span>{resultCopy?.duration}<small>s</small></span>
                   <b>{resultCopy?.error}</b>
                 </div>
-                <button type="button" onClick={() => void shareResult()}><Share2 aria-hidden="true" size={17} /> {t("shareResultSimple")}</button>
-                {shareStatus ? <p className="share-status">{shareStatus}</p> : null}
-                {manualShare ? <textarea aria-label={t("fieldReportText")} readOnly value={manualShare} /> : null}
+                <button type="button" onClick={() => setShareCardOpen(true)}><Share2 aria-hidden="true" size={17} /> {t("shareResultSimple")}</button>
               </motion.section>
             ) : null}
           </AnimatePresence>
@@ -657,6 +628,13 @@ export function TimeHackerApp() {
         </AnimatePresence>
 
         <ResetDialog open={resetOpen} busy={resetBusy} onCancel={() => setResetOpen(false)} onConfirm={() => void confirmReset()} />
+        <ShareCardDialog
+          open={shareCardOpen}
+          payload={shareCardPayload}
+          locale={locale}
+          t={t}
+          onClose={() => setShareCardOpen(false)}
+        />
       </main>
     </MotionConfig>
   );
