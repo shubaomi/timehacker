@@ -1,5 +1,9 @@
 # Time Hacker full-page puzzle system
 
+> 文档状态：100 条 `puzzleScene` 通用引擎的历史技术设计。现有实现事实仍可用于诊断，但“直接完成 100 个场景”不再是当前产品计划。
+>
+> 当前范围是独立 `/playtest-v2` 的 12 关垂直切片，并采用证据门决定是否扩到 30 关。规则与视觉边界以 `docs/plans/2026-08-04-time-hacker-v2-12-level-design-review.md` 和 `docs/plans/2026-08-08-time-hacker-v2-preimplementation-audit.md` 为准。
+
 ## Decision
 
 Time Hacker will use one reusable full-page puzzle engine backed by one hundred authored scene definitions. Each cheat slug keeps its stable database identity, but receives its own scene composition, discovery rule, unlock rule, bilingual hints, feedback, and accessibility alternatives.

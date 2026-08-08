@@ -1,5 +1,9 @@
 # Time Hacker V3 design brief
 
+> 文档状态：旧版已实现界面的历史设计基线。它记录“Sunlit Stopwatch”和 100 条通用秘密交互，不是 `/playtest-v2` 的当前实施依据。
+>
+> V2 当前设计请以 `docs/plans/2026-08-04-time-hacker-v2-12-level-design-review.md` 和 `docs/plans/2026-08-08-time-hacker-v2-preimplementation-audit.md` 为准。视觉方向尚待产品负责人批准；批准后将另行创建项目级 `docs/DESIGN.md`。
+
 ## Product decision
 
 - Real problem: the previous interface made a five-second casual game feel like a control room. Labels, diagnostics, missions, service input, profiles, and navigation competed with the only action that mattered.
