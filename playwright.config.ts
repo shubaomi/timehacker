@@ -22,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev --hostname 127.0.0.1 --webpack",
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
     timeout: 120_000,
   },
   projects: [
@@ -48,6 +48,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         ...localBrowser,
         viewport: { width: 1440, height: 900 },
+        contextOptions: { reducedMotion: "reduce" },
       },
     },
     {
