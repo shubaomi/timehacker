@@ -40,12 +40,14 @@ async function main(): Promise<void> {
     ["PORT=\"${PORT:-3008}\"", "PM2 port"],
     ["pnpm install --frozen-lockfile", "locked install"],
     ["pnpm db:check", "read-only database catalog gate"],
-    ["pnpm test:integration:safe", "write-free integration gate"],
+    ["NODE_ENV=test pnpm test:integration:safe", "write-free integration gate"],
     ["curl --fail --silent --show-error", "readiness check"],
     ["pm2 save", "PM2 persistence"],
   ] as const) {
     requireText(deploy, value, label);
   }
+
+  requirePattern(deploy, /^NODE_ENV=test pnpm test$/m, "test-only React environment");
 
   for (const [pattern, label] of [
     [/^\s*pnpm db:migrate\s*$/m, "database migration"],
