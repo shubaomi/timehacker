@@ -2,7 +2,7 @@
 
 > 文档状态：旧版已实现界面的历史设计基线。它记录“Sunlit Stopwatch”和 100 条通用秘密交互，不是 `/playtest-v2` 的当前实施依据。
 >
-> V2 当前设计请以 `docs/plans/2026-08-04-time-hacker-v2-12-level-design-review.md` 和 `docs/plans/2026-08-08-time-hacker-v2-preimplementation-audit.md` 为准。视觉方向尚待产品负责人批准；批准后将另行创建项目级 `docs/DESIGN.md`。
+> V2 当前已批准的产品体验与视觉合同见 `docs/DESIGN.md`；本文只保留旧版设计背景，不再作为正式实现依据。逐关规则和证据边界仍分别以 `docs/plans/2026-08-08-time-hacker-v2-100-level-design-bible.md` 与 `docs/plans/2026-08-08-time-hacker-v2-preimplementation-audit.md` 为准。
 
 ## Product decision
 
