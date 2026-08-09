@@ -86,7 +86,7 @@ export const UI_EVENT_CAPABILITIES = new Set([
 ]);
 
 export function triggerEventTypes(config: CheatTriggerConfig): string[] {
-  const secretTypes = config.puzzleScene ? ["V2_PUZZLE_DISCOVERED", "V2_PUZZLE_ARMED"] : [];
+  const secretTypes = config.v2Level || config.puzzleScene ? ["V2_PUZZLE_DISCOVERED", "V2_PUZZLE_ARMED"] : [];
   if (config.kind === "fallback") {
     return [...new Set([...config.primary.pattern, ...config.fallback.pattern].map(({ type }) => type).concat(secretTypes))];
   }

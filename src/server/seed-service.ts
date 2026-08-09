@@ -43,6 +43,21 @@ export async function seedCheatCatalog(database: PrismaClient): Promise<number> 
       "effectConfig" = EXCLUDED."effectConfig",
       "enabled" = EXCLUDED."enabled",
       "updatedAt" = CURRENT_TIMESTAMP
+    WHERE ROW(
+      "CheatMethod"."name", "CheatMethod"."nameZh",
+      "CheatMethod"."description", "CheatMethod"."descriptionZh",
+      "CheatMethod"."hint", "CheatMethod"."hintZh",
+      "CheatMethod"."difficulty", "CheatMethod"."category",
+      "CheatMethod"."triggerConfig", "CheatMethod"."effectConfig",
+      "CheatMethod"."enabled"
+    ) IS DISTINCT FROM ROW(
+      EXCLUDED."name", EXCLUDED."nameZh",
+      EXCLUDED."description", EXCLUDED."descriptionZh",
+      EXCLUDED."hint", EXCLUDED."hintZh",
+      EXCLUDED."difficulty", EXCLUDED."category",
+      EXCLUDED."triggerConfig", EXCLUDED."effectConfig",
+      EXCLUDED."enabled"
+    )
   `);
 
   return database.cheatMethod.count({

@@ -47,3 +47,4 @@ next-env.d.ts
 /artifacts/screenshots/*/puzzle-refactor.png
 /artifacts/screenshots/puzzle-mechanics/
 /artifacts/screenshots/webkit-desktop/
+/artifacts/screenshots/v2-production/

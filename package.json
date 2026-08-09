@@ -20,6 +20,7 @@
     "prisma:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:sync-catalog": "prisma db seed",
     "db:check": "tsx scripts/check-database-catalog.ts",
     "generate:v2-levels": "tsx scripts/generate-v2-level-registry.ts",
     "audit:puzzles": "tsx scripts/generate-puzzle-audit.ts",

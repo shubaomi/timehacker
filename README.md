@@ -41,14 +41,14 @@ The application uses the existing database and its default `public` schema. It d
 
    `.env.local` is ignored and must never be committed. Do not expose the connection string in client-side environment variables.
 
-3. Validate the schema and verify the existing shared catalog without writes:
+3. Validate the schema and verify the shared catalog:
 
    ```powershell
    pnpm prisma:validate
    pnpm db:check
    ```
 
-   Local development and production currently use the same PostgreSQL database. Do not run migration, seed, or write-based integration commands against it. V2 rules live in the code-authored registry and join to existing progress through stable slugs, so this release requires no schema or seed change.
+   Local development and production currently use the same PostgreSQL database. Do not run migration or write-based integration commands against it. V2 rules live in the code-authored registry and join to existing progress through stable slugs. Catalog changes are applied only with the idempotent `pnpm db:sync-catalog` command; it updates the 100 canonical level records without replacing IDs, deleting rows, or breaking player progress.
 
 4. Start the application:
 
@@ -66,9 +66,10 @@ Useful commands:
 
 ```powershell
 pnpm prisma:validate   # validate schema/configuration
-pnpm db:check          # read-only 100-slug mapping and table/catalog inspection
+pnpm db:sync-catalog   # idempotently synchronize all 100 V2 level configurations
+pnpm db:check          # strictly compare every catalog field with the code registry
 pnpm db:migrate        # explicit write command; use only on an isolated/approved database
-pnpm db:seed           # explicit write command; use only on an isolated/approved database
+pnpm db:seed           # low-level alias; prefer db:sync-catalog for this catalog
 ```
 
 Reset deletes only the requesting player's game and unlock records. It preserves that player's anonymous ID and nickname and does not touch the cheat catalog or other players.
@@ -83,7 +84,7 @@ pnpm test:integration:safe # service/domain integration without database writes
 pnpm build             # production compilation
 pnpm test:e2e          # deterministic V2 Chromium/WebKit and responsive browser acceptance
 pnpm db:check          # separate read-only shared-database gate
-pnpm verify            # safe code/build/browser gate; never seeds or migrates
+pnpm verify            # safe code/build/browser gate; never writes the database
 ```
 
 `pnpm test:integration` and `pnpm test:e2e:database` are retained for an explicitly isolated test database. They create and remove test rows and therefore are not part of the default verification or deployment flow.
@@ -125,7 +126,7 @@ cd /data/claude_project/timehacker
 bash deploy.sh
 ```
 
-The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, verifies the existing 100-slug PostgreSQL catalog read-only, runs the safe integration suite, starts the standalone server with PM2, waits for local readiness, and restores the previous runtime if readiness fails. It does not migrate, seed, edit or reload Nginx.
+The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, runs the write-free integration suite, fully prepares and validates the staging runtime, idempotently synchronizes the 100 V2 level records and verifies every catalog field, then immediately swaps the runtime and starts it with PM2. It waits for local readiness and restores the previous runtime if readiness fails. It does not run schema migrations, delete catalog rows, edit Nginx, or reload Nginx.
 
 Install the independent site configuration and validate it before reload:
 

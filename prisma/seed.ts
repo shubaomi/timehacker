@@ -9,11 +9,16 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not configured");
 }
 
-const database = new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL) });
+const database = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
+    connectionTimeoutMillis: 5_000,
+  }),
+});
 
 try {
   const count = await seedCheatCatalog(database);
-  console.log(`Seeded ${count} canonical Time Hacker cheats.`);
+  console.log(`Synchronized ${count} canonical Time Hacker levels.`);
 } finally {
   await database.$disconnect();
 }

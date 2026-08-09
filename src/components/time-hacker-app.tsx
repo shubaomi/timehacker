@@ -457,7 +457,7 @@ export function TimeHackerApp() {
             <h1>{t("simpleChallenge")}</h1>
           </motion.div>
 
-          {status === "READY" && mode === "HACKER" && activeRoundCheat?.triggerConfig.puzzleScene ? (
+          {status === "READY" && mode === "HACKER" && activeRoundCheat?.triggerConfig.v2Level ? (
             <V2PuzzleScene
               key={activeRoundCheat.slug}
               slug={activeRoundCheat.slug}

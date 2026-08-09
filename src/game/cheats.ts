@@ -11,7 +11,7 @@ import {
   puzzleSceneConfigSchema,
 } from "./puzzle-scenes";
 import type { CheatCategory, CheatEvent, EventPattern } from "./types";
-import { V2_LEVELS, type V2ControllerKind } from "./v2-levels.generated";
+import { V2_CONTROLLER_KINDS, V2_LEVELS, type V2ControllerKind } from "./v2-levels.generated";
 
 const V2_COPY_BY_CONTROLLER: Record<V2ControllerKind, { description: string; hint: string }> = {
   "corner-repair": { description: "A loose piece of the page belongs back in its missing corner.", hint: "Inspect the page edge and return what escaped." },
@@ -124,8 +124,39 @@ const accessibleHoldSchema = z.object({
   alternative: sequenceSchema,
 });
 
+const v2LevelMetadataSchema = z.object({
+  schemaVersion: z.literal(2),
+  id: z.number().int().min(1).max(100),
+  slug: z.string().min(1).max(64),
+  title: z.object({ zh: z.string().min(1), en: z.string().min(1) }),
+  chapter: z.number().int().min(1).max(10),
+  controller: z.enum(V2_CONTROLLER_KINDS),
+  visual: z.object({
+    motif: z.enum(V2_CONTROLLER_KINDS),
+    marks: z.array(z.object({
+      x: z.number(),
+      y: z.number(),
+      size: z.number(),
+      rotation: z.number(),
+      shape: z.enum(["dot", "ring", "paper", "arc", "line"]),
+    })).min(3),
+  }),
+  scene: z.string().min(1),
+  walkthrough: z.string().min(1),
+  feedback: z.string().min(1),
+  crossPlatform: z.string().min(1),
+  acceptance: z.string().min(1),
+  discovery: z.string().min(1),
+  solve: z.string().min(1),
+  input: z.string().min(1),
+  cognitiveShift: z.string().min(1),
+  silhouette: z.string().min(1),
+  risk: z.string(),
+});
+
 const puzzleSceneExtension = z.object({
   puzzleScene: puzzleSceneConfigSchema,
+  v2Level: v2LevelMetadataSchema.optional(),
 });
 
 export const cheatTriggerConfigSchema = z.intersection(z.union([
@@ -535,6 +566,13 @@ export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = V2_LEVELS.map((leve
     hint: copy.hint,
     hintZh: level.discovery,
     difficulty,
+    triggerConfig: {
+      ...definition.triggerConfig,
+      v2Level: v2LevelMetadataSchema.parse({
+        schemaVersion: 2,
+        ...level,
+      }),
+    },
     effectConfig: makeCatalogEffect(
       definition.slug,
       difficulty,
@@ -579,12 +617,13 @@ function evaluateSequence(
 }
 
 function puzzleSceneSequence(config: CheatTriggerConfig) {
-  return config.puzzleScene
+  const slug = config.v2Level?.slug ?? config.puzzleScene?.slug;
+  return slug
     ? {
         kind: "sequence" as const,
         pattern: [
-          { type: "V2_PUZZLE_DISCOVERED", value: config.puzzleScene.slug },
-          { type: "V2_PUZZLE_ARMED", value: config.puzzleScene.slug },
+          { type: "V2_PUZZLE_DISCOVERED", value: slug },
+          { type: "V2_PUZZLE_ARMED", value: slug },
         ],
         windowMs: 240_000,
       }

@@ -64,12 +64,24 @@ describe("real PostgreSQL integration", () => {
       "20260802190000_add_cheat_localizations",
     );
     expect(await seedCheatCatalog(database)).toBe(100);
+    const firstCatalogIds = await database.cheatMethod.findMany({
+      select: { id: true, slug: true, updatedAt: true },
+      orderBy: { slug: "asc" },
+    });
+    await database.$queryRaw`SELECT pg_sleep(0.01)`;
     expect(await seedCheatCatalog(database)).toBe(100);
+    expect(await database.cheatMethod.findMany({
+      select: { id: true, slug: true, updatedAt: true },
+      orderBy: { slug: "asc" },
+    })).toEqual(firstCatalogIds);
     expect(await database.cheatMethod.count()).toBe(100);
     expect(
       await database.cheatMethod.groupBy({ by: ["slug"], _count: { slug: true } }),
     ).toHaveLength(100);
     expect(await database.cheatMethod.count({ where: { nameZh: { not: null } } })).toBe(100);
+    expect(await database.cheatMethod.count({
+      where: { triggerConfig: { path: ["v2Level", "schemaVersion"], equals: 2 } },
+    })).toBe(100);
     const persistedCameraGestures = (await database.cheatMethod.findMany({ select: { triggerConfig: true } }))
       .map(({ triggerConfig }) => cheatTriggerConfigSchema.parse(triggerConfig).puzzleScene?.cameraGesture)
       .filter(Boolean);

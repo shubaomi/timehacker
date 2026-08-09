@@ -79,13 +79,10 @@ NODE_ENV=test pnpm test
 echo "[4/9] Building the standalone production bundle"
 pnpm build
 
-echo "[5/9] Checking the shared PostgreSQL catalog without writes"
-pnpm db:check
-
-echo "[6/9] Running safe production integration tests"
+echo "[5/9] Running safe production integration tests"
 NODE_ENV=test pnpm test:integration:safe
 
-echo "[7/9] Preparing the production runtime"
+echo "[6/9] Preparing the production staging runtime"
 rm -rf "$STAGING_DIR"
 cp -a "$SOURCE_DIR/.next/standalone" "$STAGING_DIR"
 
@@ -98,6 +95,10 @@ cp -a "$SOURCE_DIR/.next/static" "$STAGING_SERVER_DIR/.next/"
 if [[ -d "$SOURCE_DIR/public" ]]; then
   cp -a "$SOURCE_DIR/public" "$STAGING_SERVER_DIR/"
 fi
+
+echo "[7/9] Synchronizing the catalog and activating the production runtime"
+pnpm db:sync-catalog
+pnpm db:check
 
 rm -rf "$PREVIOUS_DIR"
 if [[ -d "$CURRENT_DIR" ]]; then

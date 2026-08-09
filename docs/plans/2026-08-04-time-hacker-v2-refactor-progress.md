@@ -58,7 +58,7 @@ Time Hacker V2 已从旧版通用三物件谜题正式切换到根路由 `/`。�
 
 ## 5. 数据库结论
 
-2026-08-09 执行只读 `pnpm db:check`：
+2026-08-09 初次执行只读 `pnpm db:check`：
 
 ```json
 {"cheats":100,"codeDefinitions":100,"slugMappingComplete":true,"missing":[],"unexpected":[],"users":15,"games":3,"unlocks":1,"puzzleScenes":100}
@@ -67,10 +67,19 @@ Time Hacker V2 已从旧版通用三物件谜题正式切换到根路由 `/`。�
 结论：
 
 - 本次不需要 Prisma schema migration。
-- 本次不需要 seed 或配置数据更新。
-- 数据库旧 `triggerConfig.puzzleScene` 可以继续存在，V2 运行时以稳定 slug 连接代码注册表，并由服务端代码定义校验事件和辅助效果。
-- 默认 `verify`、E2E 和 `deploy.sh` 已改为不写共享数据库；部署只执行 `db:check`。
-- `pnpm test:integration`、`pnpm test:e2e:database`、`pnpm db:migrate`、`pnpm db:seed` 只允许在明确隔离或单独批准的数据库运行。
+- 需要同步 100 条 `CheatMethod` 配置数据，但不需要 Prisma schema migration。
+- 每条记录保留稳定 slug 和数据库 UUID；`pnpm db:sync-catalog` 仅通过 `INSERT ... ON CONFLICT (slug) DO UPDATE` 更新名称、文案、难度、分类、发现/破解配置与计时效果，不删除记录，也不改写已有玩家关系。
+- `triggerConfig.v2Level` 保存完整 V2 关卡元数据并带 `schemaVersion: 2`；旧 `triggerConfig.puzzleScene` 暂时保留，保证数据库同步到 PM2 切换期间旧进程仍可兼容。
+- `deploy.sh` 先完成全部无写入验收并准备、验证 staging 运行包，再执行幂等目录同步，并用 `db:check` 对 100 关的所有同步字段逐项严格比对，随后立即切换运行目录与 PM2；校验失败时不会切换运行版本。配置无差异时 upsert 不更新行或刷新 `updatedAt`。
+- 默认 `verify` 和 E2E 仍不写共享数据库。`pnpm test:integration`、`pnpm test:e2e:database`、`pnpm db:migrate` 只允许在明确隔离或单独批准的数据库运行。
+
+2026-08-09 已执行一次 `pnpm db:sync-catalog`，随后严格检查结果为：
+
+```json
+{"cheats":100,"codeDefinitions":100,"slugMappingComplete":true,"catalogSynchronized":true,"missing":[],"unexpected":[],"mismatches":[],"users":15,"games":3,"unlocks":1,"puzzleScenes":100,"v2Levels":100}
+```
+
+同步前后 100 条 slug→UUID 映射的 SHA-256 摘要均为 `6c7cd6eda874bac89933500fd223d8a48cc218b6633ef809ada4830df6781e06`，用户、成绩、解锁计数也分别保持 15、3、1。
 
 ## 6. 已通过的技术验收
 
@@ -78,10 +87,10 @@ Time Hacker V2 已从旧版通用三物件谜题正式切换到根路由 `/`。�
 | --- | --- |
 | `pnpm lint` | 通过 |
 | `pnpm typecheck` | 通过 |
-| `pnpm test` | 18 文件、107 项通过 |
+| `pnpm test` | 19 文件、110 项通过 |
 | `pnpm test:integration:safe` | 1 文件、3 项通过，无数据库写入 |
 | `pnpm build` | Next.js 生产构建通过 |
-| `pnpm db:check` | 100/100 slug 映射完整，只读通过 |
+| `pnpm db:sync-catalog` + `pnpm db:check` | 100 关完整配置已同步，100/100 `v2Level`、零字段差异；UUID 与关系数据保持不变 |
 | `pnpm test:e2e` | 11 项执行通过、19 项按项目去重跳过，零失败 |
 | 100 关桌面遍历 | 100/100 无 fallback、溢出或主按钮拦截 |
 | 22 类自然交互 | 22/22 可从页面交互到 ARMED |
@@ -112,7 +121,7 @@ Time Hacker V2 已从旧版通用三物件谜题正式切换到根路由 `/`。�
    NODE_ENV=production
    ```
 
-3. 执行部署脚本。脚本会安装锁定依赖、静态/单元验证、构建、只读数据库映射检查、安全集成、PM2 切换、健康检查和失败回滚；不会执行 migration 或 seed：
+3. 执行部署脚本。脚本会安装锁定依赖、静态/单元验证、构建、安全集成、准备并验证 staging 运行包、幂等同步 100 关数据库配置、逐字段严格检查、立即切换 PM2、健康检查和失败回滚；不会执行 schema migration、删除目录记录或改写关卡 UUID：
 
    ```bash
    cd /data/claude_project/timehacker

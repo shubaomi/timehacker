@@ -17,10 +17,24 @@ describe("the one hundred cheat definitions", () => {
     for (const definition of CHEAT_DEFINITIONS) {
       expect(() => validateCheatDefinition(definition)).not.toThrow();
       expect(definition.triggerConfig.puzzleScene?.slug).toBe(definition.slug);
+      expect(definition.triggerConfig.v2Level).toMatchObject({
+        schemaVersion: 2,
+        slug: definition.slug,
+        id: expect.any(Number),
+        controller: expect.any(String),
+      });
       expect(definition.nameZh.trim()).not.toBe("");
       expect(definition.descriptionZh.trim()).not.toBe("");
       expect(definition.effectConfig.labelZh.trim()).not.toBe("");
+      expect(definition.slug.length).toBeLessThanOrEqual(64);
+      expect(definition.name.length).toBeLessThanOrEqual(80);
+      expect(definition.nameZh.length).toBeLessThanOrEqual(80);
+      expect(definition.description.length).toBeLessThanOrEqual(280);
+      expect(definition.descriptionZh.length).toBeLessThanOrEqual(280);
+      expect(definition.hint.length).toBeLessThanOrEqual(180);
+      expect(definition.hintZh.length).toBeLessThanOrEqual(180);
     }
+    expect(new Set(CHEAT_DEFINITIONS.map(({ triggerConfig }) => triggerConfig.v2Level?.id))).toHaveLength(100);
   });
 
   it("server-verifies every authored solution and rejects incomplete or wrong paths", () => {

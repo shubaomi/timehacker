@@ -22,9 +22,15 @@ describe("production deployment contract", () => {
     const deploy = await readFile(path.join(root, "deploy.sh"), "utf8");
     const runtimeSwap = deploy.indexOf('mv "$STAGING_DIR" "$CURRENT_DIR"');
 
+    expect(deploy).toContain("pnpm db:sync-catalog");
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm test"));
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm build"));
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm db:check"));
+    expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm db:sync-catalog"));
+    expect(deploy.indexOf("pnpm db:check")).toBeGreaterThan(deploy.indexOf("pnpm db:sync-catalog"));
+    expect(deploy.indexOf("pnpm db:sync-catalog")).toBeGreaterThan(deploy.indexOf("NODE_ENV=test pnpm test:integration:safe"));
+    expect(deploy.indexOf("pnpm db:sync-catalog")).toBeGreaterThan(deploy.indexOf('cp -a "$SOURCE_DIR/.next/standalone" "$STAGING_DIR"'));
+    expect(deploy.indexOf("pnpm db:sync-catalog")).toBeGreaterThan(deploy.indexOf('[[ -n "$STAGING_SERVER" ]]'));
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("NODE_ENV=test pnpm test:integration:safe"));
     expect(deploy).toMatch(/^NODE_ENV=test pnpm test$/m);
     expect(deploy).toMatch(/^NODE_ENV=test pnpm test:integration:safe$/m);
