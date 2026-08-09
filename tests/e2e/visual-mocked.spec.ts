@@ -1,12 +1,39 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { CHEAT_DEFINITIONS } from "../../src/game/cheats";
+import { V2_LEVELS, type V2ControllerKind } from "../../src/game/v2-levels.generated";
 
 const playerId = "visual-e2e-player";
 const screenshotRoot = path.resolve("artifacts", "screenshots");
 let forcedCheatIndex: number | null = null;
+
+async function solveCriticalLevel(page: Page, id: number) {
+  const scene = page.locator(`[data-v2-level="${String(id).padStart(3, "0")}"]`);
+  if ([1, 5, 7].includes(id)) {
+    const piece = scene.getByRole("button", { name: "Interactive scene piece" }); await piece.focus();
+    for (let step = 0; step < 7; step += 1) await page.keyboard.press("ArrowRight");
+  } else if (id === 2 || id === 11 || id === 12) {
+    if (id === 2) await page.waitForTimeout(2_600);
+    const core = scene.getByRole("button", { name: "Hold the quiet center" }); await core.focus();
+    await page.keyboard.down("Space"); await page.waitForTimeout(id === 12 ? 1_500 : id === 2 ? 1_300 : 1_100); await page.keyboard.up("Space");
+  } else if (id === 3) {
+    const tiles = scene.getByRole("button", { name: /Letter/ });
+    for (let tile = 0; tile < 4; tile += 1) { await tiles.nth(tile).click(); await tiles.nth(tile).click(); }
+  } else if (id === 4 || id === 9) {
+    const pieces = scene.getByRole("button", { name: /Paper shape with shadow/ });
+    for (let piece = 0; piece < 3; piece += 1) { await pieces.nth(piece).focus(); await page.keyboard.press("ArrowDown"); }
+  } else if (id === 6) {
+    const trace = scene.getByRole("application", { name: "Draw one continuous route" }); await trace.focus();
+    await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowRight"); await page.keyboard.press("ArrowUp");
+  } else if (id === 8) {
+    const layers = scene.getByRole("button", { name: /Paper layer/ });
+    for (let layer = 0; layer < 3; layer += 1) { await layers.nth(layer).focus(); await page.keyboard.press("Enter"); await page.keyboard.press("Enter"); }
+  } else if (id === 10) {
+    const paper = scene.getByRole("button", { name: /fold the marked paper/i }); await paper.click(); await paper.click();
+  }
+}
 
 function dashboard(cheatIndex = 0) {
   return {
@@ -88,7 +115,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("all one hundred authored scenes render alone without overflow or interception", async ({ page }, testInfo) => {
+test("all one hundred production scenes render without fallback, overflow, or interception", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1440", "The complete catalog render audit runs once on desktop Chromium.");
   test.setTimeout(900_000);
   const browserErrors: string[] = [];
@@ -105,47 +132,34 @@ test("all one hundred authored scenes render alone without overflow or intercept
     if (index > 0) {
       forcedCheatIndex = index;
       await page.locator(".menu-button").click();
-      await page.locator(".difficulty-control select").selectOption("2");
+      await page.locator(".difficulty-control select").selectOption(index % 2 === 0 ? "2" : "3");
     }
 
-    const scene = CHEAT_DEFINITIONS[index].triggerConfig.puzzleScene!;
-    const sceneRoot = page.locator(`[data-scene-id="${scene.sceneId}"]`);
-    await expect(sceneRoot, scene.slug).toBeVisible();
+    const definition = CHEAT_DEFINITIONS[index];
+    const sceneRoot = page.locator(`[data-v2-slug="${definition.slug}"]`);
+    await expect(sceneRoot, definition.slug).toBeVisible();
     if (index > 0) {
       await page.locator(".drawer-header button").last().click();
       await expect(page.locator(".drawer-backdrop")).toHaveCount(0);
     }
-    await expect(page.locator("[data-testid='puzzle-scene']"), scene.slug).toHaveCount(1);
-    await expect(sceneRoot.locator(".puzzle-object"), scene.slug).toHaveCount(3);
+    await expect(page.locator("[data-testid='puzzle-scene']"), definition.slug).toHaveCount(1);
+    await expect(sceneRoot.locator("[data-controller]"), definition.slug).toHaveCount(1);
+    await expect(sceneRoot.locator("button, [role='application']").first(), definition.slug).toBeVisible();
 
     const viewport = page.viewportSize()!;
-    const boxes = await sceneRoot.locator(".puzzle-object").evaluateAll((objects) => objects.map((object) => {
+    const boxes = await sceneRoot.locator("button, [role='application']").evaluateAll((objects) => objects.map((object) => {
       const box = object.getBoundingClientRect();
       return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
     }));
-    expect(boxes.every((box) => box.left >= 0 && box.top >= 0 && box.right <= viewport.width && box.bottom <= viewport.height), scene.slug).toBe(true);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), scene.slug).toBe(true);
-
-    const target = sceneRoot.locator(`[data-puzzle-target="${scene.discoveryRule.target}"]`);
-    const targetBox = await target.boundingBox();
-    if (!targetBox) throw new Error(`${scene.slug} discovery target has no browser box`);
-    const targetHit = await target.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-      return {
-        hit: top === element || element.contains(top),
-        topTag: top?.tagName ?? null,
-        topClass: top instanceof HTMLElement ? top.className : null,
-      };
-    });
-    expect(targetHit.hit, `${scene.slug}: ${JSON.stringify(targetHit)}`).toBe(true);
+    expect(boxes.every((box) => box.left >= 0 && box.top >= 0 && box.right <= viewport.width && box.bottom <= viewport.height), definition.slug).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), definition.slug).toBe(true);
 
     const primary = page.locator(".play-button");
     expect(await primary.evaluate((element) => {
       const box = element.getBoundingClientRect();
       const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
       return top === element || element.contains(top);
-    }), scene.slug).toBe(true);
+    }), definition.slug).toBe(true);
 
   }
 
@@ -155,13 +169,105 @@ test("all one hundred authored scenes render alone without overflow or intercept
   expect(browserErrors).toEqual([]);
 });
 
+test("each production mechanism family has a natural browser path to ARMED", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "Mechanism-family audit runs once on desktop Chromium.");
+  const representativeIds: Record<V2ControllerKind, number> = {
+    "corner-repair": 1, "patient-hold": 11, "word-shift": 3, "shadow-sort": 4,
+    "light-drag": 5, trace: 6, "frame-drag": 7, "layer-stack": 8, fold: 10,
+    "coupled-drag": 14, "wave-align": 13, flip: 15, orbit: 27, resize: 18,
+    "focus-route": 20, rhythm: 21, "wheel-echo": 67, "cover-return": 40,
+    rotate: 16, "edge-route": 38, "shared-control": 26, constellation: 100,
+  };
+
+  for (const [controller, id] of Object.entries(representativeIds) as Array<[V2ControllerKind, number]>) {
+    forcedCheatIndex = id - 1;
+    await page.goto(`/?mechanism=${controller}`);
+    const scene = page.locator(`[data-v2-level="${String(id).padStart(3, "0")}"]`);
+    await expect(scene).toBeVisible();
+    const board = scene.locator(`[data-controller="${controller}"]`);
+    await expect(board).toBeVisible();
+
+    if (["corner-repair", "light-drag", "frame-drag", "coupled-drag", "wave-align", "orbit", "resize", "edge-route", "shared-control"].includes(controller)) {
+      const piece = scene.getByRole("button", { name: "Interactive scene piece" });
+      await piece.focus();
+      for (let step = 0; step < 7; step += 1) await page.keyboard.press("ArrowRight");
+    } else if (controller === "patient-hold") {
+      const core = scene.getByRole("button", { name: "Hold the quiet center" });
+      await core.focus(); await page.keyboard.down("Space"); await page.waitForTimeout(1_100); await page.keyboard.up("Space");
+    } else if (controller === "word-shift") {
+      const tiles = scene.getByRole("button", { name: /Letter/ });
+      for (let tile = 0; tile < 4; tile += 1) { await tiles.nth(tile).click(); await tiles.nth(tile).click(); }
+    } else if (controller === "shadow-sort") {
+      const pieces = scene.getByRole("button", { name: /Paper shape with shadow/ });
+      for (let piece = 0; piece < 3; piece += 1) { await pieces.nth(piece).focus(); await page.keyboard.press("ArrowDown"); }
+    } else if (controller === "trace") {
+      await board.focus();
+      if (id === 6 || id === 69) {
+        await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowRight"); await page.keyboard.press("ArrowUp");
+      } else {
+        await page.keyboard.press("ArrowRight"); await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowRight");
+      }
+    } else if (controller === "layer-stack") {
+      const layers = scene.getByRole("button", { name: /Paper layer/ });
+      for (let layer = 0; layer < 3; layer += 1) { await layers.nth(layer).focus(); await page.keyboard.press("Enter"); await page.keyboard.press("Enter"); }
+    } else if (controller === "fold") {
+      const paper = scene.getByRole("button", { name: /fold the marked paper/i }); await paper.click(); await paper.click();
+    } else if (controller === "flip") {
+      await scene.getByRole("button", { name: /flip the marked paper/i }).click();
+    } else if (controller === "rotate") {
+      const dial = scene.getByRole("button", { name: /rotate the marked paper/i }); await dial.click(); await dial.click();
+    } else if (controller === "focus-route") {
+      const papers = scene.getByRole("button", { name: /Quiet paper/ });
+      for (let index = 0; index < 3; index += 1) await papers.nth(index).hover();
+    } else if (controller === "rhythm") {
+      const beat = scene.getByRole("button", { name: "Answer the visible rhythm" });
+      await beat.click(); await page.waitForTimeout(300); await beat.click(); await page.waitForTimeout(300); await beat.click();
+    } else if (controller === "wheel-echo") {
+      await board.focus(); await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowDown");
+    } else if (controller === "cover-return") {
+      const cover = scene.getByRole("button", { name: "Cover the paper" }); await cover.click(); await scene.getByRole("button", { name: "Uncover the paper" }).click();
+    } else if (controller === "constellation") {
+      await scene.getByRole("button", { name: "Move left stars inward" }).click();
+      await scene.getByRole("button", { name: "Move right stars inward" }).click();
+      const trace = scene.getByRole("application", { name: "Draw the empty V" }); await trace.focus(); await page.keyboard.press("v");
+    }
+
+    await expect(page.getByText("You found the crack in time"), `${id} ${V2_LEVELS[id - 1].slug}`).toBeVisible();
+  }
+  forcedCheatIndex = null;
+});
+
+test("levels 001 through 012 complete their authored critical path", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "The complete opening-chapter audit runs once.");
+  for (let id = 1; id <= 12; id += 1) {
+    forcedCheatIndex = id - 1;
+    await page.goto(`/?critical=${id}`);
+    await solveCriticalLevel(page, id);
+    await expect(page.getByText("You found the crack in time"), V2_LEVELS[id - 1].slug).toBeVisible();
+  }
+  forcedCheatIndex = null;
+});
+
+test("captures approved representative scenes at real responsive sizes", async ({ page }, testInfo) => {
+  test.skip(!["desktop-1440", "mobile-360"].includes(testInfo.project.name), "Representative visual evidence uses desktop and 360px mobile.");
+  const folder = path.join(screenshotRoot, "v2-production", testInfo.project.name);
+  await mkdir(folder, { recursive: true });
+  for (const id of [1, 3, 12, 40, 69, 100]) {
+    forcedCheatIndex = id - 1;
+    await page.goto(`/?visual=${id}`);
+    await expect(page.locator(`[data-v2-level="${String(id).padStart(3, "0")}"]`)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: path.join(folder, `level-${String(id).padStart(3, "0")}.png`), fullPage: true });
+  }
+  forcedCheatIndex = null;
+});
+
 test("full-page puzzle, result isolation, catalog states, and responsive accessibility", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Can you stop time at 10\.00 seconds/i })).toBeVisible();
-  const firstScene = CHEAT_DEFINITIONS[0].triggerConfig.puzzleScene!;
-  await expect(page.locator(`[data-scene-id="${firstScene.sceneId}"]`)).toBeVisible();
-  expect(await page.locator(".puzzle-object").count()).toBe(3);
-  expect(await page.locator(".stopwatch-card .puzzle-object").count()).toBe(0);
+  const firstScene = CHEAT_DEFINITIONS[0];
+  await expect(page.locator(`[data-v2-slug="${firstScene.slug}"]`)).toBeVisible();
+  await expect(page.locator("[data-controller='corner-repair']")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   const primaryBox = await page.getByRole("button", { name: /START.*Space or Enter/i }).boundingBox();
@@ -172,18 +278,12 @@ test("full-page puzzle, result isolation, catalog states, and responsive accessi
   await page.getByRole("button", { name: "Open game menu" }).click();
   await page.getByRole("button", { name: /^Hint/ }).click();
   await page.getByRole("button", { name: "Close game menu" }).click();
-  await expect(page.locator(".scene-hint")).toBeVisible();
+  await expect(page.locator("[data-testid='puzzle-scene'] aside")).toBeVisible();
 
-  const targets = [
-    ...firstScene.discoveryRule.steps.map(() => firstScene.discoveryRule.target),
-    ...firstScene.unlockRule.steps.map(() => firstScene.unlockRule.target),
-  ];
-  for (const target of targets) {
-    const object = page.locator(`[data-puzzle-target="${target}"]`);
-    await object.focus();
-    await page.keyboard.press("Enter");
-  }
-  await expect(page.locator(".puzzle-scene")).toHaveClass(/is-armed/);
+  const looseCorner = page.getByRole("button", { name: "Interactive scene piece" });
+  await looseCorner.focus();
+  for (let press = 0; press < 7; press += 1) await page.keyboard.press("ArrowRight");
+  await expect(page.getByText("You found the crack in time")).toBeVisible();
   await page.getByRole("button", { name: /START.*Space or Enter/i }).click();
   await page.getByRole("button", { name: /STOP.*Space or Enter/i }).click();
   await expect(page.getByRole("heading", { name: "Perfect hit! You conquered time." })).toBeVisible();
@@ -191,8 +291,8 @@ test("full-page puzzle, result isolation, catalog states, and responsive accessi
   await expect(page.getByText(/tiny secret|hundredths move|three seconds/i)).toHaveCount(0);
 
   await page.getByRole("button", { name: /Run again.*Space or Enter/i }).click();
-  const secondScene = CHEAT_DEFINITIONS[1].triggerConfig.puzzleScene!;
-  await expect(page.locator(`[data-scene-id="${secondScene.sceneId}"]`)).toBeVisible();
+  const secondScene = CHEAT_DEFINITIONS[1];
+  await expect(page.locator(`[data-v2-slug="${secondScene.slug}"]`)).toBeVisible();
 
   await page.getByRole("button", { name: "Open game menu" }).click();
   await page.getByRole("button", { name: /Cheat Catalog.*1.*100/ }).click();

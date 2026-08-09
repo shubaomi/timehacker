@@ -23,12 +23,12 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { evaluateCheatProgress, evaluateCheatTrigger, type CheatProgress } from "@/game/cheats";
+import { evaluateCheatTrigger } from "@/game/cheats";
 import { effectElapsedTime, type CheatEffectConfig } from "@/game/effects";
-import { puzzleSolutionEvents, serializePuzzleEvent } from "@/game/puzzle-scenes";
 import type { ShareCardPayload } from "@/game/share-card";
 import { formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
+import { V2_LEVEL_BY_SLUG } from "@/game/v2-levels.generated";
 import { localeTag, type MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
 import type { CompletedGame, DashboardData, RankingsData } from "@/types/api";
@@ -37,7 +37,7 @@ import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
 import { ShareCardDialog } from "./share-card-dialog";
 import { formatStopwatch, TimerStage } from "./timer-stage";
-import { PuzzleScene } from "./puzzle-scene";
+import { V2PuzzleScene } from "./v2-puzzle-scene";
 
 type GameStatus =
   | "LOADING"
@@ -88,11 +88,10 @@ export function TimeHackerApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [armed, setArmed] = useState(false);
-  const [ritualProgress, setRitualProgress] = useState<CheatProgress | null>(null);
   const [result, setResult] = useState<CompletedGame | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shareCardOpen, setShareCardOpen] = useState(false);
-  const [hintLevel, setHintLevel] = useState<0 | 1 | 2>(0);
+  const [hintLevel, setHintLevel] = useState<0 | 1 | 2 | 3>(0);
   const [nickname, setNickname] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
@@ -165,8 +164,6 @@ export function TimeHackerApp() {
       const nextEvents = [...retainedEvents, event].slice(-100);
       eventsRef.current = nextEvents;
       if (activeRoundCheat) {
-        const progress = evaluateCheatProgress(activeRoundCheat.triggerConfig, nextEvents);
-        setRitualProgress(progress);
         if (evaluateCheatTrigger(activeRoundCheat.triggerConfig, nextEvents)) {
           armedRef.current = true;
           setArmed(true);
@@ -212,9 +209,6 @@ export function TimeHackerApp() {
     readyEpochRef.current = now;
     idleStartRef.current = now;
     eventsRef.current = [{ type: "READY_MARK", at: 0 }];
-    if (activeRoundCheat) {
-      setRitualProgress(evaluateCheatProgress(activeRoundCheat.triggerConfig, eventsRef.current));
-    }
   }, [activeRoundCheat, status]);
 
   useEffect(() => {
@@ -264,7 +258,6 @@ export function TimeHackerApp() {
     armedRef.current = false;
     activeGameRef.current = null;
     effectRef.current = null;
-    setRitualProgress(null);
     setArmed(false);
     setElapsedMs(0);
     setResult(null);
@@ -401,11 +394,11 @@ export function TimeHackerApp() {
     durationMs: result.durationMs,
     errorMs: result.errorMs,
     success: result.success,
-    level: dashboard.player.currentLevel,
+    level: activeRoundCheat ? V2_LEVEL_BY_SLUG.get(activeRoundCheat.slug)?.id ?? dashboard.player.currentLevel : dashboard.player.currentLevel,
     discoveredCheats: dashboard.player.unlockedCheats,
     totalCheats: dashboard.collection.length,
     mode: result.mode,
-  } : null, [dashboard, result]);
+  } : null, [activeRoundCheat, dashboard, result]);
 
   if (!dashboard && status === "LOADING") {
     return (
@@ -465,13 +458,13 @@ export function TimeHackerApp() {
           </motion.div>
 
           {status === "READY" && mode === "HACKER" && activeRoundCheat?.triggerConfig.puzzleScene ? (
-            <PuzzleScene
+            <V2PuzzleScene
               key={activeRoundCheat.slug}
-              scene={activeRoundCheat.triggerConfig.puzzleScene}
-              currentStep={ritualProgress?.currentStep ?? 0}
+              slug={activeRoundCheat.slug}
               armed={armed}
               hintLevel={hintLevel}
-              onEvent={emitCheatEvent}
+              onDiscover={() => emitCheatEvent("V2_PUZZLE_DISCOVERED", activeRoundCheat.slug)}
+              onArm={() => emitCheatEvent("V2_PUZZLE_ARMED", activeRoundCheat.slug)}
             />
           ) : null}
 
@@ -544,13 +537,6 @@ export function TimeHackerApp() {
                         className="drawer-row language-row"
                         onClick={() => {
                           const nextLocale = locale === "en" ? "zh" : "en";
-                          const scene = activeRoundCheat?.triggerConfig.puzzleScene;
-                          const expected = scene
-                            ? puzzleSolutionEvents(scene)[ritualProgress?.currentStep ?? 0]
-                            : null;
-                          if (expected?.mechanic === "locale") {
-                            emitCheatEvent("PUZZLE_STEP", serializePuzzleEvent(expected));
-                          }
                           emitCheatEvent("LOCALE_TOGGLE", nextLocale);
                           setLocale(nextLocale);
                         }}
@@ -586,10 +572,10 @@ export function TimeHackerApp() {
 
                       <nav className="drawer-nav" aria-label={t("moreGameOptions")}>
                         {status === "READY" && mode === "HACKER" && activeRoundCheat ? (
-                          <button type="button" onClick={() => setHintLevel((level) => level === 0 ? 1 : 2)}>
+                          <button type="button" onClick={() => setHintLevel((level) => level === 0 ? 1 : level === 1 ? 2 : 3)}>
                             <CircleHelp aria-hidden="true" size={20} />
-                            <span>{hintLevel === 0 ? t("hint") : t("showNextHint")}</span>
-                            <b>{hintLevel}/2</b>
+                            <span>{hintLevel === 0 ? t("hint") : hintLevel < 2 ? t("showNextHint") : t("showAnswer")}</span>
+                            <b>{hintLevel}/3</b>
                           </button>
                         ) : null}
                         <button type="button" onClick={() => switchPanel("cheats")}><Archive aria-hidden="true" size={20} /><span>{t("cheatArchive")}</span><b>{dashboard.player.unlockedCheats}/{dashboard.collection.length}</b></button>

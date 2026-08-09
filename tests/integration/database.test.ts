@@ -7,10 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { CHEAT_DEFINITIONS, cheatTriggerConfigSchema } from "@/game/cheats";
 import { effectWallTimeToTarget } from "@/game/effects";
-import {
-  puzzleSolutionEvents,
-  serializePuzzleEvent,
-} from "@/game/puzzle-scenes";
 import { completeGame, startGame } from "@/server/game-service";
 import {
   createOrResumePlayer,
@@ -38,16 +34,13 @@ function playerId(label: string): string {
 
 function puzzleEvents(slug: string) {
   const cheat = CHEAT_DEFINITIONS.find((definition) => definition.slug === slug);
-  const scene = cheat?.triggerConfig.puzzleScene;
-  if (!scene) {
+  if (!cheat?.triggerConfig.puzzleScene) {
     throw new Error(`Missing puzzle scene for ${slug}`);
   }
-
-  return puzzleSolutionEvents(scene).map((event, index) => ({
-    type: "PUZZLE_STEP",
-    value: serializePuzzleEvent(event),
-    at: index * 250,
-  }));
+  return [
+    { type: "V2_PUZZLE_DISCOVERED", value: slug, at: 0 },
+    { type: "V2_PUZZLE_ARMED", value: slug, at: 250 },
+  ];
 }
 
 describe("real PostgreSQL integration", () => {

@@ -405,6 +405,8 @@ textarea:focus-visible,
 }
 
 .challenge-copy {
+  position: relative;
+  z-index: 3;
   max-width: 680px;
   margin-bottom: clamp(28px, 5vh, 48px);
   text-align: center;
@@ -438,6 +440,8 @@ textarea:focus-visible,
 }
 
 .play-timer {
+  position: relative;
+  z-index: 3;
   width: 100%;
   display: grid;
   justify-items: center;

@@ -24,8 +24,11 @@ describe("production deployment contract", () => {
 
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm test"));
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm build"));
-    expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm db:migrate"));
-    expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm test:integration"));
+    expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm db:check"));
+    expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm test:integration:safe"));
+    expect(deploy).not.toMatch(/^\s*pnpm db:migrate\s*$/m);
+    expect(deploy).not.toMatch(/^\s*pnpm db:seed\s*$/m);
+    expect(deploy).not.toMatch(/^\s*pnpm test:integration\s*$/m);
     expect(deploy).toContain("rollback");
   });
 

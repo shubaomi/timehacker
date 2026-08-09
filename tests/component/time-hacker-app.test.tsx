@@ -172,11 +172,11 @@ describe("TimeHackerApp", () => {
     const second = CHEAT_DEFINITIONS[1];
     installFetchMock(true, first, second);
     renderApp();
-    expect(await screen.findByTestId("puzzle-scene", {}, { timeout: 4_000 })).toHaveAttribute("data-scene-id", first.triggerConfig.puzzleScene?.sceneId);
+    expect(await screen.findByTestId("puzzle-scene", {}, { timeout: 4_000 })).toHaveAttribute("data-v2-slug", first.slug);
     await userEvent.click(screen.getByRole("button", { name: /START.*Space or Enter/i }));
     await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
     expect(screen.queryByTestId("puzzle-scene")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Run again.*Space or Enter/i }));
-    expect(await screen.findByTestId("puzzle-scene")).toHaveAttribute("data-scene-id", second.triggerConfig.puzzleScene?.sceneId);
+    expect(await screen.findByTestId("puzzle-scene")).toHaveAttribute("data-v2-slug", second.slug);
   });
 });

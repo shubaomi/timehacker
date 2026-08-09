@@ -2,13 +2,14 @@
 
 Time Hacker is a bilingual, mobile-first timing game: stop the clock at exactly `10.00` seconds, or notice a tiny anomaly and discover one of 100 secrets that bend game time.
 
-## What V1 includes
+## What V2 includes
 
 - Anonymous player identity persisted in local storage and PostgreSQL
 - English and Simplified Chinese UI with a persistent language switch and localized secrets collection
 - With Secrets mode containing 100 server-verified cheats, 20 per difficulty tier
-- Four assistance families with a perceptible reaction window near `10.00`: full dilation, final-zone dilation, tolerance assist, and brake pulse
-- Twelve playful interaction families with unique, server-verified 3-to-5-step configurations, progressive hints, and drag-first spatial controls
+- A 100-level authored campaign with stable database slugs, 22 production controller families, and a unique full-page visual signature for every level
+- A common assisted landing rule: normal speed to `9.95`, then `0.01` displayed seconds per real second, with `10.00` held for three seconds
+- Three progressive hint levels, including an explicit answer route, plus touch, pointer, and keyboard alternatives
 - Pure Mode unlocked after the first successful run
 - A strict `±10 ms` success window and a 50-start daily limit (UTC)
 - Progression, nickname, collection, three ranking views, sharing, and isolated reset
@@ -40,15 +41,14 @@ The application uses the existing database and its default `public` schema. It d
 
    `.env.local` is ignored and must never be committed. Do not expose the connection string in client-side environment variables.
 
-3. Validate and deploy the checked-in migration, then seed the canonical catalog:
+3. Validate the schema and verify the existing shared catalog without writes:
 
    ```powershell
    pnpm prisma:validate
-   pnpm db:migrate
-   pnpm db:seed
+   pnpm db:check
    ```
 
-   Seeding is idempotent. Re-running it updates the same 100 cheat records instead of duplicating them.
+   Local development and production currently use the same PostgreSQL database. Do not run migration, seed, or write-based integration commands against it. V2 rules live in the code-authored registry and join to existing progress through stable slugs, so this release requires no schema or seed change.
 
 4. Start the application:
 
@@ -66,9 +66,9 @@ Useful commands:
 
 ```powershell
 pnpm prisma:validate   # validate schema/configuration
-pnpm db:migrate       # deploy checked-in migrations
-pnpm db:seed          # upsert exactly 100 canonical bilingual cheats
-pnpm tsx scripts/inspect-database.ts  # read-only table/catalog inspection
+pnpm db:check          # read-only 100-slug mapping and table/catalog inspection
+pnpm db:migrate        # explicit write command; use only on an isolated/approved database
+pnpm db:seed           # explicit write command; use only on an isolated/approved database
 ```
 
 Reset deletes only the requesting player's game and unlock records. It preserves that player's anonymous ID and nickname and does not touch the cheat catalog or other players.
@@ -79,23 +79,26 @@ The completion gate is deliberately stronger than “the page opens”:
 
 ```powershell
 pnpm test              # unit + component tests
-pnpm test:integration  # real PostgreSQL migration/seed/service/constraint tests
+pnpm test:integration:safe # service/domain integration without database writes
 pnpm build             # production compilation
-pnpm test:e2e          # Chromium journeys, accessibility, responsive screenshots
-pnpm verify            # complete gate in the required order
+pnpm test:e2e          # deterministic V2 Chromium/WebKit and responsive browser acceptance
+pnpm db:check          # separate read-only shared-database gate
+pnpm verify            # safe code/build/browser gate; never seeds or migrates
 ```
+
+`pnpm test:integration` and `pnpm test:e2e:database` are retained for an explicitly isolated test database. They create and remove test rows and therefore are not part of the default verification or deployment flow.
 
 The suites cover:
 
 - timer math, inclusive `±10 ms` boundary, progression, share text, deterministic selection
-- uniqueness, bilingual content, difficulty/category ranges, experience diversity, UI event reachability, and positive/negative trigger cases for all 100 cheats
+- 100 continuous IDs, unique stable slugs, unique visual signatures, 22 explicit controller families, no placeholder, TODO, or generic fallback
 - loading/error/empty/locked/result/dialog component states and persistent English/Chinese switching
-- real migration presence, idempotent seed, anonymous-player idempotency, server-side cheat/effect verification, and Pure/Secrets judgment isolation
-- 49/50/51 concurrent daily-limit behavior, ranking order, reset isolation, foreign keys, and uniqueness
-- initial, running, failed, armed, successful, collection, ranking, reset, persistence, Pure Mode, keyboard, daily-limit, reduced-motion, and share-fallback browser journeys
+- authored selection order, V2 discovery/armed state paths, server-side effect verification, and Pure/Secrets judgment isolation
+- all 100 scenes rendered, all 22 mechanism families naturally armed, and full critical paths for levels 001–012
+- representative visual evidence for 001, 003, 012, 040, 069, and 100 on desktop and 360px mobile
 - serious/critical axe findings, browser console errors, horizontal overflow, 200% zoom, and screenshots at `360×800`, `390×844`, `768×1024`, and `1440×900`
 
-Integration and browser tests create uniquely identified players and delete only those exact rows afterward. Existing users and catalog data are not truncated or reset. Browser evidence is written to `artifacts/screenshots/`.
+The default integration and browser tests mock persistence and perform no database writes. Browser evidence is written to `artifacts/screenshots/` and is intentionally not committed.
 
 ## Production deployment on Linux
 
@@ -122,7 +125,7 @@ cd /data/claude_project/timehacker
 bash deploy.sh
 ```
 
-The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds before applying migrations, seeds idempotently, runs the live PostgreSQL integration suite, starts the standalone server with PM2, waits for local readiness, and restores the previous runtime if readiness fails. It does not edit or reload Nginx.
+The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, verifies the existing 100-slug PostgreSQL catalog read-only, runs the safe integration suite, starts the standalone server with PM2, waits for local readiness, and restores the previous runtime if readiness fails. It does not migrate, seed, edit or reload Nginx.
 
 Install the independent site configuration and validate it before reload:
 
@@ -145,6 +148,7 @@ src/game/               deterministic domain rules
 src/server/             database-backed services
 tests/unit/             pure rule tests
 tests/component/        DOM/component behavior
-tests/integration/      real PostgreSQL verification
-tests/e2e/              browser acceptance journeys
+tests/integration-safe/ write-free production integration
+tests/integration/      explicit isolated-PostgreSQL verification
+tests/e2e/              deterministic and isolated-database browser journeys
 ```

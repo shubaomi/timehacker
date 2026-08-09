@@ -12,15 +12,15 @@ export function formatDuration(durationMs: number): string {
   const safeDuration = Math.max(0, Math.round(durationMs));
   const minutes = Math.floor(safeDuration / 60_000);
   const seconds = Math.floor((safeDuration % 60_000) / 1_000);
-  const milliseconds = safeDuration % 1_000;
+  const hundredths = Math.floor((safeDuration % 1_000) / 10);
 
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(hundredths).padStart(2, "0")}`;
 }
 
 export function formatSignedError(errorMs: number): string {
   const rounded = Math.round(errorMs);
   const sign = rounded >= 0 ? "+" : "−";
-  return `${sign}${(Math.abs(rounded) / 1_000).toFixed(3)}s`;
+  return `${sign}${(Math.abs(rounded) / 1_000).toFixed(2)}s`;
 }
 
 export function measureGame(

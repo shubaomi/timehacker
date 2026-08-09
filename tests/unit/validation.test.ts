@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { CHEAT_DEFINITIONS } from "@/game/cheats";
-import { puzzleSolutionEvents, serializePuzzleEvent } from "@/game/puzzle-scenes";
 import { completeGameSchema } from "@/lib/validation";
 
 describe("game completion validation", () => {
@@ -8,11 +7,10 @@ describe("game completion validation", () => {
     for (const definition of CHEAT_DEFINITIONS) {
       const scene = definition.triggerConfig.puzzleScene;
       expect(scene).toBeDefined();
-      const events = puzzleSolutionEvents(scene!).map((event, index) => ({
-        type: "PUZZLE_STEP",
-        value: serializePuzzleEvent(event),
-        at: index * 250,
-      }));
+      const events = [
+        { type: "V2_PUZZLE_DISCOVERED", value: definition.slug, at: 0 },
+        { type: "V2_PUZZLE_ARMED", value: definition.slug, at: 250 },
+      ];
 
       expect(() => completeGameSchema.parse({
         playerId: "00000000-0000-4000-8000-000000000000",

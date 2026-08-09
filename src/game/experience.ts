@@ -82,10 +82,11 @@ export const UI_EVENT_CAPABILITIES = new Set([
   "LOCALE_TOGGLE", "MODE_TOGGLE", "ORIENTATION", "PANEL_OPEN", "READY_MARK", "READY_WAIT",
   "RHYTHM_TAP", "RITUAL_PULSE", "SERVICE_KEY", "SERVICE_SWEEP", "STATUS_PHASE_CAPTURE",
   "STATUS_TAP", "TIMER_TAP", "VISIBILITY_RETURN", "WHEEL", "PUZZLE_STEP",
+  "V2_PUZZLE_DISCOVERED", "V2_PUZZLE_ARMED",
 ]);
 
 export function triggerEventTypes(config: CheatTriggerConfig): string[] {
-  const secretTypes = config.puzzleScene ? ["PUZZLE_STEP"] : [];
+  const secretTypes = config.puzzleScene ? ["V2_PUZZLE_DISCOVERED", "V2_PUZZLE_ARMED"] : [];
   if (config.kind === "fallback") {
     return [...new Set([...config.primary.pattern, ...config.fallback.pattern].map(({ type }) => type).concat(secretTypes))];
   }

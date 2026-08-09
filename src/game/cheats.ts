@@ -9,10 +9,34 @@ import {
 import {
   PUZZLE_SCENES,
   puzzleSceneConfigSchema,
-  puzzleSolutionEvents,
-  serializePuzzleEvent,
 } from "./puzzle-scenes";
 import type { CheatCategory, CheatEvent, EventPattern } from "./types";
+import { V2_LEVELS, type V2ControllerKind } from "./v2-levels.generated";
+
+const V2_COPY_BY_CONTROLLER: Record<V2ControllerKind, { description: string; hint: string }> = {
+  "corner-repair": { description: "A loose piece of the page belongs back in its missing corner.", hint: "Inspect the page edge and return what escaped." },
+  "patient-hold": { description: "The scene responds to patience before it responds to pressure.", hint: "Wait for the quiet response, then hold it steadily." },
+  "word-shift": { description: "Movable type changes what the timer believes the page says.", hint: "Rewrite FAST as the word that means slow." },
+  "shadow-sort": { description: "The shadows preserve an order that the objects have forgotten.", hint: "Arrange the paper pieces by the evidence in their shadows." },
+  "light-drag": { description: "One movable light controls several apparently broken shadows.", hint: "Move the light instead of repairing each object." },
+  trace: { description: "A continuous route is hidden between the visible breaks.", hint: "Draw one unbroken path with the topology shown by the page." },
+  "frame-drag": { description: "The picture continues outside the frame that currently reveals it.", hint: "Move the viewing frame, not the picture inside it." },
+  "layer-stack": { description: "Paper edges and materials reveal a missing depth order.", hint: "Restack the layers according to their visible seams." },
+  fold: { description: "The reverse side of the paper changes the rule on its front.", hint: "Use the crease to change the page's inside and outside." },
+  "coupled-drag": { description: "Two pieces move as parts of one shared mechanism.", hint: "Find and move the center they both depend on." },
+  "wave-align": { description: "Two visible rhythms share one hidden meeting point.", hint: "Align the patterns where both rules agree." },
+  flip: { description: "One paper face contradicts the larger pattern around it.", hint: "Flip the odd face to restore the seam." },
+  orbit: { description: "The gap belongs to an orbit rather than to the object inside it.", hint: "Move the outer relation until the opening returns." },
+  resize: { description: "The boundary is clipping the relationship needed to solve the page.", hint: "Resize the frame until the missing relation appears." },
+  "focus-route": { description: "A route appears only where attention passes across the page.", hint: "Follow the quiet focus points without pressing their centers." },
+  rhythm: { description: "Spacing and silence form a rhythm the page can hear.", hint: "Answer with the broad beat shown in the scene." },
+  "wheel-echo": { description: "A reverse echo returns after the original motion has left.", hint: "Use the returning echo rather than the solid wave." },
+  "cover-return": { description: "Covering the page reveals that hidden time never stopped.", hint: "Cover or leave the page once, then return." },
+  rotate: { description: "Several pieces share one rotating axis beneath the paper.", hint: "Turn the common axis instead of each small object." },
+  "edge-route": { description: "Opposite edges of the page continue the same route.", hint: "Carry the broken path through an edge or depth layer." },
+  "shared-control": { description: "Several objects are symptoms of one shared control.", hint: "Find the common cause instead of fixing pieces one by one." },
+  constellation: { description: "The final shape exists in the empty space between gathered stars.", hint: "Gather both clusters, then draw the broad V in the negative space." },
+};
 
 const eventPatternSchema = z.object({
   type: z.string().min(1),
@@ -477,7 +501,7 @@ const PRE_REVISION_CHEATS: readonly CheatDefinition[] = [
   ...ADDITIONAL_CHEAT_DEFINITIONS,
 ];
 
-export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = PRE_REVISION_CHEATS.map((definition) => {
+const REVISED_CHEATS: readonly CheatDefinition[] = PRE_REVISION_CHEATS.map((definition) => {
   const revision = CHEAT_REVISIONS[definition.slug];
   const revised = revision ? { ...definition, ...revision } : definition;
   const puzzleScene = PUZZLE_SCENES.find(({ slug }) => slug === revised.slug);
@@ -493,6 +517,29 @@ export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = PRE_REVISION_CHEATS
       revised.difficulty,
       `${revised.name} engaged`,
       `${revised.nameZh}已接入`,
+    ),
+  };
+});
+
+export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = V2_LEVELS.map((level) => {
+  const definition = REVISED_CHEATS.find(({ slug }) => slug === level.slug);
+  if (!definition) throw new RangeError(`Missing stable cheat definition for V2 level ${level.id}: ${level.slug}`);
+  const difficulty = Math.ceil(level.id / 20);
+  const copy = V2_COPY_BY_CONTROLLER[level.controller];
+  return {
+    ...definition,
+    name: level.title.en,
+    nameZh: level.title.zh,
+    description: `${level.title.en}. ${copy.description}`,
+    descriptionZh: level.scene,
+    hint: copy.hint,
+    hintZh: level.discovery,
+    difficulty,
+    effectConfig: makeCatalogEffect(
+      definition.slug,
+      difficulty,
+      `${level.title.en} engaged`,
+      `${level.title.zh}已接入`,
     ),
   };
 });
@@ -535,10 +582,10 @@ function puzzleSceneSequence(config: CheatTriggerConfig) {
   return config.puzzleScene
     ? {
         kind: "sequence" as const,
-        pattern: puzzleSolutionEvents(config.puzzleScene).map((event) => ({
-          type: "PUZZLE_STEP",
-          value: serializePuzzleEvent(event),
-        })),
+        pattern: [
+          { type: "V2_PUZZLE_DISCOVERED", value: config.puzzleScene.slug },
+          { type: "V2_PUZZLE_ARMED", value: config.puzzleScene.slug },
+        ],
         windowMs: 240_000,
       }
     : null;

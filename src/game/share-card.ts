@@ -164,7 +164,7 @@ export async function renderShareCard(payload: ShareCardPayload, locale: Locale)
   context.fillText("s", 840, 656);
 
   const errorSign = payload.errorMs >= 0 ? "+" : "−";
-  const error = `${errorSign}${(Math.abs(payload.errorMs) / 1_000).toFixed(3)}s`;
+  const error = `${errorSign}${(Math.abs(payload.errorMs) / 1_000).toFixed(2)}s`;
   drawRoundRect(context, 112, 720, 856, 94, 47);
   context.fillStyle = payload.success ? "#e3f8f1" : "#fff0ec";
   context.fill();

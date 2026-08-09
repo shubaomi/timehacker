@@ -11,6 +11,7 @@ describe("cheat selection", () => {
       seed: "player-a:2026-08-02",
     };
     expect(selectNextCheat(input)?.slug).toBe(selectNextCheat(input)?.slug);
+    expect(selectNextCheat(input)?.slug).toBe("four-corner-breach");
   });
 
   it("never assigns a discovered cheat", () => {

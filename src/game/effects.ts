@@ -42,55 +42,16 @@ export const cheatEffectConfigSchema = z.discriminatedUnion("type", [
 export type CheatEffectConfig = z.infer<typeof cheatEffectConfigSchema>;
 export type CheatEffectType = CheatEffectConfig["type"];
 
-const REACTION_ZONE_START_MS = 8_000;
 export const LANDING_ZONE_START_MS = 9_950;
 export const LANDING_STEP_WALL_MS = 1_000;
 export const TARGET_EXTRA_HOLD_MS = 2_000;
 
-function toleranceAssistScale(toleranceMs: number): number {
-  const strength = Math.max(0, Math.min(1, (toleranceMs - 20) / 40));
-  return 0.42 - strength * 0.12;
-}
-
-function legacyEffectElapsedTime(wallElapsedMs: number, effect: CheatEffectConfig): number {
-  const wall = Math.max(0, wallElapsedMs);
-  if (effect.type === "TOLERANCE_ASSIST") {
-    if (wall <= REACTION_ZONE_START_MS) return wall;
-    return REACTION_ZONE_START_MS + (wall - REACTION_ZONE_START_MS) * toleranceAssistScale(effect.toleranceMs);
-  }
-  if (effect.type === "FULL_DILATION") return wall * effect.timeScale;
-  if (effect.type === "FINAL_DILATION") {
-    if (wall <= effect.startsAtMs) return wall;
-    return effect.startsAtMs + (wall - effect.startsAtMs) * effect.timeScale;
-  }
-  if (wall <= effect.brakeAtMs) return wall;
-  if (wall <= effect.brakeAtMs + effect.brakeDurationMs) return effect.brakeAtMs;
-  return wall - effect.brakeDurationMs;
-}
-
-function legacyWallTimeToTarget(effect: CheatEffectConfig, targetMs: number): number {
-  if (effect.type === "FULL_DILATION") return targetMs / effect.timeScale;
-  if (effect.type === "FINAL_DILATION") {
-    if (targetMs <= effect.startsAtMs) return targetMs;
-    return effect.startsAtMs + (targetMs - effect.startsAtMs) / effect.timeScale;
-  }
-  if (effect.type === "TOLERANCE_ASSIST") {
-    if (targetMs <= REACTION_ZONE_START_MS) return targetMs;
-    return REACTION_ZONE_START_MS + (targetMs - REACTION_ZONE_START_MS) / toleranceAssistScale(effect.toleranceMs);
-  }
-  if (effect.type === "BRAKE_PULSE") {
-    return targetMs <= effect.brakeAtMs ? targetMs : targetMs + effect.brakeDurationMs;
-  }
-  return targetMs;
-}
-
 export function effectElapsedTime(wallElapsedMs: number, effect: CheatEffectConfig | null): number {
   const wall = Math.max(0, wallElapsedMs);
   if (!effect) return wall;
-  const landingStartsAtWallMs = legacyWallTimeToTarget(effect, LANDING_ZONE_START_MS);
-  if (wall < landingStartsAtWallMs) return legacyEffectElapsedTime(wall, effect);
+  if (wall < LANDING_ZONE_START_MS) return wall;
 
-  const landingWallMs = Math.max(0, wall - landingStartsAtWallMs + 0.001);
+  const landingWallMs = Math.max(0, wall - LANDING_ZONE_START_MS + 0.001);
   const stepsToTarget = (TARGET_MS - LANDING_ZONE_START_MS) / 10;
   const targetStartsAtWallMs = stepsToTarget * LANDING_STEP_WALL_MS;
   const targetHoldWallMs = LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS;
@@ -103,16 +64,16 @@ export function effectElapsedTime(wallElapsedMs: number, effect: CheatEffectConf
 }
 
 export function effectWallTimeToTarget(effect: CheatEffectConfig, targetMs = TARGET_MS): number {
-  if (targetMs < LANDING_ZONE_START_MS) return legacyWallTimeToTarget(effect, targetMs);
-  const landingStartsAtWallMs = legacyWallTimeToTarget(effect, LANDING_ZONE_START_MS);
+  void effect;
+  if (targetMs < LANDING_ZONE_START_MS) return targetMs;
   if (targetMs <= TARGET_MS) {
     const steps = Math.ceil((targetMs - LANDING_ZONE_START_MS) / 10);
-    return landingStartsAtWallMs + Math.max(0, steps) * LANDING_STEP_WALL_MS;
+    return LANDING_ZONE_START_MS + Math.max(0, steps) * LANDING_STEP_WALL_MS;
   }
   const targetStartsAtWallMs = (TARGET_MS - LANDING_ZONE_START_MS) / 10 * LANDING_STEP_WALL_MS;
   const targetHoldWallMs = LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS;
   const stepsAfterTarget = Math.max(1, Math.ceil((targetMs - TARGET_MS) / 10));
-  return landingStartsAtWallMs + targetStartsAtWallMs + targetHoldWallMs
+  return LANDING_ZONE_START_MS + targetStartsAtWallMs + targetHoldWallMs
     + (stepsAfterTarget - 1) * LANDING_STEP_WALL_MS;
 }
 

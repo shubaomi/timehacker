@@ -39,13 +39,20 @@ async function main(): Promise<void> {
     ["APP_NAME=\"timehacker\"", "PM2 app name"],
     ["PORT=\"${PORT:-3008}\"", "PM2 port"],
     ["pnpm install --frozen-lockfile", "locked install"],
-    ["pnpm db:migrate", "database migration"],
-    ["pnpm db:seed", "database seed"],
-    ["pnpm test:integration", "database integration gate"],
+    ["pnpm db:check", "read-only database catalog gate"],
+    ["pnpm test:integration:safe", "write-free integration gate"],
     ["curl --fail --silent --show-error", "readiness check"],
     ["pm2 save", "PM2 persistence"],
   ] as const) {
     requireText(deploy, value, label);
+  }
+
+  for (const [pattern, label] of [
+    [/^\s*pnpm db:migrate\s*$/m, "database migration"],
+    [/^\s*pnpm db:seed\s*$/m, "database seed"],
+    [/^\s*pnpm test:integration\s*$/m, "write-based database integration"],
+  ] as const) {
+    if (pattern.test(deploy)) throw new Error(`Deployment must not run ${label} against the shared database.`);
   }
 
   requirePattern(

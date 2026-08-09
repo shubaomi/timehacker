@@ -22,11 +22,16 @@ describe("assisted timing effects", () => {
     effects.forEach((effect) => expect(cheatEffectConfigSchema.parse(effect)).toEqual(effect));
   });
 
-  it("preserves each authored curve before the common landing zone", () => {
-    expect(effectElapsedTime(18_000, { type: "FULL_DILATION", timeScale: 0.5, label: "", labelZh: "" })).toBe(9_000);
-    expect(effectElapsedTime(10_000, { type: "FINAL_DILATION", startsAtMs: 8_000, timeScale: 0.5, label: "", labelZh: "" })).toBe(9_000);
-    expect(effectElapsedTime(10_000, { type: "TOLERANCE_ASSIST", toleranceMs: 40, label: "", labelZh: "" })).toBeLessThan(9_000);
-    expect(effectElapsedTime(10_300, { type: "BRAKE_PULSE", brakeAtMs: 9_600, brakeDurationMs: 700, label: "", labelZh: "" })).toBe(9_600);
+  it("runs at real speed until the common 9.95 landing zone", () => {
+    for (const effect of [
+      { type: "FULL_DILATION", timeScale: 0.5, label: "", labelZh: "" },
+      { type: "FINAL_DILATION", startsAtMs: 8_000, timeScale: 0.5, label: "", labelZh: "" },
+      { type: "TOLERANCE_ASSIST", toleranceMs: 40, label: "", labelZh: "" },
+      { type: "BRAKE_PULSE", brakeAtMs: 9_600, brakeDurationMs: 700, label: "", labelZh: "" },
+    ] as const) {
+      expect(effectElapsedTime(9_949, effect)).toBe(9_949);
+      expect(effectWallTimeToTarget(effect, 9_950)).toBe(9_950);
+    }
   });
 
   it("keeps generated catalog effects below a 30 second target wall time", () => {

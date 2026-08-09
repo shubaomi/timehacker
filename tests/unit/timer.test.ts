@@ -8,9 +8,9 @@ import {
 
 describe("timer domain", () => {
   it("formats milliseconds as a stable laboratory readout", () => {
-    expect(formatDuration(0)).toBe("00:00.000");
-    expect(formatDuration(10_023)).toBe("00:10.023");
-    expect(formatDuration(61_005)).toBe("01:01.005");
+    expect(formatDuration(0)).toBe("00:00.00");
+    expect(formatDuration(10_023)).toBe("00:10.02");
+    expect(formatDuration(61_005)).toBe("01:01.00");
   });
 
   it.each([
@@ -30,8 +30,8 @@ describe("timer domain", () => {
       errorMs: -23,
       absoluteErrorMs: 23,
     });
-    expect(formatSignedError(-23)).toBe("−0.023s");
-    expect(formatSignedError(23)).toBe("+0.023s");
+    expect(formatSignedError(-23)).toBe("−0.02s");
+    expect(formatSignedError(23)).toBe("+0.02s");
   });
 
   it("scales hacker time without changing pure time", () => {

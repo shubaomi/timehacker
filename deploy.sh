@@ -79,12 +79,11 @@ pnpm test
 echo "[4/9] Building the standalone production bundle"
 pnpm build
 
-echo "[5/9] Applying migrations and canonical seed data"
-pnpm db:migrate
-pnpm db:seed
+echo "[5/9] Checking the shared PostgreSQL catalog without writes"
+pnpm db:check
 
-echo "[6/9] Running live PostgreSQL integration tests"
-pnpm test:integration
+echo "[6/9] Running safe production integration tests"
+pnpm test:integration:safe
 
 echo "[7/9] Preparing the production runtime"
 rm -rf "$STAGING_DIR"

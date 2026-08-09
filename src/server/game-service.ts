@@ -137,13 +137,16 @@ export async function completeGame(
       return game;
     }
 
+    const assignedDefinition = game.assignedCheat
+      ? CHEAT_DEFINITIONS.find(({ slug }) => slug === game.assignedCheat?.slug) ?? null
+      : null;
     const cheatTriggered =
       game.mode === "HACKER" &&
-      game.assignedCheat !== null &&
-      evaluateCheatTrigger(game.assignedCheat.triggerConfig, input.events);
+      assignedDefinition !== null &&
+      evaluateCheatTrigger(assignedDefinition.triggerConfig, input.events);
     const usedCheatId = cheatTriggered ? game.assignedCheatId : null;
-    const effect = cheatTriggered && game.assignedCheat
-      ? cheatEffectConfigSchema.parse(game.assignedCheat.effectConfig)
+    const effect = cheatTriggered && assignedDefinition
+      ? cheatEffectConfigSchema.parse(assignedDefinition.effectConfig)
       : null;
     const wallDurationMs = input.wallDurationMs ?? input.durationMs;
     const judgedDurationMs = effectElapsedTime(wallDurationMs, effect);

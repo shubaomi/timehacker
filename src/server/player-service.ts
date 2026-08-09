@@ -72,14 +72,14 @@ export async function getDashboard(
   const maximumDifficulty = player.firstSuccessAt
     ? difficultyForLevel(player.currentLevel)
     : 1;
-  const difficulty = Math.min(maximumDifficulty, Math.max(1, requestedDifficulty));
+  const requested = Math.min(maximumDifficulty, Math.max(1, requestedDifficulty));
   const discoveredSlugs = new Set(
     player.unlockedCheats.map(({ cheat }) => cheat.slug),
   );
   const suggestedCheat = selectNextCheat({
     definitions: CHEAT_DEFINITIONS,
     discoveredSlugs,
-    desiredDifficulty: difficulty,
+    desiredDifficulty: maximumDifficulty,
     seed: `${player.playerId}:${player.totalGames}:${now.toISOString().slice(0, 10)}`,
   });
   const { start, end } = utcDayRange(now);
@@ -122,7 +122,7 @@ export async function getDashboard(
       remaining: remainingDailyAttempts(attemptsToday),
       resetsAt: nextUtcReset(now),
     },
-    difficulty,
+    difficulty: suggestedCheat?.difficulty ?? requested,
     maximumDifficulty,
     suggestedCheat,
     collection,

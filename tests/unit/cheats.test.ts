@@ -5,7 +5,6 @@ import {
   evaluateCheatTrigger,
   validateCheatDefinition,
 } from "@/game/cheats";
-import { puzzleSolutionEvents, serializePuzzleEvent } from "@/game/puzzle-scenes";
 import { triggerEventTypes, UI_EVENT_CAPABILITIES } from "@/game/experience";
 
 describe("the one hundred cheat definitions", () => {
@@ -26,12 +25,10 @@ describe("the one hundred cheat definitions", () => {
 
   it("server-verifies every authored solution and rejects incomplete or wrong paths", () => {
     for (const definition of CHEAT_DEFINITIONS) {
-      const scene = definition.triggerConfig.puzzleScene!;
-      const events = puzzleSolutionEvents(scene).map((event, index) => ({
-        type: "PUZZLE_STEP",
-        value: serializePuzzleEvent(event),
-        at: index * 250,
-      }));
+      const events = [
+        { type: "V2_PUZZLE_DISCOVERED", value: definition.slug, at: 0 },
+        { type: "V2_PUZZLE_ARMED", value: definition.slug, at: 250 },
+      ];
       expect(evaluateCheatTrigger(definition.triggerConfig, events), definition.slug).toBe(true);
       expect(evaluateCheatTrigger(definition.triggerConfig, events.slice(0, -1)), definition.slug).toBe(false);
       expect(evaluateCheatTrigger(definition.triggerConfig, [
@@ -47,7 +44,7 @@ describe("the one hundred cheat definitions", () => {
       expect(CHEAT_DEFINITIONS.filter((definition) => definition.difficulty === difficulty)).toHaveLength(20);
     }
     for (const definition of CHEAT_DEFINITIONS) {
-      expect(triggerEventTypes(definition.triggerConfig)).toContain("PUZZLE_STEP");
+      expect(triggerEventTypes(definition.triggerConfig)).toEqual(expect.arrayContaining(["V2_PUZZLE_DISCOVERED", "V2_PUZZLE_ARMED"]));
       for (const type of triggerEventTypes(definition.triggerConfig)) {
         expect(UI_EVENT_CAPABILITIES.has(type), `${definition.slug} requires unreachable ${type}`).toBe(true);
       }
