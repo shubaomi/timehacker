@@ -37,7 +37,7 @@ import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
 import { ShareCardDialog } from "./share-card-dialog";
 import { formatStopwatch, TimerStage } from "./timer-stage";
-import { V2PuzzleScene } from "./v2-puzzle-scene";
+import { V2EclipseMenuLayer, V2PuzzleScene } from "./v2-puzzle-scene";
 
 type GameStatus =
   | "LOADING"
@@ -92,6 +92,9 @@ export function TimeHackerApp() {
   const [error, setError] = useState<string | null>(null);
   const [shareCardOpen, setShareCardOpen] = useState(false);
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2 | 3>(0);
+  const [puzzleResetEpoch, setPuzzleResetEpoch] = useState(0);
+  const [ghostAnchor, setGhostAnchor] = useState<"left" | "right" | null>(null);
+  const [eclipseOffset, setEclipseOffset] = useState(0);
   const [nickname, setNickname] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
@@ -254,6 +257,14 @@ export function TimeHackerApp() {
   }, [status]);
 
   const prepareNext = useCallback((nextDashboard = dashboard) => {
+    const nextCheat = nextDashboard?.suggestedCheat ?? null;
+    if (activeRoundCheat?.slug === "ghost-session" && nextCheat?.slug === "ghost-session") {
+      setPuzzleResetEpoch((epoch) => epoch + 1);
+    } else {
+      setPuzzleResetEpoch(0);
+      setGhostAnchor(null);
+    }
+    if (nextCheat?.slug !== "eclipse-session") setEclipseOffset(0);
     eventsRef.current = [];
     armedRef.current = false;
     activeGameRef.current = null;
@@ -264,9 +275,9 @@ export function TimeHackerApp() {
     setError(null);
     setShareCardOpen(false);
     setHintLevel(0);
-    setActiveRoundCheat(nextDashboard?.suggestedCheat ?? null);
+    setActiveRoundCheat(nextCheat);
     setStatus(nextDashboard && nextDashboard.daily.remaining <= 0 ? "LIMIT_REACHED" : "READY");
-  }, [dashboard]);
+  }, [activeRoundCheat?.slug, dashboard]);
 
   const startChallenge = useCallback(async () => {
     if (!playerId || !dashboard) return;
@@ -463,6 +474,11 @@ export function TimeHackerApp() {
               slug={activeRoundCheat.slug}
               armed={armed}
               hintLevel={hintLevel}
+              resetEpoch={puzzleResetEpoch}
+              ghostAnchor={ghostAnchor}
+              onGhostAnchorChange={setGhostAnchor}
+              menuOpen={menuOpen}
+              eclipseOffset={eclipseOffset}
               onDiscover={() => emitCheatEvent("V2_PUZZLE_DISCOVERED", activeRoundCheat.slug)}
               onArm={() => emitCheatEvent("V2_PUZZLE_ARMED", activeRoundCheat.slug)}
             />
@@ -521,6 +537,13 @@ export function TimeHackerApp() {
                 transition={{ type: "spring", stiffness: 340, damping: 34 }}
                 onPointerDown={(event) => event.stopPropagation()}
               >
+                {status === "READY" && mode === "HACKER" && activeRoundCheat?.slug === "eclipse-session" && panel === "game" ? (
+                  <V2EclipseMenuLayer
+                    offset={eclipseOffset}
+                    aligned={eclipseOffset >= 60 && eclipseOffset <= 84}
+                    onOffsetChange={setEclipseOffset}
+                  />
+                ) : null}
                 <header className="drawer-header">
                   {panel !== "game" ? (
                     <button type="button" onClick={() => switchPanel("game")} aria-label={t("backToMenu")}><ChevronLeft aria-hidden="true" size={20} /></button>

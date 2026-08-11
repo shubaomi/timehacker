@@ -20,7 +20,7 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: "pnpm dev --hostname 127.0.0.1 --webpack",
+    command: "pnpm build && pnpm start --hostname 127.0.0.1",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
     timeout: 120_000,
