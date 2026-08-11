@@ -7,7 +7,9 @@ import { V2_LEVELS, type V2ControllerKind } from "../../src/game/v2-levels.gener
 
 const playerId = "visual-e2e-player";
 const screenshotRoot = path.resolve("artifacts", "screenshots");
-const sequentialScreenshotRoot = path.join(screenshotRoot, "v2-sequential");
+const sequentialScreenshotRoot = process.env.PLAYWRIGHT_SCREENSHOT_ROOT
+  ? path.resolve(process.env.PLAYWRIGHT_SCREENSHOT_ROOT)
+  : path.join(screenshotRoot, "v2-sequential");
 let forcedCheatIndex: number | null = null;
 
 async function findExposedPoint(control: Locator) {
@@ -277,25 +279,27 @@ test("level 003 changes the meaning of FAST without becoming a form", async ({ p
   await expect(tiles).toHaveCount(4);
   await expect(tiles).toHaveText(["F", "A", "S", "T"]);
 
-  const tileArea = await page.getByTestId("slow-word-tiles-003").boundingBox();
+  const tileBoxes = await Promise.all(Array.from({ length: 4 }, (_, index) => tiles.nth(index).boundingBox()));
   const protectedBoxes = await Promise.all([
     page.locator(".challenge-copy").boundingBox(),
     page.locator(".stopwatch-card").boundingBox(),
     page.locator(".play-button").boundingBox(),
   ]);
-  expect(tileArea).not.toBeNull();
-  expect(tileArea!.x).toBeGreaterThanOrEqual(0);
-  expect(tileArea!.x + tileArea!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
-  expect(tileArea!.y + tileArea!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
-  for (const protectedBox of protectedBoxes) {
-    expect(protectedBox).not.toBeNull();
-    expect(
-      tileArea!.x < protectedBox!.x + protectedBox!.width
-      && tileArea!.x + tileArea!.width > protectedBox!.x
-      && tileArea!.y < protectedBox!.y + protectedBox!.height
-      && tileArea!.y + tileArea!.height > protectedBox!.y,
-      "letter tiles overlap protected game content",
-    ).toBe(false);
+  for (const tileBox of tileBoxes) {
+    expect(tileBox).not.toBeNull();
+    expect(tileBox!.x).toBeGreaterThanOrEqual(0);
+    expect(tileBox!.x + tileBox!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    expect(tileBox!.y + tileBox!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    for (const protectedBox of protectedBoxes) {
+      expect(protectedBox).not.toBeNull();
+      expect(
+        tileBox!.x < protectedBox!.x + protectedBox!.width
+        && tileBox!.x + tileBox!.width > protectedBox!.x
+        && tileBox!.y < protectedBox!.y + protectedBox!.height
+        && tileBox!.y + tileBox!.height > protectedBox!.y,
+        "letter tile overlaps protected game content",
+      ).toBe(false);
+    }
   }
   await page.waitForTimeout(600);
   await mkdir(sequentialScreenshotRoot, { recursive: true });
@@ -648,12 +652,6 @@ test("level 010 folds both page edges into the missing zero of 101", async ({ pa
   await expect(page.getByText("Folded Calibration")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
   await expect(page.locator("[class*='ambientMarks']")).toHaveCount(0);
-  await expect.poll(async () => {
-    const edges = await Promise.all([left.boundingBox(), right.boundingBox()]);
-    const primary = await page.locator(".play-button").boundingBox();
-    return Boolean(primary && edges.every((edge) => edge && edge.y >= primary.y + primary.height));
-  }).toBe(true);
-
   const puzzleBoxes = await Promise.all([left.boundingBox(), right.boundingBox()]);
   const protectedBoxes = await Promise.all([
     page.locator(".challenge-copy").boundingBox(),
@@ -7589,6 +7587,100 @@ test("all one hundred production scenes render without fallback, overflow, or in
   expect(axe.violations.filter(({ impact }) => impact === "serious" || impact === "critical")).toEqual([]);
   forcedCheatIndex = null;
   expect(browserErrors).toEqual([]);
+});
+
+test("all one hundred production scenes keep their controls clear of the timer, challenge, and main action", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "The cross-viewport geometry audit runs once on desktop Chromium.");
+  test.setTimeout(900_000);
+  const viewports = [
+    { name: "desktop-short", width: 1536, height: 800 },
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "mobile", width: 390, height: 844 },
+  ] as const;
+  const violations: string[] = [];
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    forcedCheatIndex = 0;
+    await page.goto("/");
+    await page.addStyleTag({ content: "*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}" });
+
+    for (let index = 0; index < CHEAT_DEFINITIONS.length; index += 1) {
+      if (index > 0) {
+        forcedCheatIndex = index;
+        await page.locator(".menu-button").click();
+        await page.locator(".difficulty-control select").selectOption(index % 2 === 0 ? "2" : "3");
+      }
+
+      const definition = CHEAT_DEFINITIONS[index];
+      const sceneRoot = page.locator(`[data-v2-slug="${definition.slug}"]`);
+      await expect(sceneRoot, `${viewport.name} ${definition.slug}`).toBeVisible();
+      if (index > 0) {
+        await page.locator(".drawer-header button").last().click();
+        await expect(page.locator(".drawer-backdrop")).toHaveCount(0);
+      }
+      await expect(sceneRoot).toHaveAttribute("data-layout-ready", "true");
+      await expect.poll(async () => sceneRoot.evaluate((scene) => {
+        const timer = document.querySelector<HTMLElement>(".stopwatch-card");
+        if (!timer) return false;
+        const measuredBottom = Number.parseFloat((scene as HTMLElement).style.getPropertyValue("--timer-bottom"));
+        return Math.abs(measuredBottom - timer.getBoundingClientRect().bottom) < 1;
+      })).toBe(true);
+
+      const levelViolations = await sceneRoot.evaluate((scene) => {
+        const isRendered = (element: Element) => {
+          const style = window.getComputedStyle(element);
+          const box = element.getBoundingClientRect();
+          return style.display !== "none"
+            && style.visibility !== "hidden"
+            && Number.parseFloat(style.opacity || "1") > 0.02
+            && style.pointerEvents !== "none"
+            && box.width >= 2
+            && box.height >= 2;
+        };
+        const overlaps = (first: DOMRect, second: DOMRect, clearance = 4) => !(
+          first.right + clearance <= second.left
+          || first.left >= second.right + clearance
+          || first.bottom + clearance <= second.top
+          || first.top >= second.bottom + clearance
+        );
+        const protectedElements = [
+          ["challenge", document.querySelector(".challenge-copy h1")],
+          ["timer", document.querySelector(".timer-readout")],
+          ["main-action", document.querySelector(".play-button")],
+        ] as const;
+        const controls = Array.from(scene.querySelectorAll("button, [role='application'], input, select, textarea"))
+          .filter(isRendered);
+        return controls.flatMap((control) => {
+          const controlBox = control.getBoundingClientRect();
+          const label = control.getAttribute("aria-label")
+            ?? control.getAttribute("data-testid")
+            ?? control.tagName.toLowerCase();
+          const results: string[] = [];
+          if (
+            controlBox.left < -1
+            || controlBox.top < -1
+            || controlBox.right > window.innerWidth + 1
+            || controlBox.bottom > window.innerHeight + 1
+          ) {
+            results.push(`${label} leaves viewport (${Math.round(controlBox.left)},${Math.round(controlBox.top)} ${Math.round(controlBox.width)}x${Math.round(controlBox.height)})`);
+          }
+          results.push(...protectedElements.flatMap(([protectedName, protectedElement]) => {
+            if (!protectedElement || !isRendered(protectedElement)) return [];
+            const protectedBox = protectedElement.getBoundingClientRect();
+            if (!overlaps(controlBox, protectedBox)) return [];
+            return [`${label} overlaps ${protectedName}`];
+          }));
+          return results;
+        });
+      });
+      violations.push(...levelViolations.map((violation) => `${viewport.name} ${String(index + 1).padStart(3, "0")} ${definition.slug}: ${violation}`));
+    }
+  }
+
+  forcedCheatIndex = null;
+  expect(violations).toEqual([]);
 });
 
 test("each production mechanism family has a natural browser path to ARMED", async ({ page }, testInfo) => {

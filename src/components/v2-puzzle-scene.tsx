@@ -3393,7 +3393,7 @@ function PortableHorizon({ locale, solved, onDiscover, onArm }: ControllerProps)
   const toolDragging = useRef(false);
   const bandDrag = useRef<{ index: number; x: number; y: number } | null>(null);
   const armedRef = useRef(false);
-  const [toolPosition, setToolPosition] = useState({ x: 50, y: 8 });
+  const [toolPosition, setToolPosition] = useState({ x: 50, y: 14 });
   const [activeBand, setActiveBand] = useState<number | null>(null);
   const [testedBands, setTestedBands] = useState(() => portableBandYs.map(() => false));
   const [wrongDrops, setWrongDrops] = useState(0);
