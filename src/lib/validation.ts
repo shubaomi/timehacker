@@ -43,4 +43,5 @@ export const completeGameSchema = z.object({
 
 export const resetPlayerSchema = z.object({
   playerId: playerIdSchema,
+  analyticsBrowserId: z.string().uuid().optional(),
 });

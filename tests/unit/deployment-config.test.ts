@@ -23,10 +23,13 @@ describe("production deployment contract", () => {
     const runtimeSwap = deploy.indexOf('mv "$STAGING_DIR" "$CURRENT_DIR"');
 
     expect(deploy).toContain("pnpm db:sync-catalog");
+    expect(deploy).toContain("pnpm db:migrate");
+    expect(deploy).toContain("pnpm analytics:cleanup");
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm test"));
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm build"));
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm db:check"));
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm db:sync-catalog"));
+    expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("pnpm db:migrate"));
     expect(deploy.indexOf("pnpm db:check")).toBeGreaterThan(deploy.indexOf("pnpm db:sync-catalog"));
     expect(deploy.indexOf("pnpm db:sync-catalog")).toBeGreaterThan(deploy.indexOf("NODE_ENV=test pnpm test:integration:safe"));
     expect(deploy.indexOf("pnpm db:sync-catalog")).toBeGreaterThan(deploy.indexOf('cp -a "$SOURCE_DIR/.next/standalone" "$STAGING_DIR"'));
@@ -34,7 +37,7 @@ describe("production deployment contract", () => {
     expect(runtimeSwap).toBeGreaterThan(deploy.indexOf("NODE_ENV=test pnpm test:integration:safe"));
     expect(deploy).toMatch(/^NODE_ENV=test pnpm test$/m);
     expect(deploy).toMatch(/^NODE_ENV=test pnpm test:integration:safe$/m);
-    expect(deploy).not.toMatch(/^\s*pnpm db:migrate\s*$/m);
+    expect(deploy).toMatch(/^\s*pnpm db:migrate\s*$/m);
     expect(deploy).not.toMatch(/^\s*pnpm db:seed\s*$/m);
     expect(deploy).not.toMatch(/^\s*pnpm test:integration\s*$/m);
     expect(deploy).toContain("rollback");

@@ -35,3 +35,55 @@ export const CheatCategory = {
 } as const
 
 export type CheatCategory = (typeof CheatCategory)[keyof typeof CheatCategory]
+
+
+export const ReleaseTrack = {
+  FULL: 'FULL',
+  SOFT_LAUNCH: 'SOFT_LAUNCH'
+} as const
+
+export type ReleaseTrack = (typeof ReleaseTrack)[keyof typeof ReleaseTrack]
+
+
+export const PlaytestEventName = {
+  LEVEL_VIEW: 'LEVEL_VIEW',
+  FIRST_INTERACTION: 'FIRST_INTERACTION',
+  PUZZLE_DISCOVERED: 'PUZZLE_DISCOVERED',
+  HINT_1_OPEN: 'HINT_1_OPEN',
+  HINT_2_OPEN: 'HINT_2_OPEN',
+  ANSWER_OPEN: 'ANSWER_OPEN',
+  PUZZLE_ARMED: 'PUZZLE_ARMED',
+  TIMER_STARTED: 'TIMER_STARTED',
+  TIMER_STOPPED: 'TIMER_STOPPED',
+  LEVEL_COMPLETED: 'LEVEL_COMPLETED',
+  NEXT_LEVEL: 'NEXT_LEVEL',
+  SHARE_CARD_OPEN: 'SHARE_CARD_OPEN',
+  SHARE_CARD_EXPORTED: 'SHARE_CARD_EXPORTED'
+} as const
+
+export type PlaytestEventName = (typeof PlaytestEventName)[keyof typeof PlaytestEventName]
+
+
+export const PlaytestEntrySource = {
+  DIRECT: 'DIRECT',
+  SHARE: 'SHARE',
+  UNKNOWN: 'UNKNOWN'
+} as const
+
+export type PlaytestEntrySource = (typeof PlaytestEntrySource)[keyof typeof PlaytestEntrySource]
+
+
+export const PlaytestMode = {
+  NORMAL: 'NORMAL',
+  ASSISTED: 'ASSISTED'
+} as const
+
+export type PlaytestMode = (typeof PlaytestMode)[keyof typeof PlaytestMode]
+
+
+export const PlaytestShareAction = {
+  SAVE: 'SAVE',
+  COPY: 'COPY'
+} as const
+
+export type PlaytestShareAction = (typeof PlaytestShareAction)[keyof typeof PlaytestShareAction]

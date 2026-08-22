@@ -47,6 +47,11 @@ export { Prisma }
  */
 export type User = Prisma.UserModel
 /**
+ * Model PlaytestEvent
+ * 
+ */
+export type PlaytestEvent = Prisma.PlaytestEventModel
+/**
  * Model CheatMethod
  * 
  */

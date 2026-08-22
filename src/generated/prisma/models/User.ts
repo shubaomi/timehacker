@@ -49,6 +49,7 @@ export type UserMinAggregateOutputType = {
   successGames: number | null
   bestErrorMs: number | null
   firstSuccessAt: Date | null
+  releaseTrack: $Enums.ReleaseTrack | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -62,6 +63,7 @@ export type UserMaxAggregateOutputType = {
   successGames: number | null
   bestErrorMs: number | null
   firstSuccessAt: Date | null
+  releaseTrack: $Enums.ReleaseTrack | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -75,6 +77,7 @@ export type UserCountAggregateOutputType = {
   successGames: number
   bestErrorMs: number
   firstSuccessAt: number
+  releaseTrack: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -104,6 +107,7 @@ export type UserMinAggregateInputType = {
   successGames?: true
   bestErrorMs?: true
   firstSuccessAt?: true
+  releaseTrack?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -117,6 +121,7 @@ export type UserMaxAggregateInputType = {
   successGames?: true
   bestErrorMs?: true
   firstSuccessAt?: true
+  releaseTrack?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -130,6 +135,7 @@ export type UserCountAggregateInputType = {
   successGames?: true
   bestErrorMs?: true
   firstSuccessAt?: true
+  releaseTrack?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -230,6 +236,7 @@ export type UserGroupByOutputType = {
   successGames: number
   bestErrorMs: number | null
   firstSuccessAt: Date | null
+  releaseTrack: $Enums.ReleaseTrack
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
@@ -266,6 +273,7 @@ export type UserWhereInput = {
   successGames?: Prisma.IntFilter<"User"> | number
   bestErrorMs?: Prisma.IntNullableFilter<"User"> | number | null
   firstSuccessAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFilter<"User"> | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   games?: Prisma.GameRecordListRelationFilter
@@ -281,6 +289,7 @@ export type UserOrderByWithRelationInput = {
   successGames?: Prisma.SortOrder
   bestErrorMs?: Prisma.SortOrderInput | Prisma.SortOrder
   firstSuccessAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  releaseTrack?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   games?: Prisma.GameRecordOrderByRelationAggregateInput
@@ -299,6 +308,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   successGames?: Prisma.IntFilter<"User"> | number
   bestErrorMs?: Prisma.IntNullableFilter<"User"> | number | null
   firstSuccessAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFilter<"User"> | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   games?: Prisma.GameRecordListRelationFilter
@@ -314,6 +324,7 @@ export type UserOrderByWithAggregationInput = {
   successGames?: Prisma.SortOrder
   bestErrorMs?: Prisma.SortOrderInput | Prisma.SortOrder
   firstSuccessAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  releaseTrack?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
@@ -335,6 +346,7 @@ export type UserScalarWhereWithAggregatesInput = {
   successGames?: Prisma.IntWithAggregatesFilter<"User"> | number
   bestErrorMs?: Prisma.IntNullableWithAggregatesFilter<"User"> | number | null
   firstSuccessAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackWithAggregatesFilter<"User"> | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -348,6 +360,7 @@ export type UserCreateInput = {
   successGames?: number
   bestErrorMs?: number | null
   firstSuccessAt?: Date | string | null
+  releaseTrack?: $Enums.ReleaseTrack
   createdAt?: Date | string
   updatedAt?: Date | string
   games?: Prisma.GameRecordCreateNestedManyWithoutUserInput
@@ -363,6 +376,7 @@ export type UserUncheckedCreateInput = {
   successGames?: number
   bestErrorMs?: number | null
   firstSuccessAt?: Date | string | null
+  releaseTrack?: $Enums.ReleaseTrack
   createdAt?: Date | string
   updatedAt?: Date | string
   games?: Prisma.GameRecordUncheckedCreateNestedManyWithoutUserInput
@@ -378,6 +392,7 @@ export type UserUpdateInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   games?: Prisma.GameRecordUpdateManyWithoutUserNestedInput
@@ -393,6 +408,7 @@ export type UserUncheckedUpdateInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   games?: Prisma.GameRecordUncheckedUpdateManyWithoutUserNestedInput
@@ -408,6 +424,7 @@ export type UserCreateManyInput = {
   successGames?: number
   bestErrorMs?: number | null
   firstSuccessAt?: Date | string | null
+  releaseTrack?: $Enums.ReleaseTrack
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -421,6 +438,7 @@ export type UserUpdateManyMutationInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -434,6 +452,7 @@ export type UserUncheckedUpdateManyInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -447,6 +466,7 @@ export type UserCountOrderByAggregateInput = {
   successGames?: Prisma.SortOrder
   bestErrorMs?: Prisma.SortOrder
   firstSuccessAt?: Prisma.SortOrder
+  releaseTrack?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -467,6 +487,7 @@ export type UserMaxOrderByAggregateInput = {
   successGames?: Prisma.SortOrder
   bestErrorMs?: Prisma.SortOrder
   firstSuccessAt?: Prisma.SortOrder
+  releaseTrack?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -480,6 +501,7 @@ export type UserMinOrderByAggregateInput = {
   successGames?: Prisma.SortOrder
   bestErrorMs?: Prisma.SortOrder
   firstSuccessAt?: Prisma.SortOrder
+  releaseTrack?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -524,6 +546,10 @@ export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
 }
 
+export type EnumReleaseTrackFieldUpdateOperationsInput = {
+  set?: $Enums.ReleaseTrack
+}
+
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
@@ -565,6 +591,7 @@ export type UserCreateWithoutUnlockedCheatsInput = {
   successGames?: number
   bestErrorMs?: number | null
   firstSuccessAt?: Date | string | null
+  releaseTrack?: $Enums.ReleaseTrack
   createdAt?: Date | string
   updatedAt?: Date | string
   games?: Prisma.GameRecordCreateNestedManyWithoutUserInput
@@ -579,6 +606,7 @@ export type UserUncheckedCreateWithoutUnlockedCheatsInput = {
   successGames?: number
   bestErrorMs?: number | null
   firstSuccessAt?: Date | string | null
+  releaseTrack?: $Enums.ReleaseTrack
   createdAt?: Date | string
   updatedAt?: Date | string
   games?: Prisma.GameRecordUncheckedCreateNestedManyWithoutUserInput
@@ -609,6 +637,7 @@ export type UserUpdateWithoutUnlockedCheatsInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   games?: Prisma.GameRecordUpdateManyWithoutUserNestedInput
@@ -623,6 +652,7 @@ export type UserUncheckedUpdateWithoutUnlockedCheatsInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   games?: Prisma.GameRecordUncheckedUpdateManyWithoutUserNestedInput
@@ -637,6 +667,7 @@ export type UserCreateWithoutGamesInput = {
   successGames?: number
   bestErrorMs?: number | null
   firstSuccessAt?: Date | string | null
+  releaseTrack?: $Enums.ReleaseTrack
   createdAt?: Date | string
   updatedAt?: Date | string
   unlockedCheats?: Prisma.UserCheatCreateNestedManyWithoutUserInput
@@ -651,6 +682,7 @@ export type UserUncheckedCreateWithoutGamesInput = {
   successGames?: number
   bestErrorMs?: number | null
   firstSuccessAt?: Date | string | null
+  releaseTrack?: $Enums.ReleaseTrack
   createdAt?: Date | string
   updatedAt?: Date | string
   unlockedCheats?: Prisma.UserCheatUncheckedCreateNestedManyWithoutUserInput
@@ -681,6 +713,7 @@ export type UserUpdateWithoutGamesInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   unlockedCheats?: Prisma.UserCheatUpdateManyWithoutUserNestedInput
@@ -695,6 +728,7 @@ export type UserUncheckedUpdateWithoutGamesInput = {
   successGames?: Prisma.IntFieldUpdateOperationsInput | number
   bestErrorMs?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   firstSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releaseTrack?: Prisma.EnumReleaseTrackFieldUpdateOperationsInput | $Enums.ReleaseTrack
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   unlockedCheats?: Prisma.UserCheatUncheckedUpdateManyWithoutUserNestedInput
@@ -749,6 +783,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   successGames?: boolean
   bestErrorMs?: boolean
   firstSuccessAt?: boolean
+  releaseTrack?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   games?: boolean | Prisma.User$gamesArgs<ExtArgs>
@@ -765,6 +800,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   successGames?: boolean
   bestErrorMs?: boolean
   firstSuccessAt?: boolean
+  releaseTrack?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -778,6 +814,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   successGames?: boolean
   bestErrorMs?: boolean
   firstSuccessAt?: boolean
+  releaseTrack?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -791,11 +828,12 @@ export type UserSelectScalar = {
   successGames?: boolean
   bestErrorMs?: boolean
   firstSuccessAt?: boolean
+  releaseTrack?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "playerId" | "nickname" | "currentLevel" | "totalGames" | "successGames" | "bestErrorMs" | "firstSuccessAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "playerId" | "nickname" | "currentLevel" | "totalGames" | "successGames" | "bestErrorMs" | "firstSuccessAt" | "releaseTrack" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   games?: boolean | Prisma.User$gamesArgs<ExtArgs>
   unlockedCheats?: boolean | Prisma.User$unlockedCheatsArgs<ExtArgs>
@@ -819,6 +857,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     successGames: number
     bestErrorMs: number | null
     firstSuccessAt: Date | null
+    releaseTrack: $Enums.ReleaseTrack
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["user"]>
@@ -1254,6 +1293,7 @@ export interface UserFieldRefs {
   readonly successGames: Prisma.FieldRef<"User", 'Int'>
   readonly bestErrorMs: Prisma.FieldRef<"User", 'Int'>
   readonly firstSuccessAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly releaseTrack: Prisma.FieldRef<"User", 'ReleaseTrack'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
 }

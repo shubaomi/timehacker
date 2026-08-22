@@ -23,11 +23,19 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import {
+  clearPlaytestIdentity,
+  getPlaytestBrowserId,
+  trackPlaytestEvent,
+  type PlaytestEventDetails,
+} from "@/analytics/playtest-client";
+import type { PlaytestEventName } from "@/analytics/playtest-contract";
 import { evaluateCheatTrigger } from "@/game/cheats";
 import { effectElapsedTime, type CheatEffectConfig } from "@/game/effects";
 import type { ShareCardPayload } from "@/game/share-card";
 import { formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
+import { publicLevelNumber } from "@/game/soft-launch";
 import { V2_LEVEL_BY_SLUG } from "@/game/v2-levels.generated";
 import { localeTag, type MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
@@ -107,6 +115,27 @@ export function TimeHackerApp() {
   const effectRef = useRef<CheatEffectConfig | null>(null);
   const activeGameRef = useRef<string | null>(null);
   const initializationStartedRef = useRef(false);
+  const analyticsOnceRef = useRef(new Set<string>());
+
+  const trackSoftLaunchEvent = useCallback((
+    name: PlaytestEventName,
+    details: PlaytestEventDetails = {},
+  ) => {
+    if (dashboard?.campaign.track !== "SOFT_LAUNCH" || !activeRoundCheat) return;
+    void trackPlaytestEvent(name, activeRoundCheat.slug, details);
+  }, [activeRoundCheat, dashboard?.campaign.track]);
+
+  const trackSoftLaunchEventOnce = useCallback((
+    name: PlaytestEventName,
+    details: PlaytestEventDetails = {},
+  ) => {
+    const slug = activeRoundCheat?.slug;
+    if (!slug || dashboard?.campaign.track !== "SOFT_LAUNCH") return;
+    const key = `${slug}:${name}`;
+    if (analyticsOnceRef.current.has(key)) return;
+    analyticsOnceRef.current.add(key);
+    void trackPlaytestEvent(name, slug, details);
+  }, [activeRoundCheat?.slug, dashboard?.campaign.track]);
 
   const localizeError = useCallback(
     (cause: unknown, fallback: MessageKey) => {
@@ -212,7 +241,8 @@ export function TimeHackerApp() {
     readyEpochRef.current = now;
     idleStartRef.current = now;
     eventsRef.current = [{ type: "READY_MARK", at: 0 }];
-  }, [activeRoundCheat, status]);
+    trackSoftLaunchEventOnce("level_view");
+  }, [activeRoundCheat, status, trackSoftLaunchEventOnce]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -269,6 +299,7 @@ export function TimeHackerApp() {
     armedRef.current = false;
     activeGameRef.current = null;
     effectRef.current = null;
+    analyticsOnceRef.current.clear();
     setArmed(false);
     setElapsedMs(0);
     setResult(null);
@@ -281,11 +312,13 @@ export function TimeHackerApp() {
 
   const startChallenge = useCallback(async () => {
     if (!playerId || !dashboard) return;
+    if (dashboard.campaign.track === "SOFT_LAUNCH" && dashboard.campaign.complete) return;
     if (dashboard.daily.remaining <= 0) {
       setStatus("LIMIT_REACHED");
       return;
     }
     setStatus("STARTING");
+    trackSoftLaunchEventOnce("first_interaction");
     setError(null);
     try {
       const response = await requestJson<{ game: { id: string } }>("/api/games/start", {
@@ -305,12 +338,13 @@ export function TimeHackerApp() {
       wallStartRef.current = performance.now();
       setElapsedMs(0);
       setStatus("RUNNING");
+      trackSoftLaunchEvent("timer_started");
     } catch (startError) {
       const code = (startError as Error & { code?: string }).code;
       setStatus(code === "DAILY_LIMIT_REACHED" ? "LIMIT_REACHED" : "READY");
       setError(localizeError(startError, "challengeStartFailed"));
     }
-  }, [activeRoundCheat, dashboard, difficulty, localizeError, mode, playerId]);
+  }, [activeRoundCheat, dashboard, difficulty, localizeError, mode, playerId, trackSoftLaunchEvent, trackSoftLaunchEventOnce]);
 
   const stopChallenge = useCallback(async () => {
     if (!playerId || !activeGameRef.current) return;
@@ -330,17 +364,35 @@ export function TimeHackerApp() {
       setElapsedMs(response.game.durationMs);
       setResult(response.game);
       setStatus(response.game.success ? "SUCCESS" : "FAILED");
+      const puzzleSolved = Boolean(response.game.usedCheat);
+      const analyticsMode = response.game.assistanceType && puzzleSolved ? "assisted" : "normal";
+      trackSoftLaunchEvent("timer_stopped", {
+        mode: analyticsMode,
+        durationMs: response.game.durationMs,
+        success: response.game.success,
+        puzzleSolved,
+      });
+      if (response.game.success) {
+        trackSoftLaunchEvent("level_completed", {
+          mode: analyticsMode,
+          success: true,
+          puzzleSolved,
+        });
+      }
     } catch (stopError) {
       setStatus("FAILED");
       setError(localizeError(stopError, "resultSaveFailed"));
     }
-  }, [difficulty, loadDashboard, localizeError, playerId]);
+  }, [difficulty, loadDashboard, localizeError, playerId, trackSoftLaunchEvent]);
 
   const handlePrimary = useCallback(() => {
     if (status === "RUNNING") void stopChallenge();
-    else if (status === "SUCCESS" || status === "FAILED") prepareNext();
+    else if (status === "SUCCESS" || status === "FAILED") {
+      if (status === "SUCCESS") trackSoftLaunchEvent("next_level");
+      prepareNext();
+    }
     else if (status === "READY") void startChallenge();
-  }, [prepareNext, startChallenge, status, stopChallenge]);
+  }, [prepareNext, startChallenge, status, stopChallenge, trackSoftLaunchEvent]);
 
   const switchMode = (nextMode: GameMode) => {
     if (nextMode === "PURE" && !dashboard?.player.firstSuccessAt) return;
@@ -374,13 +426,20 @@ export function TimeHackerApp() {
 
   const confirmReset = async () => {
     if (!playerId) return;
+    const resetAnalytics = dashboard?.campaign.track === "SOFT_LAUNCH";
     setResetBusy(true);
     setError(null);
     try {
       await requestJson("/api/player/reset", {
         method: "POST",
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({
+          playerId,
+          analyticsBrowserId: resetAnalytics
+            ? getPlaytestBrowserId()
+            : undefined,
+        }),
       });
+      if (resetAnalytics) clearPlaytestIdentity();
       const nextDashboard = await loadDashboard(playerId, 1);
       setDifficulty(1);
       modeRef.current = "HACKER";
@@ -405,7 +464,11 @@ export function TimeHackerApp() {
     durationMs: result.durationMs,
     errorMs: result.errorMs,
     success: result.success,
-    level: activeRoundCheat ? V2_LEVEL_BY_SLUG.get(activeRoundCheat.slug)?.id ?? dashboard.player.currentLevel : dashboard.player.currentLevel,
+    level: activeRoundCheat
+      ? publicLevelNumber(activeRoundCheat.slug, dashboard.campaign.track)
+        ?? V2_LEVEL_BY_SLUG.get(activeRoundCheat.slug)?.id
+        ?? dashboard.player.currentLevel
+      : dashboard.player.currentLevel,
     discoveredCheats: dashboard.player.unlockedCheats,
     totalCheats: dashboard.collection.length,
     mode: result.mode,
@@ -458,7 +521,25 @@ export function TimeHackerApp() {
           </button>
         </header>
 
-        <section className="play-screen" id="play">
+        <section
+          className="play-screen"
+          id="play"
+          onPointerDownCapture={(event) => {
+            if (event.target instanceof Element && event.target.closest("[data-v2-slug]")) {
+              trackSoftLaunchEventOnce("first_interaction");
+            }
+          }}
+          onKeyDownCapture={(event) => {
+            if (event.target instanceof Element && event.target.closest("[data-v2-slug]")) {
+              trackSoftLaunchEventOnce("first_interaction");
+            }
+          }}
+          onWheelCapture={(event) => {
+            if (event.target instanceof Element && event.target.closest("[data-v2-slug]")) {
+              trackSoftLaunchEventOnce("first_interaction");
+            }
+          }}
+        >
           <motion.div
             className="challenge-copy"
             initial={{ opacity: 0, y: 14 }}
@@ -479,8 +560,14 @@ export function TimeHackerApp() {
               onGhostAnchorChange={setGhostAnchor}
               menuOpen={menuOpen}
               eclipseOffset={eclipseOffset}
-              onDiscover={() => emitCheatEvent("V2_PUZZLE_DISCOVERED", activeRoundCheat.slug)}
-              onArm={() => emitCheatEvent("V2_PUZZLE_ARMED", activeRoundCheat.slug)}
+              onDiscover={() => {
+                emitCheatEvent("V2_PUZZLE_DISCOVERED", activeRoundCheat.slug);
+                trackSoftLaunchEventOnce("puzzle_discovered");
+              }}
+              onArm={() => {
+                emitCheatEvent("V2_PUZZLE_ARMED", activeRoundCheat.slug);
+                trackSoftLaunchEventOnce("puzzle_armed");
+              }}
             />
           ) : null}
 
@@ -488,7 +575,7 @@ export function TimeHackerApp() {
             elapsedMs={elapsedMs}
             status={status}
             armed={mode === "HACKER" && armed}
-            disabled={status === "LIMIT_REACHED"}
+            disabled={status === "LIMIT_REACHED" || (dashboard.campaign.track === "SOFT_LAUNCH" && dashboard.campaign.complete)}
             onPrimary={handlePrimary}
             onEvent={emitCheatEvent}
           />
@@ -497,6 +584,9 @@ export function TimeHackerApp() {
             {error ? <span className="error-copy">{error}</span> : null}
             {status === "LIMIT_REACHED" ? (
               <span>{t("dailyComplete")} {t("resetAt", { date: new Intl.DateTimeFormat(localeTag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(dashboard.daily.resetsAt)) })}</span>
+            ) : null}
+            {dashboard.campaign.track === "SOFT_LAUNCH" && dashboard.campaign.complete ? (
+              <span>{t("campaignComplete")}</span>
             ) : null}
           </div>
 
@@ -517,7 +607,10 @@ export function TimeHackerApp() {
                   <span>{resultCopy?.duration}<small>s</small></span>
                   <b>{resultCopy?.error}</b>
                 </div>
-                <button type="button" onClick={() => setShareCardOpen(true)}><Share2 aria-hidden="true" size={17} /> {t("shareResultSimple")}</button>
+                <button type="button" onClick={() => {
+                  setShareCardOpen(true);
+                  trackSoftLaunchEvent("share_card_open");
+                }}><Share2 aria-hidden="true" size={17} /> {t("shareResultSimple")}</button>
               </motion.section>
             ) : null}
           </AnimatePresence>
@@ -573,9 +666,9 @@ export function TimeHackerApp() {
                         <h3>{t("playMode")}</h3>
                         <div className="mode-switch" aria-label={t("gameMode")}>
                           <button type="button" className={mode === "HACKER" ? "active" : ""} onClick={() => switchMode("HACKER")}>{t("playfulMode")}</button>
-                          <button type="button" className={mode === "PURE" ? "active" : ""} disabled={!dashboard.player.firstSuccessAt} onClick={() => switchMode("PURE")}>{t("pureMode")}</button>
+                          <button type="button" className={mode === "PURE" ? "active" : ""} disabled={dashboard.campaign.track === "SOFT_LAUNCH" || !dashboard.player.firstSuccessAt} onClick={() => switchMode("PURE")}>{t("pureMode")}</button>
                         </div>
-                        {dashboard.player.firstSuccessAt ? (
+                        {dashboard.campaign.track === "FULL" && dashboard.player.firstSuccessAt ? (
                           <label className="difficulty-control">
                             <span>{t("difficultyLabel")}</span>
                             <select value={difficulty} onChange={async (event) => {
@@ -595,7 +688,11 @@ export function TimeHackerApp() {
 
                       <nav className="drawer-nav" aria-label={t("moreGameOptions")}>
                         {status === "READY" && mode === "HACKER" && activeRoundCheat ? (
-                          <button type="button" onClick={() => setHintLevel((level) => level === 0 ? 1 : level === 1 ? 2 : 3)}>
+                          <button type="button" onClick={() => setHintLevel((level) => {
+                            const next = level === 0 ? 1 : level === 1 ? 2 : 3;
+                            trackSoftLaunchEventOnce(next === 1 ? "hint_1_open" : next === 2 ? "hint_2_open" : "answer_open");
+                            return next;
+                          })}>
                             <CircleHelp aria-hidden="true" size={20} />
                             <span>{hintLevel === 0 ? t("hint") : hintLevel < 2 ? t("showNextHint") : t("showAnswer")}</span>
                             <b>{hintLevel}/3</b>
@@ -643,6 +740,7 @@ export function TimeHackerApp() {
           locale={locale}
           t={t}
           onClose={() => setShareCardOpen(false)}
+          onExport={(action) => trackSoftLaunchEvent("share_card_exported", { action })}
         />
       </main>
     </MotionConfig>

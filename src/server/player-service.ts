@@ -1,6 +1,11 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { CHEAT_DEFINITIONS } from "@/game/cheats";
 import {
+  definitionsForReleaseTrack,
+  publicLevelNumber,
+  type ReleaseTrackName,
+} from "@/game/soft-launch";
+import {
   difficultyForLevel,
   nextUtcReset,
   remainingDailyAttempts,
@@ -20,7 +25,7 @@ export async function createOrResumePlayer(
   return database.user.upsert({
     where: { playerId },
     update: {},
-    create: { playerId },
+    create: { playerId, releaseTrack: "SOFT_LAUNCH" },
     select: {
       playerId: true,
       nickname: true,
@@ -29,6 +34,7 @@ export async function createOrResumePlayer(
       successGames: true,
       bestErrorMs: true,
       firstSuccessAt: true,
+      releaseTrack: true,
       createdAt: true,
     },
   });
@@ -76,18 +82,22 @@ export async function getDashboard(
   const discoveredSlugs = new Set(
     player.unlockedCheats.map(({ cheat }) => cheat.slug),
   );
-  const suggestedCheat = selectNextCheat({
-    definitions: CHEAT_DEFINITIONS,
-    discoveredSlugs,
-    desiredDifficulty: maximumDifficulty,
-    seed: `${player.playerId}:${player.totalGames}:${now.toISOString().slice(0, 10)}`,
-  });
+  const releaseTrack = player.releaseTrack as ReleaseTrackName;
+  const availableDefinitions = definitionsForReleaseTrack(releaseTrack);
+  const suggestedCheat = releaseTrack === "SOFT_LAUNCH"
+    ? availableDefinitions.find(({ slug, enabled }) => enabled && !discoveredSlugs.has(slug)) ?? null
+    : selectNextCheat({
+      definitions: CHEAT_DEFINITIONS,
+      discoveredSlugs,
+      desiredDifficulty: maximumDifficulty,
+      seed: `${player.playerId}:${player.totalGames}:${now.toISOString().slice(0, 10)}`,
+    });
   const { start, end } = utcDayRange(now);
   const attemptsToday = await database.gameRecord.count({
     where: { userId: player.id, startedAt: { gte: start, lt: end } },
   });
 
-  const collection = CHEAT_DEFINITIONS.map((definition) => {
+  const collection = availableDefinitions.map((definition) => {
     const unlocked = player.unlockedCheats.find(
       ({ cheat }) => cheat.slug === definition.slug,
     );
@@ -103,6 +113,7 @@ export async function getDashboard(
       completedAt: unlocked?.completedAt ?? null,
     };
   });
+  const completedLevels = availableDefinitions.filter(({ slug }) => discoveredSlugs.has(slug)).length;
 
   return {
     player: {
@@ -114,7 +125,7 @@ export async function getDashboard(
       successGames: player.successGames,
       bestErrorMs: player.bestErrorMs,
       firstSuccessAt: player.firstSuccessAt,
-      unlockedCheats: player.unlockedCheats.length,
+      unlockedCheats: completedLevels,
     },
     daily: {
       limit: 50,
@@ -126,10 +137,23 @@ export async function getDashboard(
     maximumDifficulty,
     suggestedCheat,
     collection,
+    campaign: {
+      track: releaseTrack,
+      totalLevels: availableDefinitions.length,
+      completedLevels,
+      currentLevelNumber: suggestedCheat
+        ? publicLevelNumber(suggestedCheat.slug, releaseTrack)
+        : availableDefinitions.length,
+      complete: suggestedCheat === null,
+    },
   };
 }
 
-export async function resetPlayer(database: PrismaClient, playerId: string) {
+export async function resetPlayer(
+  database: PrismaClient,
+  playerId: string,
+  analyticsBrowserId?: string,
+) {
   const player = await database.user.findUnique({ where: { playerId } });
   if (!player) {
     throw new AppError("Anonymous player was not found.", 404, "PLAYER_NOT_FOUND");
@@ -139,6 +163,9 @@ export async function resetPlayer(database: PrismaClient, playerId: string) {
     async (transaction) => {
       await transaction.gameRecord.deleteMany({ where: { userId: player.id } });
       await transaction.userCheat.deleteMany({ where: { userId: player.id } });
+      if (analyticsBrowserId) {
+        await transaction.playtestEvent.deleteMany({ where: { browserId: analyticsBrowserId } });
+      }
       await transaction.user.update({
         where: { id: player.id },
         data: {
@@ -153,5 +180,5 @@ export async function resetPlayer(database: PrismaClient, playerId: string) {
     { maxWait: 10_000, timeout: 30_000 },
   );
 
-  return { reset: true, preserved: ["playerId", "nickname"] };
+  return { reset: true, preserved: ["playerId", "nickname", "releaseTrack"] };
 }

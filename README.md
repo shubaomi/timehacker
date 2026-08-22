@@ -48,7 +48,7 @@ The application uses the existing database and its default `public` schema. It d
    pnpm db:check
    ```
 
-   Local development and production currently use the same PostgreSQL database. Do not run migration or write-based integration commands against it. V2 rules live in the code-authored registry and join to existing progress through stable slugs. Catalog changes are applied only with the idempotent `pnpm db:sync-catalog` command; it updates the 100 canonical level records without replacing IDs, deleting rows, or breaking player progress.
+   Local development and production currently use the same PostgreSQL database. Do not run destructive migration commands or write-based integration tests without an explicit database maintenance window. The soft-launch release uses the checked-in additive `pnpm db:migrate` migration: existing players default to the full 100-level track, while the deployed application explicitly assigns new players to the frozen 12-level sample. V2 rules still join to progress through stable slugs, and `pnpm db:sync-catalog` keeps all 100 canonical records synchronized without replacing IDs or deleting rows.
 
 4. Start the application:
 
@@ -60,7 +60,7 @@ The application uses the existing database and its default `public` schema. It d
 
 ## Database lifecycle and safety
 
-The migration creates `User`, `CheatMethod`, `UserCheat`, and `GameRecord`, including foreign keys, unique constraints, and ranking/daily-limit indexes. Game starts are counted—not just completed games—so abandoned refreshes cannot bypass the daily limit. The 50th concurrent start is accepted; a 51st is rejected transactionally.
+The migrations create `User`, `CheatMethod`, `UserCheat`, `GameRecord`, and the independent pseudonymous `PlaytestEvent` table. `User.releaseTrack` defaults to `FULL` for backward compatibility. Raw playtest events contain random browser/session/event UUIDs and the frozen event fields only; they have no user foreign key and are removed after 30 days during ingestion, deployment cleanup, and report generation. Game starts are counted—not just completed games—so abandoned refreshes cannot bypass the daily limit. The 50th concurrent start is accepted; a 51st is rejected transactionally.
 
 Useful commands:
 
@@ -126,7 +126,17 @@ cd /data/claude_project/timehacker
 bash deploy.sh
 ```
 
-The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, runs the write-free integration suite, fully prepares and validates the staging runtime, idempotently synchronizes the 100 V2 level records and verifies every catalog field, then immediately swaps the runtime and starts it with PM2. It waits for local readiness and restores the previous runtime if readiness fails. It does not run schema migrations, delete catalog rows, edit Nginx, or reload Nginx.
+The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, runs the write-free integration suite, fully prepares the staging runtime, applies checked-in forward-only migrations, removes raw playtest events older than 30 days, idempotently synchronizes all 100 V2 level records, and verifies the database before swapping the runtime and starting it with PM2. It waits for local readiness and restores the previous application runtime if readiness fails. Database migrations are not rolled back automatically; the soft-launch migration is additive so the previous application safely ignores its new table and column. The script does not edit or reload Nginx.
+
+Soft-launch operations:
+
+```bash
+# JSON report for the rolling 30-day anonymous sample and frozen thresholds
+pnpm analytics:report
+
+# Explicit retention cleanup (also runs on ingestion and deployment)
+pnpm analytics:cleanup
+```
 
 Install the independent site configuration and validate it before reload:
 

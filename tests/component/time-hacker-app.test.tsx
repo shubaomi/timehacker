@@ -30,6 +30,13 @@ function dashboard(suggestedCheat = CHEAT_DEFINITIONS[0]) {
     difficulty: 1,
     maximumDifficulty: 1,
     suggestedCheat,
+    campaign: {
+      track: "FULL" as const,
+      totalLevels: 100,
+      completedLevels: 1,
+      currentLevelNumber: 2,
+      complete: false,
+    },
     collection: CHEAT_DEFINITIONS.map((cheat, index) => ({
       slug: cheat.slug,
       name: index === 0 ? cheat.name : "CLASSIFIED",

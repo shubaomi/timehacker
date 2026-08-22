@@ -6,7 +6,7 @@ import { resetPlayer } from "@/server/player-service";
 export async function POST(request: Request): Promise<Response> {
   try {
     const input = resetPlayerSchema.parse(await request.json());
-    return json(await resetPlayer(prisma, input.playerId));
+    return json(await resetPlayer(prisma, input.playerId, input.analyticsBrowserId));
   } catch (error) {
     return routeError(error);
   }

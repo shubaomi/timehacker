@@ -14,6 +14,7 @@ import {
   resetPlayer,
 } from "@/server/player-service";
 import { getRankings } from "@/server/ranking-service";
+import { recordPlaytestEvents } from "@/server/playtest-service";
 import { seedCheatCatalog } from "@/server/seed-service";
 import { retryTransientDatabaseOperation } from "../database-retry";
 
@@ -30,6 +31,10 @@ const fixedNow = new Date("2026-08-02T10:00:00.000Z");
 
 function playerId(label: string): string {
   return `${prefix}-${label}`;
+}
+
+function createFullPlayer(id: string) {
+  return database.user.create({ data: { playerId: id, releaseTrack: "FULL" } });
 }
 
 function puzzleEvents(slug: string) {
@@ -63,12 +68,15 @@ describe("real PostgreSQL integration", () => {
     expect(migrations.map(({ migration_name }) => migration_name)).toContain(
       "20260802190000_add_cheat_localizations",
     );
+    expect(migrations.map(({ migration_name }) => migration_name)).toContain(
+      "20260822090000_add_soft_launch_analytics",
+    );
     expect(await seedCheatCatalog(database)).toBe(100);
     const firstCatalogIds = await database.cheatMethod.findMany({
       select: { id: true, slug: true, updatedAt: true },
       orderBy: { slug: "asc" },
     });
-    await database.$queryRaw`SELECT pg_sleep(0.01)`;
+    await new Promise((resolve) => setTimeout(resolve, 20));
     expect(await seedCheatCatalog(database)).toBe(100);
     expect(await database.cheatMethod.findMany({
       select: { id: true, slug: true, updatedAt: true },
@@ -95,29 +103,54 @@ describe("real PostgreSQL integration", () => {
     const second = await createOrResumePlayer(database, id);
     expect(second.playerId).toBe(first.playerId);
     expect(await database.user.count({ where: { playerId: id } })).toBe(1);
+    expect(first.releaseTrack).toBe("SOFT_LAUNCH");
 
     const dashboard = await getDashboard(database, id, 1, fixedNow);
+    expect(dashboard.campaign).toEqual({
+      track: "SOFT_LAUNCH",
+      totalLevels: 12,
+      completedLevels: 0,
+      currentLevelNumber: 1,
+      complete: false,
+    });
     expect(dashboard.suggestedCheat?.difficulty).toBe(1);
-    expect(dashboard.collection).toHaveLength(100);
+    expect(dashboard.suggestedCheat?.slug).toBe("four-corner-breach");
+    expect(dashboard.collection).toHaveLength(12);
     expect(dashboard.collection.every((entry) => !entry.unlocked)).toBe(true);
+
+    await expect(startGame(database, {
+      playerId: id,
+      clientRequestId: `${prefix}-wrong-soft-level`,
+      mode: "HACKER",
+      difficulty: 1,
+      assignedCheatSlug: "five-finger-echo",
+    }, fixedNow)).rejects.toMatchObject({ code: "CHEAT_NOT_ELIGIBLE" });
+    await expect(startGame(database, {
+      playerId: id,
+      clientRequestId: `${prefix}-first-soft-level`,
+      mode: "HACKER",
+      difficulty: 1,
+      assignedCheatSlug: "four-corner-breach",
+    }, fixedNow)).resolves.toMatchObject({ assignedCheat: { slug: "four-corner-breach" } });
   });
 
   it("writes and idempotently completes a winning Hacker record", async () => {
     const id = playerId("hacker-win");
-    await createOrResumePlayer(database, id);
+    await createFullPlayer(id);
+    const definition = CHEAT_DEFINITIONS.find(({ slug }) => slug === "four-corner-breach")!;
     const game = await startGame(
       database,
       {
         playerId: id,
         clientRequestId: `${prefix}-hacker-request`,
         mode: "HACKER",
-        difficulty: 1,
-        assignedCheatSlug: "five-finger-echo",
+        difficulty: definition.difficulty,
+        assignedCheatSlug: definition.slug,
       },
       fixedNow,
     );
-    const events = puzzleEvents("five-finger-echo");
-    const effect = CHEAT_DEFINITIONS.find(({ slug }) => slug === "five-finger-echo")!.effectConfig;
+    const events = puzzleEvents(definition.slug);
+    const effect = definition.effectConfig;
     const wallDurationMs = effectWallTimeToTarget(effect, 10_000) + 1_500;
     const first = await completeGame(
       database,
@@ -132,7 +165,7 @@ describe("real PostgreSQL integration", () => {
     expect(first.success).toBe(true);
     expect(first.durationMs).toBe(10_000);
     expect(second.id).toBe(first.id);
-    expect(first.usedCheat?.slug).toBe("five-finger-echo");
+    expect(first.usedCheat?.slug).toBe(definition.slug);
     expect(first.assistanceType).toBe(effect.type);
     expect(first.wallDurationMs).toBe(Math.round(wallDurationMs));
 
@@ -150,8 +183,8 @@ describe("real PostgreSQL integration", () => {
     const hackerId = playerId("tolerance-hacker");
     const pureId = playerId("tolerance-pure");
     await Promise.all([
-      createOrResumePlayer(database, hackerId),
-      createOrResumePlayer(database, pureId),
+      createFullPlayer(hackerId),
+      createFullPlayer(pureId),
     ]);
     const hackerGame = await startGame(database, {
       playerId: hackerId,
@@ -246,8 +279,8 @@ describe("real PostgreSQL integration", () => {
     const closerId = playerId("pure-close");
     const fartherId = playerId("pure-far");
     await Promise.all([
-      createOrResumePlayer(database, closerId),
-      createOrResumePlayer(database, fartherId),
+      createFullPlayer(closerId),
+      createFullPlayer(fartherId),
     ]);
     const closeGame = await startGame(
       database,
@@ -298,8 +331,8 @@ describe("real PostgreSQL integration", () => {
     const resetId = playerId("reset-target");
     const neighborId = playerId("reset-neighbor");
     await Promise.all([
-      createOrResumePlayer(database, resetId),
-      createOrResumePlayer(database, neighborId),
+      createFullPlayer(resetId),
+      createFullPlayer(neighborId),
     ]);
     const resetUser = await database.user.findUniqueOrThrow({ where: { playerId: resetId } });
     const neighbor = await database.user.findUniqueOrThrow({ where: { playerId: neighborId } });
@@ -310,10 +343,23 @@ describe("real PostgreSQL integration", () => {
       ],
     });
 
-    await resetPlayer(database, resetId);
+    const analyticsBrowserId = randomUUID();
+    await recordPlaytestEvents(database, {
+      browserId: analyticsBrowserId,
+      sessionId: randomUUID(),
+      entrySource: "direct",
+      events: [{
+        clientEventId: randomUUID(),
+        name: "level_view",
+        levelSlug: "four-corner-breach",
+        occurredAt: new Date().toISOString(),
+      }],
+    });
+    await resetPlayer(database, resetId, analyticsBrowserId);
     expect(await database.gameRecord.count({ where: { userId: resetUser.id } })).toBe(0);
     expect(await database.gameRecord.count({ where: { userId: neighbor.id } })).toBe(1);
     expect(await database.cheatMethod.count()).toBe(100);
+    expect(await database.playtestEvent.count({ where: { browserId: analyticsBrowserId } })).toBe(0);
   });
 
   it("enforces foreign keys and the user-cheat unique constraint", async () => {

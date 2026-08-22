@@ -52,6 +52,7 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   User: 'User',
+  PlaytestEvent: 'PlaytestEvent',
   CheatMethod: 'CheatMethod',
   UserCheat: 'UserCheat',
   GameRecord: 'GameRecord'
@@ -82,11 +83,33 @@ export const UserScalarFieldEnum = {
   successGames: 'successGames',
   bestErrorMs: 'bestErrorMs',
   firstSuccessAt: 'firstSuccessAt',
+  releaseTrack: 'releaseTrack',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const PlaytestEventScalarFieldEnum = {
+  id: 'id',
+  clientEventId: 'clientEventId',
+  browserId: 'browserId',
+  sessionId: 'sessionId',
+  name: 'name',
+  levelSlug: 'levelSlug',
+  levelNumber: 'levelNumber',
+  entrySource: 'entrySource',
+  mode: 'mode',
+  durationMs: 'durationMs',
+  success: 'success',
+  puzzleSolved: 'puzzleSolved',
+  action: 'action',
+  occurredAt: 'occurredAt',
+  receivedAt: 'receivedAt'
+} as const
+
+export type PlaytestEventScalarFieldEnum = (typeof PlaytestEventScalarFieldEnum)[keyof typeof PlaytestEventScalarFieldEnum]
 
 
 export const CheatMethodScalarFieldEnum = {

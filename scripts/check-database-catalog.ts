@@ -26,39 +26,45 @@ function canonicalJson(value: unknown): string {
 }
 
 try {
-  const [databaseCheats, users, games, unlocks, puzzleScenes, v2Levels] = await Promise.all([
-    database.cheatMethod.findMany({
-      select: {
-        slug: true,
-        name: true,
-        nameZh: true,
-        description: true,
-        descriptionZh: true,
-        hint: true,
-        hintZh: true,
-        difficulty: true,
-        category: true,
-        triggerConfig: true,
-        effectConfig: true,
-        enabled: true,
-      },
-      orderBy: { slug: "asc" },
-    }),
-    database.user.count(),
-    database.gameRecord.count(),
-    database.userCheat.count(),
-    database.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "CheatMethod"
-      WHERE "triggerConfig" ? 'puzzleScene'
-    `,
-    database.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "CheatMethod"
-      WHERE "triggerConfig" ? 'v2Level'
-        AND "triggerConfig"->'v2Level'->>'schemaVersion' = '2'
-    `,
-  ]);
+  // This gate deliberately uses one database connection. Keep its queries
+  // sequential so tunnels and production maintenance pools never receive
+  // overlapping work on the same pg client.
+  const databaseCheats = await database.cheatMethod.findMany({
+    select: {
+      slug: true,
+      name: true,
+      nameZh: true,
+      description: true,
+      descriptionZh: true,
+      hint: true,
+      hintZh: true,
+      difficulty: true,
+      category: true,
+      triggerConfig: true,
+      effectConfig: true,
+      enabled: true,
+    },
+    orderBy: { slug: "asc" },
+  });
+  const users = await database.user.count();
+  const games = await database.gameRecord.count();
+  const unlocks = await database.userCheat.count();
+  const playtestEvents = await database.playtestEvent.count();
+  const releaseTracks = await database.user.groupBy({
+    by: ["releaseTrack"],
+    _count: { releaseTrack: true },
+  });
+  const puzzleScenes = await database.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "CheatMethod"
+    WHERE "triggerConfig" ? 'puzzleScene'
+  `;
+  const v2Levels = await database.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "CheatMethod"
+    WHERE "triggerConfig" ? 'v2Level'
+      AND "triggerConfig"->'v2Level'->>'schemaVersion' = '2'
+  `;
   const expectedSlugs = CHEAT_DEFINITIONS.map(({ slug }) => slug).sort();
   const databaseSlugs = databaseCheats.map(({ slug }) => slug);
   const missing = expectedSlugs.filter((slug) => !databaseSlugs.includes(slug));
@@ -86,6 +92,8 @@ try {
     users,
     games,
     unlocks,
+    playtestEvents,
+    releaseTracks,
     puzzleScenes: Number(puzzleScenes[0]?.count ?? 0),
     v2Levels: Number(v2Levels[0]?.count ?? 0),
   }));

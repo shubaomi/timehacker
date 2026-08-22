@@ -398,6 +398,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   User: 'User',
+  PlaytestEvent: 'PlaytestEvent',
   CheatMethod: 'CheatMethod',
   UserCheat: 'UserCheat',
   GameRecord: 'GameRecord'
@@ -416,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "cheatMethod" | "userCheat" | "gameRecord"
+    modelProps: "user" | "playtestEvent" | "cheatMethod" | "userCheat" | "gameRecord"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -491,6 +492,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.UserCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.UserCountAggregateOutputType> | number
+        }
+      }
+    }
+    PlaytestEvent: {
+      payload: Prisma.$PlaytestEventPayload<ExtArgs>
+      fields: Prisma.PlaytestEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PlaytestEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PlaytestEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>
+        }
+        findFirst: {
+          args: Prisma.PlaytestEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PlaytestEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>
+        }
+        findMany: {
+          args: Prisma.PlaytestEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>[]
+        }
+        create: {
+          args: Prisma.PlaytestEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>
+        }
+        createMany: {
+          args: Prisma.PlaytestEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PlaytestEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>[]
+        }
+        delete: {
+          args: Prisma.PlaytestEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>
+        }
+        update: {
+          args: Prisma.PlaytestEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.PlaytestEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PlaytestEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PlaytestEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.PlaytestEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PlaytestEventPayload>
+        }
+        aggregate: {
+          args: Prisma.PlaytestEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePlaytestEvent>
+        }
+        groupBy: {
+          args: Prisma.PlaytestEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PlaytestEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PlaytestEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PlaytestEventCountAggregateOutputType> | number
         }
       }
     }
@@ -764,11 +839,33 @@ export const UserScalarFieldEnum = {
   successGames: 'successGames',
   bestErrorMs: 'bestErrorMs',
   firstSuccessAt: 'firstSuccessAt',
+  releaseTrack: 'releaseTrack',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const PlaytestEventScalarFieldEnum = {
+  id: 'id',
+  clientEventId: 'clientEventId',
+  browserId: 'browserId',
+  sessionId: 'sessionId',
+  name: 'name',
+  levelSlug: 'levelSlug',
+  levelNumber: 'levelNumber',
+  entrySource: 'entrySource',
+  mode: 'mode',
+  durationMs: 'durationMs',
+  success: 'success',
+  puzzleSolved: 'puzzleSolved',
+  action: 'action',
+  occurredAt: 'occurredAt',
+  receivedAt: 'receivedAt'
+} as const
+
+export type PlaytestEventScalarFieldEnum = (typeof PlaytestEventScalarFieldEnum)[keyof typeof PlaytestEventScalarFieldEnum]
 
 
 export const CheatMethodScalarFieldEnum = {
@@ -915,6 +1012,83 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
 
 
 /**
+ * Reference to a field of type 'ReleaseTrack'
+ */
+export type EnumReleaseTrackFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReleaseTrack'>
+    
+
+
+/**
+ * Reference to a field of type 'ReleaseTrack[]'
+ */
+export type ListEnumReleaseTrackFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReleaseTrack[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestEventName'
+ */
+export type EnumPlaytestEventNameFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestEventName'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestEventName[]'
+ */
+export type ListEnumPlaytestEventNameFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestEventName[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestEntrySource'
+ */
+export type EnumPlaytestEntrySourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestEntrySource'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestEntrySource[]'
+ */
+export type ListEnumPlaytestEntrySourceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestEntrySource[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestMode'
+ */
+export type EnumPlaytestModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestMode'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestMode[]'
+ */
+export type ListEnumPlaytestModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestMode[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestShareAction'
+ */
+export type EnumPlaytestShareActionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestShareAction'>
+    
+
+
+/**
+ * Reference to a field of type 'PlaytestShareAction[]'
+ */
+export type ListEnumPlaytestShareActionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PlaytestShareAction[]'>
+    
+
+
+/**
  * Reference to a field of type 'CheatCategory'
  */
 export type EnumCheatCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CheatCategory'>
@@ -939,13 +1113,6 @@ export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'J
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
-    
-
-
-/**
- * Reference to a field of type 'Boolean'
- */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 
@@ -1142,6 +1309,7 @@ export interface PrismaClientOptionsWithAdapter extends PrismaClientBaseOptions 
 export type PrismaClientOptions = PrismaClientOptionsWithAccelerateUrl | PrismaClientOptionsWithAdapter
 export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
+  playtestEvent?: Prisma.PlaytestEventOmit
   cheatMethod?: Prisma.CheatMethodOmit
   userCheat?: Prisma.UserCheatOmit
   gameRecord?: Prisma.GameRecordOmit

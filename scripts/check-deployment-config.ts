@@ -39,6 +39,8 @@ async function main(): Promise<void> {
     ["APP_NAME=\"timehacker\"", "PM2 app name"],
     ["PORT=\"${PORT:-3008}\"", "PM2 port"],
     ["pnpm install --frozen-lockfile", "locked install"],
+    ["pnpm db:migrate", "forward-only database migration"],
+    ["pnpm analytics:cleanup", "30-day playtest retention cleanup"],
     ["pnpm db:sync-catalog", "idempotent database catalog synchronization"],
     ["pnpm db:check", "strict database catalog gate"],
     ["NODE_ENV=test pnpm test:integration:safe", "write-free integration gate"],
@@ -51,7 +53,6 @@ async function main(): Promise<void> {
   requirePattern(deploy, /^NODE_ENV=test pnpm test$/m, "test-only React environment");
 
   for (const [pattern, label] of [
-    [/^\s*pnpm db:migrate\s*$/m, "database migration"],
     [/^\s*pnpm db:seed\s*$/m, "database seed"],
     [/^\s*pnpm test:integration\s*$/m, "write-based database integration"],
   ] as const) {

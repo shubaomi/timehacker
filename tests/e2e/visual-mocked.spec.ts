@@ -3,6 +3,7 @@ import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { CHEAT_DEFINITIONS } from "../../src/game/cheats";
+import { SOFT_LAUNCH_LEVELS } from "../../src/game/soft-launch";
 import { V2_LEVELS, type V2ControllerKind } from "../../src/game/v2-levels.generated";
 
 const playerId = "visual-e2e-player";
@@ -11,6 +12,9 @@ const sequentialScreenshotRoot = process.env.PLAYWRIGHT_SCREENSHOT_ROOT
   ? path.resolve(process.env.PLAYWRIGHT_SCREENSHOT_ROOT)
   : path.join(screenshotRoot, "v2-sequential");
 let forcedCheatIndex: number | null = null;
+let softLaunchMode = false;
+let softLaunchComplete = false;
+let playtestRequests: Array<Record<string, unknown>> = [];
 
 async function findExposedPoint(control: Locator) {
   return control.evaluate((element: HTMLElement) => {
@@ -111,6 +115,13 @@ function dashboard(cheatIndex = 0) {
     difficulty: 1,
     maximumDifficulty: 5,
     suggestedCheat: CHEAT_DEFINITIONS[cheatIndex],
+    campaign: {
+      track: "FULL" as const,
+      totalLevels: 100,
+      completedLevels: 1,
+      currentLevelNumber: cheatIndex + 1,
+      complete: false,
+    },
     collection: CHEAT_DEFINITIONS.map((cheat, index) => ({
       slug: cheat.slug,
       name: index === 0 ? cheat.name : "CLASSIFIED",
@@ -125,8 +136,47 @@ function dashboard(cheatIndex = 0) {
   };
 }
 
+function softLaunchDashboard() {
+  const base = dashboard(0);
+  const definitions = SOFT_LAUNCH_LEVELS.map(({ slug }) =>
+    CHEAT_DEFINITIONS.find((definition) => definition.slug === slug)!,
+  );
+  return {
+    ...base,
+    player: {
+      ...base.player,
+      currentLevel: 1,
+      unlockedCheats: softLaunchComplete ? 12 : 0,
+      firstSuccessAt: null,
+    },
+    maximumDifficulty: 1,
+    suggestedCheat: softLaunchComplete ? null : definitions[0],
+    campaign: {
+      track: "SOFT_LAUNCH" as const,
+      totalLevels: 12,
+      completedLevels: softLaunchComplete ? 12 : 0,
+      currentLevelNumber: softLaunchComplete ? 12 : 1,
+      complete: softLaunchComplete,
+    },
+    collection: definitions.map((cheat) => ({
+      slug: cheat.slug,
+      name: softLaunchComplete ? cheat.name : "CLASSIFIED",
+      nameZh: softLaunchComplete ? cheat.nameZh : "尚未解锁",
+      description: softLaunchComplete ? cheat.description : null,
+      descriptionZh: softLaunchComplete ? cheat.descriptionZh : null,
+      difficulty: cheat.difficulty,
+      category: cheat.category,
+      unlocked: softLaunchComplete,
+      completedAt: softLaunchComplete ? "2026-08-22T00:00:00.000Z" : null,
+    })),
+  };
+}
+
 test.beforeEach(async ({ page }) => {
   forcedCheatIndex = null;
+  softLaunchMode = false;
+  softLaunchComplete = false;
+  playtestRequests = [];
   let dashboardCalls = 0;
   await page.context().addCookies([{ name: "time-hacker.locale", value: "en", url: "http://127.0.0.1:3000" }]);
   await page.addInitScript(([key, value]) => {
@@ -136,12 +186,21 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === "/api/dashboard") {
+      if (softLaunchMode) {
+        await route.fulfill({ json: softLaunchDashboard() });
+        return;
+      }
       const requestedPlayer = url.searchParams.get("playerId") ?? "";
       const requestedScene = /^visual-scene-(\d{3})$/.exec(requestedPlayer);
       const cheatIndex = forcedCheatIndex ?? (requestedScene
         ? Number(requestedScene[1])
         : dashboardCalls++ === 0 ? 0 : 1);
       await route.fulfill({ json: dashboard(cheatIndex) });
+      return;
+    }
+    if (url.pathname === "/api/playtest/events") {
+      playtestRequests.push(route.request().postDataJSON());
+      await route.fulfill({ status: 202, json: { accepted: 1, created: 1 } });
       return;
     }
     if (url.pathname === "/api/rankings") {
@@ -172,6 +231,84 @@ test.beforeEach(async ({ page }) => {
     }
     await route.fulfill({ json: { player: { playerId } } });
   });
+});
+
+test("new players see only the 12-level soft launch and emit the frozen anonymous start events", async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  test.skip(!["desktop-1440", "mobile-390"].includes(testInfo.project.name), "Soft-launch flow is verified on one desktop and one phone viewport.");
+  softLaunchMode = true;
+  await page.goto("/");
+  await expect(page.locator(".play-button")).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Open game menu" }).click();
+  await page.getByRole("button", { name: /Cheat Catalog/ }).click();
+  await expect(page.locator(".collection-grid article")).toHaveCount(12);
+  await expect(page.getByText("00 / 12")).toBeVisible();
+  await page.getByRole("button", { name: "Close game menu" }).click();
+  await page.locator(".play-button").click();
+
+  await expect.poll(() => playtestRequests.flatMap((batch) => (
+    batch.events as Array<{ name: string }>
+  ).map(({ name }) => name))).toEqual(expect.arrayContaining([
+    "level_view",
+    "first_interaction",
+    "timer_started",
+  ]));
+  for (const batch of playtestRequests) {
+    expect(batch).not.toHaveProperty("userAgent");
+    expect(batch).not.toHaveProperty("referrer");
+    expect(batch).not.toHaveProperty("ip");
+  }
+});
+
+test("the soft-launch critical path emits all thirteen frozen events", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "The complete analytics path runs once; responsive coverage is separate.");
+  test.setTimeout(60_000);
+  softLaunchMode = true;
+  await page.goto("/");
+  await expect(page.locator(".play-button")).toBeVisible({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Open game menu" }).click();
+  await page.getByRole("button", { name: /^Hint 0\/3$/ }).click();
+  await page.getByRole("button", { name: /^Show the next move 1\/3$/ }).click();
+  await page.getByRole("button", { name: /^Reveal the answer 2\/3$/ }).click();
+  await page.getByRole("button", { name: "Close game menu" }).click();
+
+  const scene = page.getByTestId("v2-scene-001");
+  const corner = scene.getByRole("button", { name: "Loose paper corner" });
+  await corner.focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
+  await page.locator(".play-button").click();
+  await expect(page.locator(".play-button")).toContainText("STOP");
+  await page.locator(".play-button").click();
+  await page.getByRole("button", { name: "Share result" }).click();
+  await page.getByRole("button", { name: "Download image" }).click();
+  await expect(page.getByText("Image card downloaded.")).toBeVisible();
+  await page.getByRole("button", { name: "Close result image card" }).click();
+  await page.locator(".play-button").click();
+
+  const expectedNames = [
+    "level_view", "first_interaction", "puzzle_discovered", "hint_1_open",
+    "hint_2_open", "answer_open", "puzzle_armed", "timer_started",
+    "timer_stopped", "level_completed", "next_level", "share_card_open",
+    "share_card_exported",
+  ];
+  await expect.poll(() => new Set(playtestRequests.flatMap((batch) => (
+    batch.events as Array<{ name: string }>
+  ).map(({ name }) => name))), { timeout: 20_000 }).toEqual(new Set(expectedNames));
+});
+
+test("the twelfth soft-launch completion does not expose a thirteenth puzzle", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "Campaign completion contract runs once.");
+  softLaunchMode = true;
+  softLaunchComplete = true;
+  await page.goto("/");
+  await expect(page.getByText("You completed all 12 soft-launch levels.")).toBeVisible();
+  await expect(page.locator(".play-button")).toBeDisabled();
+  await expect(page.locator("[data-v2-slug]")).toHaveCount(0);
 });
 
 test("level 001 preserves the authored page-corner puzzle on desktop and mobile", async ({ page }, testInfo) => {
@@ -1302,7 +1439,9 @@ test("level 021 answers three fixed ink references only when the breathing frame
   await mkdir(sequentialScreenshotRoot, { recursive: true });
   await page.screenshot({ path: path.join(sequentialScreenshotRoot, `021-${testInfo.project.name}.png`) });
 
-  await expect(scene).toHaveAttribute("data-active-dot", "-1", { timeout: 7_000 });
+  // Wait for a visibly wrong beat instead of the narrow idle edge between
+  // timer ticks; the expected first answer is dot 0, so dot 1 is deterministic.
+  await expect(scene).toHaveAttribute("data-active-dot", "1", { timeout: 7_000 });
   await surface.evaluate((element) => {
     (element as HTMLButtonElement).click();
     (element as HTMLButtonElement).click();
@@ -3202,10 +3341,10 @@ test("level 047 waits for still water before pressing the paper stone shadow", a
   await page.mouse.down();
   await page.waitForTimeout(350);
   await expect(scene).toHaveAttribute("data-hold-state", "holding");
-  await mkdir(sequentialScreenshotRoot, { recursive: true });
-  await page.screenshot({ path: path.join(sequentialScreenshotRoot, `047-${testInfo.project.name}.png`) });
   await page.mouse.up();
   await expect(scene).toHaveAttribute("data-hold-state", "released-early");
+  await mkdir(sequentialScreenshotRoot, { recursive: true });
+  await page.screenshot({ path: path.join(sequentialScreenshotRoot, `047-${testInfo.project.name}.png`) });
   await page.waitForTimeout(600);
   await expect(page.getByText("You found the crack in time")).toHaveCount(0);
 
@@ -3274,10 +3413,10 @@ test("level 048 freezes five moving word strips by holding the fixed blank", asy
   await page.mouse.down();
   await page.waitForTimeout(300);
   await expect(scene).toHaveAttribute("data-blank-state", "pressed");
-  await mkdir(sequentialScreenshotRoot, { recursive: true });
-  await page.screenshot({ path: path.join(sequentialScreenshotRoot, `048-${testInfo.project.name}.png`) });
   await page.mouse.up();
   await expect(scene).toHaveAttribute("data-blank-state", "released-early");
+  await mkdir(sequentialScreenshotRoot, { recursive: true });
+  await page.screenshot({ path: path.join(sequentialScreenshotRoot, `048-${testInfo.project.name}.png`) });
   await page.waitForTimeout(400);
   await expect(scene).toHaveAttribute("data-word-state", "fragments");
 
@@ -3953,6 +4092,10 @@ test("level 056 turns one loose ink speck into the decimal that makes 10.00", as
   await expect(scene).toHaveAttribute("data-selected-gap", "0");
   await expect(scene).toHaveAttribute("data-display-preview", "1.000");
   await expect(page.getByText("You found the crack in time")).toHaveCount(0);
+  await expect.poll(async () => {
+    const settledDot = (await dot.boundingBox())!;
+    return Math.abs(settledDot.x + settledDot.width / 2 - gaps[0].x);
+  }).toBeLessThan(2);
 
   let currentDotBox = (await dot.boundingBox())!;
   let currentDot = { x: currentDotBox.x + currentDotBox.width / 2, y: currentDotBox.y + currentDotBox.height / 2 };
@@ -3962,6 +4105,10 @@ test("level 056 turns one loose ink speck into the decimal that makes 10.00", as
   await page.mouse.up();
   await expect(scene).toHaveAttribute("data-selected-gap", "2");
   await expect(scene).toHaveAttribute("data-display-preview", "100.0");
+  await expect.poll(async () => {
+    const settledDot = (await dot.boundingBox())!;
+    return Math.abs(settledDot.x + settledDot.width / 2 - gaps[2].x);
+  }).toBeLessThan(2);
   await mkdir(sequentialScreenshotRoot, { recursive: true });
   await page.screenshot({ path: path.join(sequentialScreenshotRoot, `056-${testInfo.project.name}.png`) });
   await expect(page.getByText("You found the crack in time")).toHaveCount(0);

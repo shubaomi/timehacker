@@ -62,27 +62,27 @@ set +a
 
 [[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is not set in $ENV_FILE"
 
-echo "[1/9] Installing locked dependencies"
+echo "[1/10] Installing locked dependencies"
 cd "$SOURCE_DIR"
 pnpm install --frozen-lockfile
 
-echo "[2/9] Validating deployment files"
+echo "[2/10] Validating deployment files"
 pnpm check:deploy
 
-echo "[3/9] Running static and unit verification"
+echo "[3/10] Running static and unit verification"
 pnpm prisma:generate
 pnpm prisma:validate
 pnpm lint
 pnpm typecheck
 NODE_ENV=test pnpm test
 
-echo "[4/9] Building the standalone production bundle"
+echo "[4/10] Building the standalone production bundle"
 pnpm build
 
-echo "[5/9] Running safe production integration tests"
+echo "[5/10] Running safe production integration tests"
 NODE_ENV=test pnpm test:integration:safe
 
-echo "[6/9] Preparing the production staging runtime"
+echo "[6/10] Preparing the production staging runtime"
 rm -rf "$STAGING_DIR"
 cp -a "$SOURCE_DIR/.next/standalone" "$STAGING_DIR"
 
@@ -96,7 +96,11 @@ if [[ -d "$SOURCE_DIR/public" ]]; then
   cp -a "$SOURCE_DIR/public" "$STAGING_SERVER_DIR/"
 fi
 
-echo "[7/9] Synchronizing the catalog and activating the production runtime"
+echo "[7/10] Applying the additive database migration"
+pnpm db:migrate
+pnpm analytics:cleanup
+
+echo "[8/10] Synchronizing the catalog and activating the production runtime"
 pnpm db:sync-catalog
 pnpm db:check
 
@@ -110,14 +114,14 @@ SERVER_JS="$(find "$CURRENT_DIR" -path "*/node_modules/*" -prune -o -name server
 [[ -n "$SERVER_JS" ]] || rollback
 SERVER_DIR="$(dirname "$SERVER_JS")"
 
-echo "[8/9] Starting PM2 on 127.0.0.1:$PORT"
+echo "[9/10] Starting PM2 on 127.0.0.1:$PORT"
 pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
 if ! HOSTNAME=127.0.0.1 PORT="$PORT" NODE_ENV=production \
   pm2 start "$SERVER_JS" --name "$APP_NAME" --cwd "$SERVER_DIR" --update-env --time; then
   rollback
 fi
 
-echo "[9/9] Waiting for the local readiness check"
+echo "[10/10] Waiting for the local readiness check"
 ready=0
 for _ in $(seq 1 30); do
   if curl --fail --silent --show-error --max-time 3 \

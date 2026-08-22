@@ -36,6 +36,13 @@ export interface DashboardData {
   maximumDifficulty: number;
   suggestedCheat: CheatDefinition | null;
   collection: CollectionEntry[];
+  campaign: {
+    track: "FULL" | "SOFT_LAUNCH";
+    totalLevels: number;
+    completedLevels: number;
+    currentLevelNumber: number | null;
+    complete: boolean;
+  };
 }
 
 export interface RankingsData {

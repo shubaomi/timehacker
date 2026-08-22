@@ -22,6 +22,8 @@
     "db:seed": "prisma db seed",
     "db:sync-catalog": "prisma db seed",
     "db:check": "tsx scripts/check-database-catalog.ts",
+    "analytics:cleanup": "tsx scripts/cleanup-playtest-events.ts",
+    "analytics:report": "tsx scripts/report-playtest.ts",
     "generate:v2-levels": "tsx scripts/generate-v2-level-registry.ts",
     "audit:puzzles": "tsx scripts/generate-puzzle-audit.ts",
     "verify": "pnpm check:deploy && pnpm prisma:validate && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration:safe && pnpm build && pnpm test:e2e"

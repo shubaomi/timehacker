@@ -26,6 +26,43 @@ enum CheatCategory {
   META
 }
 
+enum ReleaseTrack {
+  FULL
+  SOFT_LAUNCH
+}
+
+enum PlaytestEventName {
+  LEVEL_VIEW         @map("level_view")
+  FIRST_INTERACTION  @map("first_interaction")
+  PUZZLE_DISCOVERED  @map("puzzle_discovered")
+  HINT_1_OPEN        @map("hint_1_open")
+  HINT_2_OPEN        @map("hint_2_open")
+  ANSWER_OPEN        @map("answer_open")
+  PUZZLE_ARMED       @map("puzzle_armed")
+  TIMER_STARTED      @map("timer_started")
+  TIMER_STOPPED      @map("timer_stopped")
+  LEVEL_COMPLETED    @map("level_completed")
+  NEXT_LEVEL         @map("next_level")
+  SHARE_CARD_OPEN    @map("share_card_open")
+  SHARE_CARD_EXPORTED @map("share_card_exported")
+}
+
+enum PlaytestEntrySource {
+  DIRECT  @map("direct")
+  SHARE   @map("share")
+  UNKNOWN @map("unknown")
+}
+
+enum PlaytestMode {
+  NORMAL   @map("normal")
+  ASSISTED @map("assisted")
+}
+
+enum PlaytestShareAction {
+  SAVE @map("save")
+  COPY @map("copy")
+}
+
 model User {
   id             String       @id @default(uuid()) @db.Uuid
   playerId       String       @unique @db.VarChar(64)
@@ -35,12 +72,37 @@ model User {
   successGames   Int          @default(0)
   bestErrorMs    Int?
   firstSuccessAt DateTime?    @db.Timestamptz(3)
+  releaseTrack   ReleaseTrack @default(FULL)
   createdAt      DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
   games          GameRecord[]
   unlockedCheats UserCheat[]
 
   @@index([currentLevel, successGames, firstSuccessAt])
+}
+
+model PlaytestEvent {
+  id            String                  @id @default(uuid()) @db.Uuid
+  clientEventId String                  @unique @db.Uuid
+  browserId     String                  @db.Uuid
+  sessionId     String                  @db.Uuid
+  name          PlaytestEventName
+  levelSlug     String                  @db.VarChar(64)
+  levelNumber   Int
+  entrySource   PlaytestEntrySource
+  mode          PlaytestMode?
+  durationMs    Int?
+  success       Boolean?
+  puzzleSolved  Boolean?
+  action        PlaytestShareAction?
+  occurredAt    DateTime                @db.Timestamptz(3)
+  receivedAt    DateTime                @default(now()) @db.Timestamptz(3)
+
+  @@index([browserId, occurredAt])
+  @@index([sessionId, occurredAt])
+  @@index([name, occurredAt])
+  @@index([levelNumber, name])
+  @@index([occurredAt])
 }
 
 model CheatMethod {

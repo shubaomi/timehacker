@@ -17,9 +17,10 @@ interface ShareCardDialogProps {
   locale: Locale;
   t: (key: MessageKey, values?: Record<string, string | number>) => string;
   onClose: () => void;
+  onExport?: (action: "save" | "copy") => void;
 }
 
-export function ShareCardDialog({ open, payload, locale, t, onClose }: ShareCardDialogProps) {
+export function ShareCardDialog({ open, payload, locale, t, onClose, onExport }: ShareCardDialogProps) {
   return (
     <AnimatePresence>
       {open && payload ? (
@@ -29,6 +30,7 @@ export function ShareCardDialog({ open, payload, locale, t, onClose }: ShareCard
           locale={locale}
           t={t}
           onClose={onClose}
+          onExport={onExport}
         />
       ) : null}
     </AnimatePresence>
@@ -40,6 +42,7 @@ function ShareCardDialogContent({
   locale,
   t,
   onClose,
+  onExport,
 }: Omit<ShareCardDialogProps, "open" | "payload"> & { payload: ShareCardPayload }) {
   const titleId = useId();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -86,6 +89,7 @@ function ShareCardDialogContent({
       setStatus(null);
       const blob = await createBlob();
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      onExport?.("copy");
       setStatus(t("shareCardCopied"));
     } catch {
       setStatus(t("shareCardFailed"));
@@ -100,6 +104,7 @@ function ShareCardDialogContent({
       setStatus(null);
       const blob = await createBlob();
       downloadShareCard(blob, `time-hacker-${payload.durationMs}.png`);
+      onExport?.("save");
       setStatus(t("shareCardSaved"));
     } catch {
       setStatus(t("shareCardFailed"));

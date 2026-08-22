@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { CheatEvent } from "@/game/types";
 import { CHEAT_DEFINITIONS, evaluateCheatTrigger } from "@/game/cheats";
+import { definitionsForReleaseTrack } from "@/game/soft-launch";
 import { cheatEffectConfigSchema, effectElapsedTime, effectToleranceMs } from "@/game/effects";
 import { calculateLevel, difficultyForLevel, utcDayRange } from "@/game/progress";
 import { measureGame } from "@/game/timer";
@@ -73,13 +74,17 @@ export async function startGame(
             const alreadyUnlocked = player.unlockedCheats.some(
               ({ cheat }) => cheat.slug === input.assignedCheatSlug,
             );
-            if (
-              !definition ||
-              !definition.enabled ||
-              definition.difficulty > maximumDifficulty ||
-              definition.difficulty !== input.difficulty ||
-              alreadyUnlocked
-            ) {
+            const expectedSoftLaunchCheat = player.releaseTrack === "SOFT_LAUNCH"
+              ? definitionsForReleaseTrack("SOFT_LAUNCH").find(
+                ({ slug, enabled }) => enabled && !player.unlockedCheats.some(({ cheat }) => cheat.slug === slug),
+              ) ?? null
+              : null;
+            const invalidForTrack = player.releaseTrack === "SOFT_LAUNCH"
+              ? expectedSoftLaunchCheat?.slug !== input.assignedCheatSlug
+                || definition?.difficulty !== input.difficulty
+              : definition?.difficulty !== input.difficulty
+                || (definition?.difficulty ?? Number.POSITIVE_INFINITY) > maximumDifficulty;
+            if (!definition || !definition.enabled || invalidForTrack || alreadyUnlocked) {
               throw new AppError("Assigned cheat is not eligible for this player.", 409, "CHEAT_NOT_ELIGIBLE");
             }
             const cheat = await transaction.cheatMethod.findUnique({
