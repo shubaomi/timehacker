@@ -7895,10 +7895,11 @@ test("all one hundred production scenes keep their controls clear of the timer, 
   test.skip(testInfo.project.name !== "desktop-1440", "The cross-viewport geometry audit runs once on desktop Chromium.");
   test.setTimeout(900_000);
   const viewports = [
-    { name: "desktop-short", width: 1536, height: 800 },
-    { name: "desktop", width: 1440, height: 900 },
-    { name: "narrow-tablet", width: 734, height: 876 },
-    { name: "mobile", width: 390, height: 844 },
+    { name: "desktop-short", width: 1536, height: 800, locale: "en", allowVerticalScroll: false },
+    { name: "desktop", width: 1440, height: 900, locale: "en", allowVerticalScroll: false },
+    { name: "narrow-tablet", width: 734, height: 876, locale: "en", allowVerticalScroll: false },
+    { name: "scaled-short-mobile", width: 590, height: 698, locale: "zh", allowVerticalScroll: true },
+    { name: "mobile", width: 390, height: 844, locale: "en", allowVerticalScroll: false },
   ] as const;
   const requestedViewport = process.env.PLAYWRIGHT_GEOMETRY_VIEWPORT;
   const auditedViewports = requestedViewport
@@ -7910,6 +7911,11 @@ test("all one hundred production scenes keep their controls clear of the timer, 
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const viewport of auditedViewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.context().addCookies([{
+      name: "time-hacker.locale",
+      value: viewport.locale,
+      url: "http://127.0.0.1:3000",
+    }]);
     forcedCheatIndex = 0;
     await page.goto("/");
     await page.addStyleTag({ content: "*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}" });
@@ -7933,10 +7939,10 @@ test("all one hundred production scenes keep their controls clear of the timer, 
         const timer = document.querySelector<HTMLElement>(".stopwatch-card");
         if (!timer) return false;
         const measuredBottom = Number.parseFloat((scene as HTMLElement).style.getPropertyValue("--timer-bottom"));
-        return Math.abs(measuredBottom - timer.getBoundingClientRect().bottom) < 1;
+        return Math.abs(measuredBottom - (timer.getBoundingClientRect().bottom - scene.getBoundingClientRect().top)) < 1;
       })).toBe(true);
 
-      const levelViolations = await sceneRoot.evaluate((scene) => {
+      const levelViolations = await sceneRoot.evaluate((scene, allowVerticalScroll) => {
         const isRendered = (element: Element) => {
           const style = window.getComputedStyle(element);
           const box = element.getBoundingClientRect();
@@ -7964,19 +7970,21 @@ test("all one hundred production scenes keep their controls clear of the timer, 
           const style = window.getComputedStyle(controller);
           const box = controller.getBoundingClientRect();
           const isFullPageStage = box.width >= window.innerWidth - 2 && box.height >= window.innerHeight - 2;
+          const verticalLimit = allowVerticalScroll ? document.documentElement.scrollHeight : window.innerHeight;
           const isVisible = style.display !== "none"
             && style.visibility !== "hidden"
             && Number.parseFloat(style.opacity || "1") > 0.02
             && box.width >= 2
             && box.height >= 2;
           if (!isVisible || isFullPageStage) return [];
-          if (box.left >= -1 && box.top >= -1 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1) return [];
+          if (box.left >= -1 && box.top >= -1 && box.right <= window.innerWidth + 1 && box.bottom <= verticalLimit + 1) return [];
           return [`controller paper leaves viewport (${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}x${Math.round(box.height)})`];
         })();
         const controls = Array.from(scene.querySelectorAll("button, [role='application'], input, select, textarea"))
           .filter(isRendered);
         return controllerViolations.concat(controls.flatMap((control) => {
           const controlBox = control.getBoundingClientRect();
+          const verticalLimit = allowVerticalScroll ? document.documentElement.scrollHeight : window.innerHeight;
           const label = control.getAttribute("aria-label")
             ?? control.getAttribute("data-testid")
             ?? control.tagName.toLowerCase();
@@ -7985,7 +7993,7 @@ test("all one hundred production scenes keep their controls clear of the timer, 
             controlBox.left < -1
             || controlBox.top < -1
             || controlBox.right > window.innerWidth + 1
-            || controlBox.bottom > window.innerHeight + 1
+            || controlBox.bottom > verticalLimit + 1
           ) {
             results.push(`${label} leaves viewport (${Math.round(controlBox.left)},${Math.round(controlBox.top)} ${Math.round(controlBox.width)}x${Math.round(controlBox.height)})`);
           }
@@ -7997,13 +8005,44 @@ test("all one hundred production scenes keep their controls clear of the timer, 
           }));
           return results;
         }));
-      });
+      }, viewport.allowVerticalScroll);
       violations.push(...levelViolations.map((violation) => `${viewport.name} ${String(index + 1).padStart(3, "0")} ${definition.slug}: ${violation}`));
     }
   }
 
   forcedCheatIndex = null;
   expect(violations).toEqual([]);
+});
+
+test("scaled short mobile pages can scroll to and solve the 043 and 081 controls", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "The Windows scaling regression runs once on desktop Chromium.");
+  await page.setViewportSize({ width: 590, height: 698 });
+  await page.context().addCookies([{
+    name: "time-hacker.locale",
+    value: "zh",
+    url: "http://127.0.0.1:3000",
+  }]);
+
+  for (const entry of [
+    { id: 43 as const, slug: "archive-route" },
+    { id: 81 as const, slug: "dual-device" },
+  ]) {
+    forcedCheatIndex = CHEAT_DEFINITIONS.findIndex(({ slug }) => slug === entry.slug);
+    await page.goto("/");
+    await expect(page.getByTestId(`v2-scene-${String(entry.id).padStart(3, "0")}`)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true);
+
+    await page.mouse.wheel(0, 500);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    const controller = page.locator("[data-controller]");
+    await controller.scrollIntoViewIfNeeded();
+    const controllerBox = await controller.boundingBox();
+    expect(controllerBox).not.toBeNull();
+    expect(controllerBox!.y).toBeGreaterThanOrEqual(0);
+    expect(controllerBox!.y + controllerBox!.height).toBeLessThanOrEqual(698);
+
+    await solveSpatialPilotLevel(page, entry.id);
+  }
 });
 
 test("each production mechanism family has a natural browser path to ARMED", async ({ page }, testInfo) => {

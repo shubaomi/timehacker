@@ -13848,6 +13848,7 @@ function Controller(props: ControllerProps) {
 export function V2PuzzleScene({ slug, armed, hintLevel, spatialPilot = false, resetEpoch = 0, ghostAnchor = null, onGhostAnchorChange = () => undefined, menuOpen = false, eclipseOffset = 0, onDiscover, onArm }: V2PuzzleSceneProps) {
   const { locale } = useLocale();
   const level = V2_LEVEL_BY_SLUG.get(slug);
+  const sceneRef = useRef<HTMLElement>(null);
   const [timerRect, setTimerRect] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
   const announced = useRef(false);
   const discover = useCallback(() => {
@@ -13864,11 +13865,20 @@ export function V2PuzzleScene({ slug, armed, hintLevel, spatialPilot = false, re
     if (!timer) return;
     const update = () => {
       const rect = timer.getBoundingClientRect();
-      setTimerRect({ top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left });
+      const sceneRect = sceneRef.current?.getBoundingClientRect();
+      const offsetTop = sceneRect?.top ?? 0;
+      const offsetLeft = sceneRect?.left ?? 0;
+      setTimerRect({
+        top: rect.top - offsetTop,
+        right: rect.right - offsetLeft,
+        bottom: rect.bottom - offsetTop,
+        left: rect.left - offsetLeft,
+      });
     };
     update();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
     observer?.observe(timer);
+    if (sceneRef.current) observer?.observe(sceneRef.current);
     window.addEventListener("resize", update);
     return () => {
       observer?.disconnect();
@@ -13886,7 +13896,7 @@ export function V2PuzzleScene({ slug, armed, hintLevel, spatialPilot = false, re
     "--timer-left": `${timerRect.left}px`,
   } as React.CSSProperties;
   return (
-    <section className={`${styles.scene} ${styles[`chapter${level.chapter}`]} ${armed ? styles.isArmed : ""}`} style={sceneStyle} data-layout-ready={timerRect.bottom > 0 ? "true" : "false"} data-spatial-pilot={spatialPilot ? "true" : "false"} data-testid="puzzle-scene" data-scene-id={`v2-${String(level.id).padStart(3, "0")}-${slug}`} data-v2-level={String(level.id).padStart(3, "0")} data-v2-slug={slug}>
+    <section ref={sceneRef} className={`${styles.scene} ${styles[`chapter${level.chapter}`]} ${armed ? styles.isArmed : ""}`} style={sceneStyle} data-layout-ready={timerRect.bottom > 0 ? "true" : "false"} data-spatial-pilot={spatialPilot ? "true" : "false"} data-testid="puzzle-scene" data-scene-id={`v2-${String(level.id).padStart(3, "0")}-${slug}`} data-v2-level={String(level.id).padStart(3, "0")} data-v2-slug={slug}>
       <div className={styles.sceneTexture} aria-hidden="true" />
       {level.id <= 100 ? null : <div className={styles.ambientMarks} aria-hidden="true">{level.visual.marks.map((mark, index) => <i
         key={index}

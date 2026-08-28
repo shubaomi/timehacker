@@ -1,5 +1,14 @@
 .scene { --ink:#1d2341; --paper:#fbfaf4; --coral:#ff6f61; --mint:#7dddc1; position:fixed; inset:0; z-index:2; overflow:hidden; color:var(--ink); pointer-events:none; transition:opacity .45s ease,filter .45s ease; }
 
+@media (max-width:680px) and (max-height:760px) {
+  .scene {
+    position:absolute;
+    min-height:58rem;
+    overflow:visible;
+    overflow-x:clip;
+  }
+}
+
 /* 2026-08 spatial pilot: visual-only depth is rendered behind the existing
    semantic puzzle controls. These nodes exist only when the default-off
    pilot flag is enabled and never participate in hit testing. */

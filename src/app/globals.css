@@ -1208,6 +1208,22 @@ textarea:focus-visible,
   .share-card-dialog > footer { padding-inline: 16px; }
 }
 
+/* Short CSS viewports (including 125% Windows scaling) need document scroll so
+   the authored puzzle surface below the timer remains reachable at full size. */
+@media (max-width: 680px) and (max-height: 760px) {
+  .game-shell {
+    min-height: 58rem;
+    overflow: visible;
+    overflow-x: clip;
+  }
+
+  .play-screen {
+    min-height: calc(58rem - 68px);
+    justify-content: flex-start;
+    padding-top: 45px;
+  }
+}
+
 /* Narrow tablets and desktop mobile emulation need the compact vertical stage too. */
 @media (min-width: 681px) and (max-width: 820px) {
   .minimal-header { width: calc(100% - 28px); min-height: 68px; }
