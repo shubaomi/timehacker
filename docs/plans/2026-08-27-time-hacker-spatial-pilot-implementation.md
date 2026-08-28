@@ -1,0 +1,116 @@
+# Time Hacker 001 / 043 / 081 空间视觉试点实施合同
+
+> 状态：2026-08-27 已获产品负责人批准进入本地正式代码试点；尚未授权扩展其余关卡、生产部署、Release 或 PR
+
+## 1. 事实来源与冲突裁决
+
+按以下优先级裁决：
+
+1. 本轮用户明确批准的三关试点范围与不可改变合同。
+2. `docs/DESIGN.md` 的产品体验、提示、响应式和无障碍合同。
+3. `2026-08-08-time-hacker-v2-100-level-design-bible.md` 与生成的 `src/game/v2-levels.generated.ts` 中逐关规则。
+4. `2026-08-22-time-hacker-soft-launch-implementation.md` 的 12 关冻结顺序、FULL/100 兼容、匿名事件和部署边界。
+5. 当前实现与自动测试；若与以上合同冲突，停止并记录，不静默改变规则。
+
+此前 `DESIGN.md` 把人类盲测列为生产架构前置门。本次批准只增加一个默认关闭、本地可回滚的技术试点，不宣称盲测完成，也不授权生产替换。
+
+## 2. 目标与非目标
+
+目标：证明 2.5D/3D 可以与三种不同玩法的真实对象关系结合，并在开始计时后延续为身体可感的时间场，同时保持玩法与结果完全等价。
+
+非目标：不改关卡规则、阈值、输入顺序、计时精度、判定窗口、分数、关卡进度、路由、API、数据库、分析语义、SOFT_LAUNCH 顺序或 FULL/100 数据；不新增关卡、提示答案、付费、广告、采集或生产发布。
+
+## 3. 可追踪要求
+
+| ID | 要求 | 实现位置 | 验证 |
+|---|---|---|---|
+| SP-001 | 视觉开关默认关闭且可完全移除 | `src/game/spatial-pilot.ts`、`.env.example` | 默认构建无 Canvas；开关测试 |
+| SP-002 | Canvas 只读状态、延迟加载、不可交互 | `spatial-time-field.tsx` | aria/pointer/focus、动态 chunk、代码审查 |
+| SP-003 | 离屏、隐藏标签页或非活跃时暂停；移动限制 DPR | `spatial-time-field.tsx` | 可见性与媒体查询测试、性能审阅 |
+| SP-004 | 语义数字、结果和按钮始终在视觉层之上 | Canvas 样式与 `globals.css` | z-index、元素命中、截图 |
+| SP-005 | 001 深度层绑定纸框和折角；完成无游离副本 | `v2-puzzle-scene.tsx/.module.css` | 实际拖放/键盘、完成几何截图 |
+| SP-006 | 043 深度光带与现有 SVG 共用 `0 0 100 100` 坐标 | 同上 | 三端点误差 `<=1px`、click 反例 |
+| SP-007 | 081 两半环与插口共用中心；规则完成后接缝 `<=1px` | 同上 | pointer+keyboard、touch+two-touch、包围盒断言 |
+| SP-008 | 停止先提交既有判定，视觉随后读取状态 | `time-hacker-app.tsx` | 状态映射单元测试、网络顺序 E2E |
+| SP-009 | reduced-motion 无循环空间运动但保留结果 | Canvas 与 CSS | reduced-motion 截图和状态断言 |
+| SP-010 | 3D on/off 的玩法与结果等价 | 组件/E2E | 相同输入序列、请求体和分析事件对比 |
+
+## 4. 状态映射
+
+视觉状态只由现有 `GameStatus` 派生：
+
+| 正式状态 | 视觉状态 | 行为 |
+|---|---|---|
+| `READY` | `idle` | 轻微空间呼吸；若 `armed=true` 则锁定关卡完成几何 |
+| `STARTING / RUNNING` | `running` | 时间环逐渐收紧，数字保持完全可读 |
+| `STOPPING` | `stopped` | 使用上一帧几何立即冻结；不预测成功或失败 |
+| `SUCCESS` | `success` | 短暂锁定/涟漪，随后停止循环，不阻塞下一关 |
+| `FAILED` | `miss` | 克制回弹，主按钮立即保持可操作 |
+| `LOADING / LIMIT_REACHED` | 不渲染 | 不占首屏资源 |
+
+`stopChallenge`、服务端请求与 `setStatus` 顺序不为视觉效果修改。
+
+## 5. 三关完成几何
+
+### 001 四角突破
+
+- HTML 折角仍是唯一可操作物；Canvas 和深度层不进入命中测试。
+- idle 显示纸框厚度、缺口和一枚外角的投影关系；拖放完成后折角成为框的一部分。
+- success 不允许纸框闭合后仍出现第二枚游离纸角。
+
+### 043 注意力路线
+
+- 正式三页签、顺序、1.7 秒连续性、click 无效和 held-attention 路径不变。
+- 深度光带复制正式路径 `M20 65 → 51 28 → 81 64` 的同一 viewBox；不能另建百分比端点。
+- 每段只在正式页面已经显示对应带时获得空间厚度；错误分支只产生短死端。
+
+### 081 两种手
+
+- pointer/单指半环与 keyboard/双指半环的输入所有权不变。
+- 完成后两半环仍由同一 `left:50%` 和相同宽高定义；平直边接缝 `|gap|<=1px`、垂直中心差 `<=1px`、插口中心差 `<=1px`。
+- 视觉层不得把接触或动画结束当作完成；只有正式控制器的 `complete/locked` 状态可以锁定空间环。
+
+## 6. 允许与禁止修改的文件
+
+允许的最小范围：
+
+- `docs/DESIGN.md`
+- `docs/plans/2026-08-27-time-hacker-spatial-pilot-implementation.md`
+- `.env.example`
+- 新增 `src/game/spatial-pilot.ts`
+- 新增 `src/components/spatial-time-field.tsx` 与样式模块
+- `src/components/time-hacker-app.tsx`
+- `src/app/globals.css`，仅允许修复本轮浏览器门发现的主按钮 hover 对比度缺陷
+- `src/components/v2-puzzle-scene.tsx` 与样式模块，仅增加视觉开关和三关 `aria-hidden` 深度层
+- 对应 unit/component/E2E 测试
+
+禁止为了视觉效果修改：`src/game/timer.ts`、`effects.ts`、`cheats.ts`、`progress.ts`、`soft-launch.ts`、生成关卡定义、API、server、Prisma、分析合同、部署脚本、路由及数据库文件。
+
+## 7. 验证矩阵
+
+- 变更前基线：`v2-puzzle-scene` 与 `time-hacker-app` 组件测试 511 项通过。
+- 单元：开关、关卡白名单、状态映射和默认关闭。
+- 组件：三关开关关闭时 DOM/交互不变；开启时仅增加 `aria-hidden` 深度层；原有正反例全部通过。
+- 几何：001 无游离副本；043 端点；081 接缝/中心/插口。
+- 浏览器：1440×900、768×1024、390×844、360×800、WebKit、reduced-motion、200% zoom、无横向溢出、无 serious/critical axe、控制台零应用错误。
+- 等价：同一 mocked API 与输入序列下，开关 on/off 的开始/停止请求、duration、success、usedCheat、下一关和分析事件一致。
+- 性能：关闭时不加载视觉 chunk；开启时移动 DPR `<=1.25`、桌面 `<=1.75`，隐藏/离屏停止 RAF；首屏按钮无需等待 Canvas。
+
+未执行的真实手机、真实用户盲测和生产环境检查必须标记为未验证，不能由自动化代替。
+
+## 8. 回滚与停止条件
+
+单一公开环境开关默认关闭。出现计时/判定差异、指针拦截、几何漂移、WebKit 错误、移动帧率风险或 reduced-motion 失败时，立即关闭视觉开关；回滚不涉及数据库、玩家数据、关卡或迁移。
+
+三关验证通过后停止并请求是否扩展机制族；不得自行实施其余 97 关或部署。
+
+## 9. 2026-08-27 本地执行证据
+
+- 默认关闭生产构建：通过；001 页面无 Canvas、无三关深度节点。
+- 开启试点构建：通过；`desktop-1440`、`mobile-390`、`reduced-motion`、`webkit-desktop` 均以三关原始输入路径完成 `idle → running → stopped → success`，001 另验证 `miss`。
+- 几何与命中：001 折角、043 三路径端点、081 两半环接缝/中心/插口误差均 `<=1px`；主按钮命中、Canvas `pointer-events:none` 与无横向溢出通过。
+- 自动检查：`lint`、`typecheck`、`prisma:validate`、`check:deploy`、644 项 unit/component、5 项 safe integration 均通过。
+- 默认关闭浏览器矩阵：完整运行 666 个项目用例，215 通过、450 按项目约束跳过；桌面 021 的既有动画命中窗口首次波动失败，随后同构建同项目隔离复跑通过。001、043、081、100 关渲染、三尺寸控件避让及响应式无障碍检查均通过。
+- 视觉证据：`artifacts/screenshots/spatial-pilot/` 保存四项目、三关、armed/success 状态截图；逐图复核后修正了 043 被计时卡遮挡的外缘路径。
+
+未验证：真实手机/平板设备帧率、真实用户盲测、200% 浏览器缩放的专项人工检查、真实服务/数据库写入、生产环境与商业效果。以上证据不构成扩展其余 97 关或上线批准。

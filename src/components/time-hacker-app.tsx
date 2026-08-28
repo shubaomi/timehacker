@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import dynamic from "next/dynamic";
 import {
   Archive,
   BarChart3,
@@ -36,6 +37,11 @@ import type { ShareCardPayload } from "@/game/share-card";
 import { formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
 import { publicLevelNumber } from "@/game/soft-launch";
+import {
+  isSpatialPilotBuildEnabled,
+  isSpatialPilotSlug,
+  spatialVisualPhase,
+} from "@/game/spatial-pilot";
 import { V2_LEVEL_BY_SLUG } from "@/game/v2-levels.generated";
 import { localeTag, type MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
@@ -59,6 +65,11 @@ type GameStatus =
 type Panel = "game" | "cheats" | "ranks";
 
 const PLAYER_STORAGE_KEY = "time-hacker.player-id.v1";
+const SPATIAL_PILOT_ENABLED = isSpatialPilotBuildEnabled();
+const SpatialTimeField = dynamic(
+  () => import("./spatial-time-field").then((module) => module.SpatialTimeField),
+  { ssr: false },
+);
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -496,11 +507,22 @@ export function TimeHackerApp() {
   }
 
   const drawerTitle = panel === "cheats" ? t("cheatArchive") : panel === "ranks" ? t("globalRanks") : t("menuTitle");
+  const spatialPhase = spatialVisualPhase(status);
+  const spatialSlug = activeRoundCheat?.slug;
+  const showSpatialPilot = SPATIAL_PILOT_ENABLED && spatialPhase !== null && isSpatialPilotSlug(spatialSlug);
 
   return (
     <MotionConfig reducedMotion="user">
       <main className="game-shell">
         <div className="playful-sky" aria-hidden="true"><i /><i /><i /></div>
+        {showSpatialPilot ? (
+          <SpatialTimeField
+            armed={mode === "HACKER" && armed}
+            enabled
+            phase={spatialPhase}
+            slug={spatialSlug}
+          />
+        ) : null}
 
         <header className="minimal-header">
           <a href="#play" className="simple-brand" aria-label={t("brandReturn")}>
@@ -555,6 +577,7 @@ export function TimeHackerApp() {
               slug={activeRoundCheat.slug}
               armed={armed}
               hintLevel={hintLevel}
+              spatialPilot={showSpatialPilot}
               resetEpoch={puzzleResetEpoch}
               ghostAnchor={ghostAnchor}
               onGhostAnchorChange={setGhostAnchor}

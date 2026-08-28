@@ -524,7 +524,7 @@ textarea:focus-visible,
   letter-spacing: 0.01em;
 }
 
-.play-button:hover:not(:disabled) { background: var(--coral-deep); }
+.play-button:hover:not(:disabled) { background: #f77f6b; }
 .play-button.is-running {
   background: var(--ink);
   box-shadow: 0 12px 28px rgba(32, 36, 63, 0.24);

@@ -8,6 +8,7 @@ function renderScene(options?: {
   slug?: string;
   armed?: boolean;
   hintLevel?: 0 | 1 | 2 | 3;
+  spatialPilot?: boolean;
   onDiscover?: () => void;
   onArm?: () => void;
   resetEpoch?: number;
@@ -22,6 +23,7 @@ function renderScene(options?: {
         slug={options?.slug ?? "four-corner-breach"}
         armed={options?.armed ?? false}
         hintLevel={options?.hintLevel ?? 0}
+        spatialPilot={options?.spatialPilot ?? false}
         resetEpoch={options?.resetEpoch ?? 0}
         ghostAnchor={options?.ghostAnchor ?? null}
         onGhostAnchorChange={options?.onGhostAnchorChange ?? vi.fn()}
@@ -7056,6 +7058,60 @@ describe("V2 production puzzle scene 081", () => {
     expect(scene).toHaveAttribute("data-input-pair", "touch+two-touch");
     expect(scene).toHaveAttribute("data-ring-state", "complete");
     expect(scene).toHaveAttribute("data-lock-state", "locked");
+    expect(onArm).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("approved spatial pilot decorations", () => {
+  it("does not add any pilot depth node while the default-off flag is closed", () => {
+    renderScene({ slug: "four-corner-breach" });
+    expect(screen.queryByTestId("corner-spatial-depth")).not.toBeInTheDocument();
+    expect(screen.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "false");
+  });
+
+  it("keeps 001 keyboard completion identical when its aria-hidden depth is enabled", () => {
+    const onArm = vi.fn();
+    renderScene({ slug: "four-corner-breach", spatialPilot: true, onArm });
+    const depth = screen.getByTestId("corner-spatial-depth");
+    const corner = screen.getByRole("button", { name: "游离的纸角" });
+
+    expect(depth).toHaveAttribute("aria-hidden", "true");
+    corner.focus();
+    fireEvent.keyDown(corner, { key: "ArrowRight" });
+    fireEvent.keyDown(corner, { key: "ArrowRight" });
+    fireEvent.keyDown(corner, { key: "ArrowRight" });
+    fireEvent.keyDown(corner, { key: "ArrowDown" });
+    expect(onArm).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps 043 focus completion identical and shares one stretched route coordinate system", () => {
+    const onArm = vi.fn();
+    renderScene({ slug: "archive-route", spatialPilot: true, onArm });
+    const depth = screen.getByTestId("archive-route-spatial-depth");
+    const routeSvgs = depth.parentElement?.querySelectorAll("svg");
+    const tabs = screen.getAllByRole("button", { name: /档案页签/ });
+
+    expect(depth).toHaveAttribute("aria-hidden", "true");
+    expect(depth).toHaveAttribute("preserveAspectRatio", "none");
+    expect(routeSvgs).toHaveLength(2);
+    expect([...routeSvgs!].every((svg) => svg.getAttribute("viewBox") === "0 0 100 100" && svg.getAttribute("preserveAspectRatio") === "none")).toBe(true);
+    tabs.forEach((tab) => fireEvent.focus(tab));
+    expect(onArm).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps 081 pointer plus keyboard completion identical when its depth is enabled", () => {
+    const onArm = vi.fn();
+    renderScene({ slug: "dual-device", spatialPilot: true, onArm });
+    const pointerHalf = screen.getByTestId("dual-pointer-half");
+    const companionHalf = screen.getByTestId("dual-companion-half");
+
+    expect(screen.getByTestId("dual-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.pointerDown(pointerHalf, { pointerId: 881, pointerType: "mouse", clientX: 100 });
+    fireEvent.pointerMove(pointerHalf, { pointerId: 881, pointerType: "mouse", clientX: 165 });
+    fireEvent.pointerUp(pointerHalf, { pointerId: 881, pointerType: "mouse", clientX: 165 });
+    fireEvent.keyDown(companionHalf, { key: "ArrowLeft" });
+
+    expect(screen.getByTestId("v2-scene-081")).toHaveAttribute("data-ring-state", "complete");
     expect(onArm).toHaveBeenCalledTimes(1);
   });
 });

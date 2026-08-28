@@ -1,4 +1,123 @@
 .scene { --ink:#1d2341; --paper:#fbfaf4; --coral:#ff6f61; --mint:#7dddc1; position:fixed; inset:0; z-index:2; overflow:hidden; color:var(--ink); pointer-events:none; transition:opacity .45s ease,filter .45s ease; }
+
+/* 2026-08 spatial pilot: visual-only depth is rendered behind the existing
+   semantic puzzle controls. These nodes exist only when the default-off
+   pilot flag is enabled and never participate in hit testing. */
+.cornerSpatialDepth {
+  position: absolute;
+  z-index: -1;
+  inset: max(6.75rem, 12vh) 1.5rem 1.5rem;
+  pointer-events: none;
+  perspective: 1100px;
+  transform-style: preserve-3d;
+}
+
+.cornerSpatialDepth i,
+.cornerSpatialDepth b,
+.cornerSpatialDepth em {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border: 3px solid rgb(132 205 231 / .13);
+  border-radius: 5px 18px 8px 22px;
+  clip-path: polygon(0 0, calc(100% - 5.5rem) 0, 100% 5.5rem, 100% 100%, 0 100%);
+  filter: drop-shadow(0 1.2rem 1.4rem rgb(32 36 63 / .08));
+  transform: translate3d(0, .75rem, -42px) rotateX(1.5deg);
+}
+
+.cornerSpatialDepth b {
+  border-color: rgb(255 217 106 / .12);
+  transform: translate3d(0, 1.4rem, -78px) rotateX(2.4deg);
+}
+
+.cornerSpatialDepth em {
+  border-color: rgb(110 219 181 / .09);
+  transform: translate3d(0, 2rem, -112px) rotateX(3.2deg);
+}
+
+.archiveRouteSpatialDepth {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 .85rem .75rem rgb(32 36 63 / .1));
+  transform: perspective(900px) rotateX(16deg) translate3d(0, .8rem, -28px);
+  transform-origin: center;
+}
+
+.archiveRouteSpatialDepth path {
+  fill: none;
+  stroke: rgb(110 219 181 / .13);
+  stroke-width: 16;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+
+.archiveRouteScene[data-visible-bands="1"] .archiveRouteSpatialDepth path[data-band="0"],
+.archiveRouteScene[data-visible-bands="2"] .archiveRouteSpatialDepth path[data-band] {
+  opacity: .62;
+}
+
+.archiveRouteScene[data-route-state="complete"] .archiveRouteSpatialDepth path[data-band] {
+  opacity: .9;
+}
+
+.dualSpatialDepth {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: 10.8rem;
+  height: 10.8rem;
+  border-radius: 50%;
+  pointer-events: none;
+  perspective: 900px;
+  transform: translate(-50%, -50%);
+  transform-style: preserve-3d;
+}
+
+.dualSpatialDepth i,
+.dualSpatialDepth b,
+.dualSpatialDepth em {
+  position: absolute;
+  inset: .65rem;
+  display: block;
+  border: .55rem solid rgb(110 219 181 / .1);
+  border-right-color: rgb(255 111 97 / .1);
+  border-radius: 50%;
+  filter: drop-shadow(0 .85rem .7rem rgb(32 36 63 / .08));
+  transform: rotateX(62deg) translate3d(0, 1.4rem, -42px);
+  transition: border-color .2s ease, transform .28s ease;
+}
+
+.dualSpatialDepth b {
+  inset: 1.25rem;
+  transform: rotateX(62deg) translate3d(0, 2rem, -72px);
+}
+
+.dualSpatialDepth em {
+  inset: 1.9rem;
+  transform: rotateX(62deg) translate3d(0, 2.5rem, -96px);
+}
+
+.dualDeviceScene[data-ring-state="complete"] .dualSpatialDepth i,
+.dualDeviceScene[data-ring-state="complete"] .dualSpatialDepth b,
+.dualDeviceScene[data-ring-state="complete"] .dualSpatialDepth em {
+  border-color: rgb(110 219 181 / .18);
+  transform: rotateX(70deg) translate3d(0, 1rem, -52px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archiveRouteSpatialDepth path,
+  .dualSpatialDepth i,
+  .dualSpatialDepth b,
+  .dualSpatialDepth em { transition: none; }
+}
 .sceneTexture { position:absolute; inset:0; opacity:.24; background:radial-gradient(circle at calc(12% + var(--level-seed)*8%) 25%,hsl(var(--level-hue) 90% 72%/.55),transparent 22%),radial-gradient(circle at 82% 68%,hsl(calc(var(--level-hue) + 90) 70% 72%/.4),transparent 24%); }
 .ambientMarks{position:absolute;inset:0;opacity:.22}.ambientMarks i{position:absolute;display:block;background:hsl(var(--level-hue) 62% 58%);border-radius:50%}.ambientMarks i[data-shape="ring"]{background:transparent;border:3px solid hsl(var(--level-hue) 62% 52%)}.ambientMarks i[data-shape="paper"]{border-radius:8% 42% 12% 36%;background:hsl(calc(var(--level-hue) + 42) 70% 74%)}.ambientMarks i[data-shape="arc"]{background:transparent;border:5px solid hsl(var(--level-hue) 62% 52%);border-right-color:transparent}.ambientMarks i[data-shape="line"]{height:4px!important;border-radius:4px;background:hsl(calc(var(--level-hue) + 70) 54% 50%)}
 .tabReturnScene{position:absolute;left:calc((100% + var(--timer-right))/2);top:calc(var(--timer-top) + 8rem);width:22rem;height:16rem;overflow:hidden;border-radius:2.4rem .65rem 2rem 1rem;transform:translate(-50%,-50%);pointer-events:none}.tabReturnPaper{position:absolute;inset:.6rem;border:1px solid rgb(65 69 80/.13);border-radius:2rem .45rem 1.6rem .7rem;background:linear-gradient(145deg,rgb(255 251 230/.85),rgb(232 242 230/.66));box-shadow:.5rem .7rem 1rem rgb(58 57 59/.08),inset 0 0 0 .5rem rgb(255 255 255/.2)}.tabReturnPaper:before{content:"";position:absolute;inset:1rem;background:repeating-linear-gradient(0deg,transparent 0 1.3rem,rgb(76 69 62/.045) 1.34rem 1.39rem)}.tabReturnPaper i,.tabReturnPaper b,.tabReturnPaper em{position:absolute;border-radius:50%;border:1px solid rgb(78 70 61/.13)}.tabReturnPaper i{left:12%;top:16%;width:3rem;aspect-ratio:1}.tabReturnPaper b{left:43%;bottom:10%;width:4.2rem;height:1.2rem;border-style:dashed}.tabReturnPaper em{right:16%;top:22%;width:.8rem;aspect-ratio:1;background:rgb(104 199 171/.15)}.tabReturnCrease{position:absolute;z-index:2;right:1.1rem;top:50%;width:8.2rem;height:5.4rem;border:2px dashed rgb(94 75 65/.18);border-right:0;border-radius:1rem 0 0 1rem;transform:translateY(-50%)}.tabReturnCrease:before,.tabReturnCrease:after{content:"";position:absolute;right:-.1rem;width:1.4rem;height:1.1rem;border-left:2px solid rgb(94 75 65/.18)}.tabReturnCrease:before{top:.65rem;transform:skewY(-28deg)}.tabReturnCrease:after{bottom:.65rem;transform:skewY(28deg)}.tabReturnCrease i,.tabReturnCrease b{position:absolute;left:1rem;right:.65rem;border-top:1px solid rgb(99 75 66/.09)}.tabReturnCrease i{top:1.2rem}.tabReturnCrease b{bottom:1.2rem}.tabReturnTicket{position:absolute;z-index:5;right:-3.2rem;top:50%;width:9.4rem;height:5.6rem;padding:0;border:0;background:transparent;transform:translate(var(--tab-return-ticket),-50%);transition:transform .12s ease,right .15s ease;pointer-events:auto;cursor:ew-resize;touch-action:none}.tabReturnTicket:focus-visible{outline:3px solid #6960b3;outline-offset:-.1rem}.tabReturnTicket>span{position:absolute;inset:.2rem;border:1px solid rgb(80 64 58/.2);border-radius:1rem .25rem .4rem .8rem;background:linear-gradient(145deg,#ffefb0,#e8bf65);box-shadow:.35rem .5rem .75rem rgb(67 55 43/.15),inset 0 0 0 .35rem rgb(255 255 255/.24);overflow:hidden}.tabReturnTicket>span:before{content:"";position:absolute;left:12%;right:10%;top:50%;border-top:2px dashed rgb(69 61 54/.23)}.tabReturnTicket i,.tabReturnTicket b{position:absolute;top:.7rem;width:1.15rem;height:.85rem;border:2px solid rgb(75 64 54/.17);border-radius:.2rem}.tabReturnTicket i{left:1rem}.tabReturnTicket b{right:1rem}.tabReturnTicket em{position:absolute;left:-.1rem;top:50%;width:2.15rem;height:2.5rem;border:1.1rem solid #f8dfa0;border-left:0;border-radius:0 50% 50% 0;opacity:0;transform:translateY(-50%);transition:opacity .12s ease}.tabReturnScene[data-ticket-cutout="revealed"] .tabReturnTicket{right:-1.6rem}.tabReturnScene[data-ticket-cutout="revealed"] .tabReturnTicket em{opacity:1}.tabReturnScene[data-ticket-feedback="dodged"] .tabReturnTicket>span{animation:tabReturnDodge .25s ease}.tabReturnScene[data-return-state="returned"] .tabReturnTicket{right:1rem;filter:drop-shadow(0 0 .5rem rgb(91 187 158/.2))}.tabReturnCoverSheet{position:absolute;z-index:8;right:0;top:.2rem;bottom:.2rem;width:var(--tab-return-cover);border-left:1px solid rgb(73 65 62/.2);border-radius:1.8rem 0 0 1rem;background:linear-gradient(105deg,#eee0bd,#fff8dc 18%,#f4e6c4);box-shadow:-.55rem 0 1rem rgb(60 53 47/.1);transition:width .08s linear}.tabReturnCoverSheet:before{content:"";position:absolute;inset:.8rem;background:repeating-linear-gradient(0deg,transparent 0 1.25rem,rgb(76 69 62/.05) 1.29rem 1.34rem)}.tabReturnCoverSheet i,.tabReturnCoverSheet b{position:absolute;left:12%;right:12%;border-top:2px dashed rgb(92 74 63/.13)}.tabReturnCoverSheet i{top:32%}.tabReturnCoverSheet b{top:67%}.tabReturnFold{position:absolute;z-index:10;right:.25rem;bottom:.3rem;width:4.6rem;height:4.6rem;padding:0;border:0;background:transparent;clip-path:polygon(100% 0,100% 100%,0 100%);pointer-events:auto;cursor:grab;touch-action:none}.tabReturnFold:active{cursor:grabbing}.tabReturnFold:focus-visible{outline:3px solid #6960b3;outline-offset:-.25rem}.tabReturnFold>span{position:absolute;inset:0;background:linear-gradient(135deg,transparent 0 48%,#e0c78e 49% 52%,#fff1c4 53%);filter:drop-shadow(-.25rem -.25rem .3rem rgb(65 55 43/.12))}.tabReturnFold i,.tabReturnFold b{position:absolute;right:.5rem;bottom:.48rem;width:1.6rem;border-top:1px solid rgb(70 61 52/.2);transform:rotate(-45deg);transform-origin:right}.tabReturnFold b{right:.9rem;bottom:.88rem;width:.9rem}.tabReturnScene[data-cover-state="covered"] .tabReturnFold{left:.25rem;right:auto;transform:scaleX(-1)}.tabReturnScene[data-hidden-cycle="expired"] .tabReturnCrease{border-color:rgb(223 130 109/.25)}.tabReturnScene[data-hidden-cycle="returned"] .tabReturnCrease,.tabReturnScene[data-cover-state="returned"] .tabReturnCrease{border-color:rgb(88 183 154/.35);border-style:solid}@keyframes tabReturnDodge{45%{transform:translateX(1rem)}100%{transform:translateX(0)}}

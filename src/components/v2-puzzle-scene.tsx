@@ -11,6 +11,7 @@ interface V2PuzzleSceneProps {
   slug: string;
   armed: boolean;
   hintLevel: 0 | 1 | 2 | 3;
+  spatialPilot?: boolean;
   resetEpoch?: number;
   ghostAnchor?: "left" | "right" | null;
   onGhostAnchorChange?: (anchor: "left" | "right" | null) => void;
@@ -29,6 +30,7 @@ interface ControllerProps {
   onGhostAnchorChange: (anchor: "left" | "right" | null) => void;
   menuOpen: boolean;
   eclipseOffset: number;
+  spatialPilot: boolean;
   onDiscover: () => void;
   onArm: () => void;
 }
@@ -558,7 +560,7 @@ function HybridConsole({ locale, solved, onDiscover, onArm }: ControllerProps) {
   );
 }
 
-function DualDevice({ locale, solved, onDiscover, onArm }: ControllerProps) {
+function DualDevice({ locale, solved, spatialPilot, onDiscover, onArm }: ControllerProps) {
   type PointerInput = "none" | "pointer" | "touch";
   type CompanionInput = "none" | "keyboard" | "two-touch";
   const [pointerDocked, setPointerDocked] = useState(solved);
@@ -627,10 +629,12 @@ function DualDevice({ locale, solved, onDiscover, onArm }: ControllerProps) {
       data-pointer-half={visiblePointerDocked ? "docked" : "waiting"}
       data-pointer-input={pointerInput}
       data-ring-state={visibleSolved ? "complete" : "split"}
+      data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-spatial-model="pointer-grain-and-companion-grain-half-rings-share-one-socket"
       data-testid="v2-scene-081"
     >
       <span className={styles.dualDevicePaper} aria-hidden="true"><i /><b /></span>
+      {spatialPilot ? <span className={styles.dualSpatialDepth} data-testid="dual-spatial-depth" aria-hidden="true"><i /><b /><em /></span> : null}
       <span className={styles.dualSharedSocket} data-testid="dual-shared-socket" aria-hidden="true"><i /><b /></span>
       <button
         type="button"
@@ -707,7 +711,7 @@ function CoupledDrag(props: ControllerProps) {
 }
 
 function CornerRepair(props: ControllerProps) {
-  const { locale, solved, onDiscover, onArm } = props;
+  const { locale, solved, spatialPilot, onDiscover, onArm } = props;
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [keyPosition, setKeyPosition] = useState({ x: 0, y: 0 });
   const [wrong, setWrong] = useState(false);
@@ -760,10 +764,12 @@ function CornerRepair(props: ControllerProps) {
       className={`${styles.cornerScene} ${wrong ? styles.cornerWrong : ""} ${solved ? styles.cornerSolved : ""}`}
       data-corner-scene
       data-controller="corner-repair"
+      data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-spatial-model="page-corner"
       data-testid="v2-scene-001"
     >
       <span className={styles.cornerFrame} aria-hidden="true" />
+      {spatialPilot ? <span className={styles.cornerSpatialDepth} data-testid="corner-spatial-depth" aria-hidden="true"><i /><b /><em /></span> : null}
       <span
         className={styles.cornerTarget}
         data-corner-target
@@ -9482,7 +9488,7 @@ const archiveRouteTabs = [
   { x: 81, y: 64, role: "seal" },
 ] as const;
 
-function ArchiveRoute({ locale, solved, onDiscover, onArm }: ControllerProps) {
+function ArchiveRoute({ locale, solved, spatialPilot, onDiscover, onArm }: ControllerProps) {
   const [routeLength, setRouteLength] = useState(0);
   const [routeState, setRouteState] = useState<"idle" | "following" | "broken" | "complete">("idle");
   const [activeTab, setActiveTab] = useState<number | null>(null);
@@ -9584,6 +9590,7 @@ function ArchiveRoute({ locale, solved, onDiscover, onArm }: ControllerProps) {
       data-opened-tabs={openedTabs}
       data-route-length={visibleSolved ? 3 : routeLength}
       data-route-state={visibleSolved ? "complete" : routeState}
+      data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-spatial-model="attention-draws-route"
       data-testid="v2-scene-043"
       data-visible-bands={visibleBands}
@@ -9609,7 +9616,11 @@ function ArchiveRoute({ locale, solved, onDiscover, onArm }: ControllerProps) {
         breakRoute();
       }}
     >
-      <svg className={styles.archiveRouteBands} viewBox="0 0 100 100" aria-hidden="true">
+      {spatialPilot ? <svg className={styles.archiveRouteSpatialDepth} viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="archive-route-spatial-depth" aria-hidden="true">
+        <path data-band="0" d="M20 65 C30 59 38 38 51 28" />
+        <path data-band="1" d="M51 28 C64 34 70 55 81 64" />
+      </svg> : null}
+      <svg className={styles.archiveRouteBands} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         <path data-band="0" d="M20 65 C30 59 38 38 51 28" />
         <path data-band="1" d="M51 28 C64 34 70 55 81 64" />
         <path className={styles.archiveRouteDeadBand} d={`M${archiveRouteTabs[deadEndTab ?? 0].x} ${archiveRouteTabs[deadEndTab ?? 0].y} l8 -8`} />
@@ -13834,7 +13845,7 @@ function Controller(props: ControllerProps) {
   }
 }
 
-export function V2PuzzleScene({ slug, armed, hintLevel, resetEpoch = 0, ghostAnchor = null, onGhostAnchorChange = () => undefined, menuOpen = false, eclipseOffset = 0, onDiscover, onArm }: V2PuzzleSceneProps) {
+export function V2PuzzleScene({ slug, armed, hintLevel, spatialPilot = false, resetEpoch = 0, ghostAnchor = null, onGhostAnchorChange = () => undefined, menuOpen = false, eclipseOffset = 0, onDiscover, onArm }: V2PuzzleSceneProps) {
   const { locale } = useLocale();
   const level = V2_LEVEL_BY_SLUG.get(slug);
   const [timerRect, setTimerRect] = useState({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -13875,7 +13886,7 @@ export function V2PuzzleScene({ slug, armed, hintLevel, resetEpoch = 0, ghostAnc
     "--timer-left": `${timerRect.left}px`,
   } as React.CSSProperties;
   return (
-    <section className={`${styles.scene} ${styles[`chapter${level.chapter}`]} ${armed ? styles.isArmed : ""}`} style={sceneStyle} data-layout-ready={timerRect.bottom > 0 ? "true" : "false"} data-testid="puzzle-scene" data-scene-id={`v2-${String(level.id).padStart(3, "0")}-${slug}`} data-v2-level={String(level.id).padStart(3, "0")} data-v2-slug={slug}>
+    <section className={`${styles.scene} ${styles[`chapter${level.chapter}`]} ${armed ? styles.isArmed : ""}`} style={sceneStyle} data-layout-ready={timerRect.bottom > 0 ? "true" : "false"} data-spatial-pilot={spatialPilot ? "true" : "false"} data-testid="puzzle-scene" data-scene-id={`v2-${String(level.id).padStart(3, "0")}-${slug}`} data-v2-level={String(level.id).padStart(3, "0")} data-v2-slug={slug}>
       <div className={styles.sceneTexture} aria-hidden="true" />
       {level.id <= 100 ? null : <div className={styles.ambientMarks} aria-hidden="true">{level.visual.marks.map((mark, index) => <i
         key={index}
@@ -13886,7 +13897,7 @@ export function V2PuzzleScene({ slug, armed, hintLevel, resetEpoch = 0, ghostAnc
         <span>{String(level.id).padStart(3, "0")}</span>
         {armed ? <h2>{locale === "zh" ? level.title.zh : level.title.en}</h2> : null}
       </header>
-      <Controller level={level} locale={locale} solved={armed} resetEpoch={resetEpoch} ghostAnchor={ghostAnchor} onGhostAnchorChange={onGhostAnchorChange} menuOpen={menuOpen} eclipseOffset={eclipseOffset} onDiscover={discover} onArm={onArm} />
+      <Controller level={level} locale={locale} solved={armed} resetEpoch={resetEpoch} ghostAnchor={ghostAnchor} onGhostAnchorChange={onGhostAnchorChange} menuOpen={menuOpen} eclipseOffset={eclipseOffset} spatialPilot={spatialPilot} onDiscover={discover} onArm={onArm} />
       {hintLevel > 0 && !armed ? <aside className={styles.hint} role="status"><span>{hints[0]}</span>{hintLevel > 1 ? <b>{hints[1]}</b> : null}{hintLevel > 2 ? <em>{locale === "zh" ? `答案：${level.solve}` : `Answer: ${hints[1]}`}</em> : null}</aside> : null}
       <p className={styles.solvedNote} aria-live="polite">{armed ? (locale === "zh" ? "抓到时间的破绽了" : "You found the crack in time") : ""}</p>
     </section>

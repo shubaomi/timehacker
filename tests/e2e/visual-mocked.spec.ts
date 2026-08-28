@@ -15,6 +15,8 @@ let forcedCheatIndex: number | null = null;
 let softLaunchMode = false;
 let softLaunchComplete = false;
 let playtestRequests: Array<Record<string, unknown>> = [];
+let completeDelayMs = 0;
+let completeSuccess = true;
 
 async function findExposedPoint(control: Locator) {
   return control.evaluate((element: HTMLElement) => {
@@ -177,6 +179,8 @@ test.beforeEach(async ({ page }) => {
   softLaunchMode = false;
   softLaunchComplete = false;
   playtestRequests = [];
+  completeDelayMs = 0;
+  completeSuccess = true;
   let dashboardCalls = 0;
   await page.context().addCookies([{ name: "time-hacker.locale", value: "en", url: "http://127.0.0.1:3000" }]);
   await page.addInitScript(([key, value]) => {
@@ -212,13 +216,14 @@ test.beforeEach(async ({ page }) => {
       return;
     }
     if (url.pathname === "/api/games/visual-game/complete") {
+      if (completeDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, completeDelayMs));
       await route.fulfill({ json: {
         game: {
           id: "visual-game",
-          durationMs: 10_000,
-          errorMs: 0,
-          absoluteErrorMs: 0,
-          success: true,
+          durationMs: completeSuccess ? 10_000 : 9_340,
+          errorMs: completeSuccess ? 0 : -660,
+          absoluteErrorMs: completeSuccess ? 0 : 660,
+          success: completeSuccess,
           wallDurationMs: 12_000,
           toleranceMs: 20,
           assistanceType: "FINAL_DILATION",
@@ -231,6 +236,147 @@ test.beforeEach(async ({ page }) => {
     }
     await route.fulfill({ json: { player: { playerId } } });
   });
+});
+
+async function solveSpatialPilotLevel(page: Page, id: 1 | 43 | 81) {
+  const scene = page.getByTestId(`v2-scene-${String(id).padStart(3, "0")}`);
+  if (id === 1) {
+    const corner = scene.getByRole("button", { name: "Loose paper corner" });
+    await corner.focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowDown");
+  } else if (id === 43) {
+    const tabs = scene.locator("button[data-archive-tab]");
+    for (let index = 0; index < 3; index += 1) await tabs.nth(index).focus();
+  } else {
+    const pointerHalf = page.getByTestId("dual-pointer-half");
+    const companionHalf = page.getByTestId("dual-companion-half");
+    const box = await pointerHalf.boundingBox();
+    if (!box) throw new Error("Pointer half has no rendered bounds");
+    await page.mouse.move(box.x + box.width * .25, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * .25 + 64, box.y + box.height / 2);
+    await page.mouse.up();
+    await companionHalf.focus();
+    await page.keyboard.press("ArrowLeft");
+  }
+  await expect(page.getByTestId("puzzle-scene")).toHaveClass(/isArmed/);
+  return scene;
+}
+
+async function expectSpatialPilotGeometry(page: Page, id: 1 | 43 | 81) {
+  if (id === 1) {
+    await expect.poll(async () => page.getByTestId("v2-scene-001").evaluate((scene) => {
+      const corner = scene.querySelector<HTMLButtonElement>("button")?.getBoundingClientRect();
+      const target = scene.querySelector<HTMLElement>("[data-corner-target]")?.getBoundingClientRect();
+      return corner && target ? Math.max(
+        Math.abs(corner.right - target.right),
+        Math.abs(corner.top - target.top),
+      ) : Number.POSITIVE_INFINITY;
+    })).toBeLessThanOrEqual(1);
+    return;
+  }
+  if (id === 43) {
+    const geometry = await page.getByTestId("v2-scene-043").evaluate((scene) => {
+      const svg = scene.querySelector<SVGSVGElement>("svg:not([data-testid])");
+      const paths = svg ? [...svg.querySelectorAll<SVGPathElement>("path[data-band]")] : [];
+      const tabs = [...scene.querySelectorAll<HTMLButtonElement>("button[data-archive-tab]")];
+      const screenPoint = (path: SVGPathElement, atEnd: boolean) => {
+        const point = path.getPointAtLength(atEnd ? path.getTotalLength() : 0);
+        const matrix = path.getScreenCTM();
+        return matrix ? new DOMPoint(point.x, point.y).matrixTransform(matrix) : point;
+      };
+      const centers = tabs.map((tab) => {
+        const rect = tab.getBoundingClientRect();
+        return { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 };
+      });
+      const endpoints = paths.length === 2 ? [screenPoint(paths[0], false), screenPoint(paths[0], true), screenPoint(paths[1], true)] : [];
+      return endpoints.map((point, index) => Math.hypot(point.x - centers[index].x, point.y - centers[index].y));
+    });
+    expect(geometry).toHaveLength(3);
+    geometry.forEach((delta) => expect(delta).toBeLessThanOrEqual(1));
+    return;
+  }
+  await expect.poll(async () => page.getByTestId("v2-scene-081").evaluate((scene) => {
+    const left = scene.querySelector<HTMLElement>("[data-testid=dual-pointer-half]")!.getBoundingClientRect();
+    const right = scene.querySelector<HTMLElement>("[data-testid=dual-companion-half]")!.getBoundingClientRect();
+    const socket = scene.querySelector<HTMLElement>("[data-testid=dual-shared-socket]")!.getBoundingClientRect();
+    const leftSeam = left.left + left.width / 2;
+    const rightSeam = right.left + right.width / 2;
+    const ringCenterY = (left.top + left.bottom + right.top + right.bottom) / 4;
+    return Math.max(
+      Math.abs(rightSeam - leftSeam),
+      Math.abs((left.top + left.bottom) / 2 - (right.top + right.bottom) / 2),
+      Math.abs((socket.left + socket.right) / 2 - leftSeam),
+      Math.abs((socket.top + socket.bottom) / 2 - ringCenterY),
+    );
+  })).toBeLessThanOrEqual(1);
+}
+
+test("the approved spatial pilot stays decorative across real puzzle and timer states", async ({ page }, testInfo) => {
+  test.skip(process.env.NEXT_PUBLIC_TIME_HACKER_SPATIAL_PILOT !== "1", "Runs only for the explicit default-off spatial pilot build.");
+  test.skip(!["desktop-1440", "mobile-390", "reduced-motion", "webkit-desktop"].includes(testInfo.project.name), "Pilot matrix uses one desktop, one mobile, reduced motion, and WebKit.");
+  test.setTimeout(120_000);
+  const root = path.join(screenshotRoot, "spatial-pilot");
+  await mkdir(root, { recursive: true });
+
+  for (const entry of [
+    { id: 1 as const, slug: "four-corner-breach" },
+    { id: 43 as const, slug: "archive-route" },
+    { id: 81 as const, slug: "dual-device" },
+  ]) {
+    forcedCheatIndex = CHEAT_DEFINITIONS.findIndex(({ slug }) => slug === entry.slug);
+    completeDelayMs = 280;
+    completeSuccess = true;
+    await page.goto("/");
+    const field = page.getByTestId("spatial-time-field");
+    await expect(field).toHaveAttribute("aria-hidden", "true");
+    await expect(field).toHaveAttribute("data-phase", "idle");
+    await expect(field).toHaveCSS("pointer-events", "none");
+    await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "true");
+    await solveSpatialPilotLevel(page, entry.id);
+    await expectSpatialPilotGeometry(page, entry.id);
+
+    const button = page.locator(".play-button");
+    const receivesPointer = await button.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint((rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2));
+    });
+    expect(receivesPointer).toBe(true);
+    await page.screenshot({ path: path.join(root, `${testInfo.project.name}-${String(entry.id).padStart(3, "0")}-armed.png`), fullPage: true });
+
+    await button.click();
+    await expect(field).toHaveAttribute("data-phase", "running");
+    await button.click();
+    await expect(field).toHaveAttribute("data-phase", "stopped");
+    await expect(field).toHaveAttribute("data-phase", "success");
+    await page.screenshot({ path: path.join(root, `${testInfo.project.name}-${String(entry.id).padStart(3, "0")}-success.png`), fullPage: true });
+
+    const serious = (await new AxeBuilder({ page }).analyze()).violations.filter(({ impact }) => impact === "serious" || impact === "critical");
+    expect(serious).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+
+  forcedCheatIndex = CHEAT_DEFINITIONS.findIndex(({ slug }) => slug === "four-corner-breach");
+  completeDelayMs = 280;
+  completeSuccess = false;
+  await page.goto("/");
+  await solveSpatialPilotLevel(page, 1);
+  await page.locator(".play-button").click();
+  await page.locator(".play-button").click();
+  await expect(page.getByTestId("spatial-time-field")).toHaveAttribute("data-phase", "miss");
+});
+
+test("the spatial pilot is absent from the default build", async ({ page }, testInfo) => {
+  test.skip(process.env.NEXT_PUBLIC_TIME_HACKER_SPATIAL_PILOT === "1", "The explicit pilot build is covered separately.");
+  test.skip(testInfo.project.name !== "desktop-1440", "One desktop project proves the production default gate.");
+  forcedCheatIndex = CHEAT_DEFINITIONS.findIndex(({ slug }) => slug === "four-corner-breach");
+  await page.goto("/");
+  await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "false");
+  await expect(page.getByTestId("spatial-time-field")).toHaveCount(0);
+  await expect(page.getByTestId("corner-spatial-depth")).toHaveCount(0);
 });
 
 test("new players see only the 12-level soft launch and emit the frozen anonymous start events", async ({ page }, testInfo) => {
