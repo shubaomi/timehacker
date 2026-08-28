@@ -28,9 +28,9 @@ describe("V2 production integration without database writes", () => {
 
   it("applies the common reaction window to every assisted level", () => {
     for (const definition of CHEAT_DEFINITIONS) {
-      expect(effectElapsedTime(9_949, definition.effectConfig), definition.slug).toBe(9_949);
-      expect(effectElapsedTime(14_951, definition.effectConfig), definition.slug).toBe(10_000);
-      expect(effectElapsedTime(17_949, definition.effectConfig), definition.slug).toBe(10_000);
+      expect(effectElapsedTime(9_499, definition.effectConfig), definition.slug).toBe(9_499);
+      expect(effectElapsedTime(14_501, definition.effectConfig), definition.slug).toBe(10_000);
+      expect(effectElapsedTime(17_499, definition.effectConfig), definition.slug).toBe(10_000);
     }
   });
 });

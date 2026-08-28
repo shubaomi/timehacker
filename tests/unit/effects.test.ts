@@ -4,6 +4,7 @@ import {
   effectElapsedTime,
   effectToleranceMs,
   effectWallTimeToTarget,
+  LANDING_STEP_DISPLAY_MS,
   LANDING_STEP_WALL_MS,
   LANDING_ZONE_START_MS,
   makeCatalogEffect,
@@ -22,15 +23,15 @@ describe("assisted timing effects", () => {
     effects.forEach((effect) => expect(cheatEffectConfigSchema.parse(effect)).toEqual(effect));
   });
 
-  it("runs at real speed until the common 9.95 landing zone", () => {
+  it("runs at real speed until the common 9.50 landing zone", () => {
     for (const effect of [
       { type: "FULL_DILATION", timeScale: 0.5, label: "", labelZh: "" },
       { type: "FINAL_DILATION", startsAtMs: 8_000, timeScale: 0.5, label: "", labelZh: "" },
       { type: "TOLERANCE_ASSIST", toleranceMs: 40, label: "", labelZh: "" },
       { type: "BRAKE_PULSE", brakeAtMs: 9_600, brakeDurationMs: 700, label: "", labelZh: "" },
     ] as const) {
-      expect(effectElapsedTime(9_949, effect)).toBe(9_949);
-      expect(effectWallTimeToTarget(effect, 9_950)).toBe(9_950);
+      expect(effectElapsedTime(9_499, effect)).toBe(9_499);
+      expect(effectWallTimeToTarget(effect, 9_500)).toBe(9_500);
     }
   });
 
@@ -43,18 +44,23 @@ describe("assisted timing effects", () => {
     }
   });
 
-  it("walks hundredths once per second from 9.95 and holds 10.00 for three seconds", () => {
+  it("walks tenths once per second from 9.50 and holds 10.00 for three seconds", () => {
     for (let difficulty = 1; difficulty <= 5; difficulty += 1) {
       for (let index = 0; index < 40; index += 1) {
         const effect = makeCatalogEffect(`slug-${difficulty}-${index}`, difficulty, "Effect", "效果");
         const landingStart = effectWallTimeToTarget(effect, LANDING_ZONE_START_MS);
-        expect(effectElapsedTime(landingStart, effect), `${effect.type} D${difficulty}`).toBe(9_950);
-        expect(effectElapsedTime(landingStart + LANDING_STEP_WALL_MS - 1, effect)).toBe(9_950);
-        expect(effectElapsedTime(landingStart + LANDING_STEP_WALL_MS, effect)).toBe(9_960);
+        expect(effectElapsedTime(landingStart, effect), `${effect.type} D${difficulty}`).toBe(9_500);
+        expect(effectElapsedTime(landingStart + LANDING_STEP_WALL_MS - 1, effect)).toBe(9_500);
+        expect(effectElapsedTime(landingStart + LANDING_STEP_WALL_MS, effect)).toBe(9_600);
         const targetStart = effectWallTimeToTarget(effect, 10_000);
         expect(effectElapsedTime(targetStart, effect)).toBe(10_000);
         expect(effectElapsedTime(targetStart + LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS - 1, effect)).toBe(10_000);
-        expect(effectElapsedTime(targetStart + LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS, effect)).toBe(10_010);
+        expect(effectElapsedTime(targetStart + LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS, effect)).toBe(10_000);
+        expect(effectElapsedTime(targetStart + 2 * LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS, effect)).toBe(
+          10_000 + LANDING_STEP_DISPLAY_MS,
+        );
+        const toleranceTarget = effectWallTimeToTarget(effect, 10_015);
+        expect(effectElapsedTime(toleranceTarget, effect)).toBe(10_015);
       }
     }
   });

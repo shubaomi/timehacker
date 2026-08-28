@@ -42,7 +42,8 @@ export const cheatEffectConfigSchema = z.discriminatedUnion("type", [
 export type CheatEffectConfig = z.infer<typeof cheatEffectConfigSchema>;
 export type CheatEffectType = CheatEffectConfig["type"];
 
-export const LANDING_ZONE_START_MS = 9_950;
+export const LANDING_ZONE_START_MS = 9_500;
+export const LANDING_STEP_DISPLAY_MS = 100;
 export const LANDING_STEP_WALL_MS = 1_000;
 export const TARGET_EXTRA_HOLD_MS = 2_000;
 
@@ -51,30 +52,31 @@ export function effectElapsedTime(wallElapsedMs: number, effect: CheatEffectConf
   if (!effect) return wall;
   if (wall < LANDING_ZONE_START_MS) return wall;
 
-  const landingWallMs = Math.max(0, wall - LANDING_ZONE_START_MS + 0.001);
-  const stepsToTarget = (TARGET_MS - LANDING_ZONE_START_MS) / 10;
+  const landingWallMs = Math.max(0, wall - LANDING_ZONE_START_MS);
+  const stepsToTarget = (TARGET_MS - LANDING_ZONE_START_MS) / LANDING_STEP_DISPLAY_MS;
   const targetStartsAtWallMs = stepsToTarget * LANDING_STEP_WALL_MS;
   const targetHoldWallMs = LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS;
   if (landingWallMs < targetStartsAtWallMs) {
-    return LANDING_ZONE_START_MS + Math.floor(landingWallMs / LANDING_STEP_WALL_MS) * 10;
+    return LANDING_ZONE_START_MS
+      + Math.floor(landingWallMs / LANDING_STEP_WALL_MS) * LANDING_STEP_DISPLAY_MS;
   }
   if (landingWallMs < targetStartsAtWallMs + targetHoldWallMs) return TARGET_MS;
   const afterTargetWallMs = landingWallMs - targetStartsAtWallMs - targetHoldWallMs;
-  return TARGET_MS + 10 + Math.floor(afterTargetWallMs / LANDING_STEP_WALL_MS) * 10;
+  return TARGET_MS + afterTargetWallMs / LANDING_STEP_WALL_MS * LANDING_STEP_DISPLAY_MS;
 }
 
 export function effectWallTimeToTarget(effect: CheatEffectConfig, targetMs = TARGET_MS): number {
   void effect;
   if (targetMs < LANDING_ZONE_START_MS) return targetMs;
   if (targetMs <= TARGET_MS) {
-    const steps = Math.ceil((targetMs - LANDING_ZONE_START_MS) / 10);
+    const steps = Math.ceil((targetMs - LANDING_ZONE_START_MS) / LANDING_STEP_DISPLAY_MS);
     return LANDING_ZONE_START_MS + Math.max(0, steps) * LANDING_STEP_WALL_MS;
   }
-  const targetStartsAtWallMs = (TARGET_MS - LANDING_ZONE_START_MS) / 10 * LANDING_STEP_WALL_MS;
+  const targetStartsAtWallMs = (TARGET_MS - LANDING_ZONE_START_MS)
+    / LANDING_STEP_DISPLAY_MS * LANDING_STEP_WALL_MS;
   const targetHoldWallMs = LANDING_STEP_WALL_MS + TARGET_EXTRA_HOLD_MS;
-  const stepsAfterTarget = Math.max(1, Math.ceil((targetMs - TARGET_MS) / 10));
   return LANDING_ZONE_START_MS + targetStartsAtWallMs + targetHoldWallMs
-    + (stepsAfterTarget - 1) * LANDING_STEP_WALL_MS;
+    + (targetMs - TARGET_MS) / LANDING_STEP_DISPLAY_MS * LANDING_STEP_WALL_MS;
 }
 
 export function effectToleranceMs(effect: CheatEffectConfig | null): number {

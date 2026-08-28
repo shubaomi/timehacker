@@ -317,8 +317,9 @@ async function expectSpatialPilotGeometry(page: Page, id: 1 | 43 | 81) {
 
 test("the approved spatial pilot stays decorative across real puzzle and timer states", async ({ page }, testInfo) => {
   test.skip(process.env.NEXT_PUBLIC_TIME_HACKER_SPATIAL_PILOT !== "1", "Runs only for the explicit default-off spatial pilot build.");
-  test.skip(!["desktop-1440", "mobile-390", "reduced-motion", "webkit-desktop"].includes(testInfo.project.name), "Pilot matrix uses one desktop, one mobile, reduced motion, and WebKit.");
+  test.skip(!["desktop-1440", "mobile-390", "tablet-768", "reduced-motion", "webkit-desktop"].includes(testInfo.project.name), "Pilot matrix uses desktop, mobile, narrow tablet, reduced motion, and WebKit.");
   test.setTimeout(120_000);
+  if (testInfo.project.name === "tablet-768") await page.setViewportSize({ width: 734, height: 876 });
   const root = path.join(screenshotRoot, "spatial-pilot");
   await mkdir(root, { recursive: true });
 
@@ -338,6 +339,14 @@ test("the approved spatial pilot stays decorative across real puzzle and timer s
     await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "true");
     await solveSpatialPilotLevel(page, entry.id);
     await expectSpatialPilotGeometry(page, entry.id);
+    if (entry.id === 43 || entry.id === 81) {
+      const sceneBox = await page.getByTestId(`v2-scene-${String(entry.id).padStart(3, "0")}`).boundingBox();
+      const viewport = page.viewportSize();
+      expect(sceneBox).not.toBeNull();
+      expect(viewport).not.toBeNull();
+      expect(sceneBox!.y).toBeGreaterThanOrEqual(0);
+      expect(sceneBox!.y + sceneBox!.height).toBeLessThanOrEqual(viewport!.height);
+    }
 
     const button = page.locator(".play-button");
     const receivesPointer = await button.evaluate((element) => {
