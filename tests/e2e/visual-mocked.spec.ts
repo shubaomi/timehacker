@@ -7897,12 +7897,18 @@ test("all one hundred production scenes keep their controls clear of the timer, 
   const viewports = [
     { name: "desktop-short", width: 1536, height: 800 },
     { name: "desktop", width: 1440, height: 900 },
+    { name: "narrow-tablet", width: 734, height: 876 },
     { name: "mobile", width: 390, height: 844 },
   ] as const;
+  const requestedViewport = process.env.PLAYWRIGHT_GEOMETRY_VIEWPORT;
+  const auditedViewports = requestedViewport
+    ? viewports.filter(({ name }) => name === requestedViewport)
+    : viewports;
+  expect(auditedViewports, `Unknown geometry viewport: ${requestedViewport}`).not.toHaveLength(0);
   const violations: string[] = [];
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  for (const viewport of viewports) {
+  for (const viewport of auditedViewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     forcedCheatIndex = 0;
     await page.goto("/");
@@ -7952,9 +7958,24 @@ test("all one hundred production scenes keep their controls clear of the timer, 
           ["timer", document.querySelector(".timer-readout")],
           ["main-action", document.querySelector(".play-button")],
         ] as const;
+        const controller = scene.querySelector<HTMLElement>("[data-controller]");
+        const controllerViolations = (() => {
+          if (!controller) return [];
+          const style = window.getComputedStyle(controller);
+          const box = controller.getBoundingClientRect();
+          const isFullPageStage = box.width >= window.innerWidth - 2 && box.height >= window.innerHeight - 2;
+          const isVisible = style.display !== "none"
+            && style.visibility !== "hidden"
+            && Number.parseFloat(style.opacity || "1") > 0.02
+            && box.width >= 2
+            && box.height >= 2;
+          if (!isVisible || isFullPageStage) return [];
+          if (box.left >= -1 && box.top >= -1 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1) return [];
+          return [`controller paper leaves viewport (${Math.round(box.left)},${Math.round(box.top)} ${Math.round(box.width)}x${Math.round(box.height)})`];
+        })();
         const controls = Array.from(scene.querySelectorAll("button, [role='application'], input, select, textarea"))
           .filter(isRendered);
-        return controls.flatMap((control) => {
+        return controllerViolations.concat(controls.flatMap((control) => {
           const controlBox = control.getBoundingClientRect();
           const label = control.getAttribute("aria-label")
             ?? control.getAttribute("data-testid")
@@ -7975,7 +7996,7 @@ test("all one hundred production scenes keep their controls clear of the timer, 
             return [`${label} overlaps ${protectedName}`];
           }));
           return results;
-        });
+        }));
       });
       violations.push(...levelViolations.map((violation) => `${viewport.name} ${String(index + 1).padStart(3, "0")} ${definition.slug}: ${violation}`));
     }
