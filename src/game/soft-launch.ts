@@ -46,3 +46,8 @@ export function publicLevelNumber(
 export function isSoftLaunchSlug(slug: string): boolean {
   return SOFT_LAUNCH_LEVEL_BY_SLUG.has(slug);
 }
+
+export function hasCompletedSoftLaunch(discoveredSlugs: Iterable<string>): boolean {
+  const discovered = new Set(discoveredSlugs);
+  return SOFT_LAUNCH_SLUGS.every((slug) => discovered.has(slug));
+}

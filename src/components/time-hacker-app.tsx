@@ -328,7 +328,6 @@ export function TimeHackerApp() {
 
   const startChallenge = useCallback(async () => {
     if (!playerId || !dashboard) return;
-    if (dashboard.campaign.track === "SOFT_LAUNCH" && dashboard.campaign.complete) return;
     if (dashboard.daily.remaining <= 0) {
       setStatus("LIMIT_REACHED");
       return;
@@ -615,7 +614,7 @@ export function TimeHackerApp() {
             elapsedMs={elapsedMs}
             status={status}
             armed={mode === "HACKER" && armed}
-            disabled={status === "LIMIT_REACHED" || (dashboard.campaign.track === "SOFT_LAUNCH" && dashboard.campaign.complete)}
+            disabled={status === "LIMIT_REACHED"}
             onPrimary={handlePrimary}
             onEvent={emitCheatEvent}
           />
@@ -624,9 +623,6 @@ export function TimeHackerApp() {
             {error ? <span className="error-copy">{error}</span> : null}
             {status === "LIMIT_REACHED" ? (
               <span>{t("dailyComplete")} {t("resetAt", { date: new Intl.DateTimeFormat(localeTag(locale), { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(dashboard.daily.resetsAt)) })}</span>
-            ) : null}
-            {dashboard.campaign.track === "SOFT_LAUNCH" && dashboard.campaign.complete ? (
-              <span>{t("campaignComplete")}</span>
             ) : null}
           </div>
 
@@ -738,7 +734,7 @@ export function TimeHackerApp() {
                             <b>{hintLevel}/3</b>
                           </button>
                         ) : null}
-                        <button type="button" onClick={() => switchPanel("cheats")}><Archive aria-hidden="true" size={20} /><span>{t("cheatArchive")}</span><b>{dashboard.player.unlockedCheats}/{dashboard.collection.length}</b></button>
+                        <button type="button" onClick={() => switchPanel("cheats")}><Archive aria-hidden="true" size={20} /><span>{t("cheatArchive")}</span><b>{dashboard.player.unlockedCheats}/{dashboard.campaign.totalLevels}</b></button>
                         <button type="button" onClick={() => switchPanel("ranks")}><Trophy aria-hidden="true" size={20} /><span>{t("globalRanks")}</span><ChevronLeft className="forward-chevron" aria-hidden="true" size={18} /></button>
                       </nav>
 

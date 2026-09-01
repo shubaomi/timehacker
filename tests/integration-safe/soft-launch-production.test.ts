@@ -25,4 +25,15 @@ describe("soft-launch production contract without database writes", () => {
     expect(SOFT_LAUNCH_LEVELS).toHaveLength(12);
     expect(new Set(SOFT_LAUNCH_LEVELS.map(({ slug }) => slug))).toHaveProperty("size", 12);
   });
+
+  it("graduates only eligible historical soft-launch players without deleting data", async () => {
+    const migration = await readFile(path.join(
+      process.cwd(),
+      "prisma/migrations/20260901090000_graduate_completed_soft_launch_players/migration.sql",
+    ), "utf8");
+    expect(migration).toContain("SET \"releaseTrack\" = 'FULL'");
+    expect(migration).toContain("u.\"releaseTrack\" = 'SOFT_LAUNCH'");
+    expect(migration).toContain('COUNT(DISTINCT cm."slug") = 12');
+    expect(migration).not.toMatch(/DELETE|DROP|TRUNCATE/i);
+  });
 });

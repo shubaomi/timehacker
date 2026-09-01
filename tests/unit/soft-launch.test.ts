@@ -3,6 +3,7 @@ import { CHEAT_DEFINITIONS } from "@/game/cheats";
 import {
   SOFT_LAUNCH_LEVELS,
   definitionsForReleaseTrack,
+  hasCompletedSoftLaunch,
   publicLevelNumber,
 } from "@/game/soft-launch";
 
@@ -31,5 +32,12 @@ describe("soft launch catalog", () => {
     expect(publicLevelNumber("silent-constellation", "SOFT_LAUNCH")).toBe(12);
     expect(publicLevelNumber("silent-constellation", "FULL")).toBe(100);
     expect(publicLevelNumber("patient-zero", "SOFT_LAUNCH")).toBeNull();
+  });
+
+  it("graduates only after all twelve unique onboarding levels are complete", () => {
+    const completed = SOFT_LAUNCH_LEVELS.map(({ slug }) => slug);
+    expect(hasCompletedSoftLaunch(completed.slice(0, 11))).toBe(false);
+    expect(hasCompletedSoftLaunch([...completed, completed[0]])).toBe(true);
+    expect(hasCompletedSoftLaunch([...completed.slice(0, 11), "patient-zero"])).toBe(false);
   });
 });

@@ -6,6 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { CHEAT_DEFINITIONS, cheatTriggerConfigSchema } from "@/game/cheats";
+import { SOFT_LAUNCH_LEVELS } from "@/game/soft-launch";
 import { effectWallTimeToTarget } from "@/game/effects";
 import { completeGame, startGame } from "@/server/game-service";
 import {
@@ -71,6 +72,9 @@ describe("real PostgreSQL integration", () => {
     expect(migrations.map(({ migration_name }) => migration_name)).toContain(
       "20260822090000_add_soft_launch_analytics",
     );
+    expect(migrations.map(({ migration_name }) => migration_name)).toContain(
+      "20260901090000_graduate_completed_soft_launch_players",
+    );
     expect(await seedCheatCatalog(database)).toBe(100);
     const firstCatalogIds = await database.cheatMethod.findMany({
       select: { id: true, slug: true, updatedAt: true },
@@ -108,14 +112,14 @@ describe("real PostgreSQL integration", () => {
     const dashboard = await getDashboard(database, id, 1, fixedNow);
     expect(dashboard.campaign).toEqual({
       track: "SOFT_LAUNCH",
-      totalLevels: 12,
+      totalLevels: 100,
       completedLevels: 0,
       currentLevelNumber: 1,
       complete: false,
     });
     expect(dashboard.suggestedCheat?.difficulty).toBe(1);
     expect(dashboard.suggestedCheat?.slug).toBe("four-corner-breach");
-    expect(dashboard.collection).toHaveLength(12);
+    expect(dashboard.collection).toHaveLength(100);
     expect(dashboard.collection.every((entry) => !entry.unlocked)).toBe(true);
 
     await expect(startGame(database, {
@@ -132,6 +136,78 @@ describe("real PostgreSQL integration", () => {
       difficulty: 1,
       assignedCheatSlug: "four-corner-breach",
     }, fixedNow)).resolves.toMatchObject({ assignedCheat: { slug: "four-corner-breach" } });
+  });
+
+  it("graduates the twelfth onboarding completion and continues the remaining full campaign", async () => {
+    const id = playerId("onboarding-graduate");
+    const player = await createOrResumePlayer(database, id);
+    const storedPlayer = await database.user.findUniqueOrThrow({
+      where: { playerId: player.playerId },
+    });
+    const onboarding = await database.cheatMethod.findMany({
+      where: { slug: { in: SOFT_LAUNCH_LEVELS.map(({ slug }) => slug) } },
+      select: { id: true, slug: true },
+    });
+    const onboardingBySlug = new Map(onboarding.map((cheat) => [cheat.slug, cheat]));
+    await database.userCheat.createMany({
+      data: SOFT_LAUNCH_LEVELS.slice(0, 11).map(({ slug }) => ({
+        userId: storedPlayer.id,
+        cheatId: onboardingBySlug.get(slug)!.id,
+      })),
+    });
+    const finalDefinition = CHEAT_DEFINITIONS.find(({ slug }) => slug === "silent-constellation")!;
+    const game = await startGame(database, {
+      playerId: id,
+      clientRequestId: `${prefix}-onboarding-final`,
+      mode: "HACKER",
+      difficulty: finalDefinition.difficulty,
+      assignedCheatSlug: finalDefinition.slug,
+    }, fixedNow);
+    const wallDurationMs = effectWallTimeToTarget(finalDefinition.effectConfig, 10_000);
+    await completeGame(database, {
+      playerId: id,
+      gameId: game.id,
+      durationMs: 10_000,
+      wallDurationMs,
+      events: puzzleEvents(finalDefinition.slug),
+    }, new Date(fixedNow.getTime() + wallDurationMs));
+
+    const graduated = await database.user.findUniqueOrThrow({
+      where: { playerId: id },
+      include: { unlockedCheats: true, games: true },
+    });
+    expect(graduated.releaseTrack).toBe("FULL");
+    expect(graduated.unlockedCheats).toHaveLength(12);
+    expect(graduated.games).toHaveLength(1);
+
+    const dashboard = await getDashboard(database, id, 1, new Date(fixedNow.getTime() + wallDurationMs));
+    expect(dashboard.campaign).toMatchObject({
+      track: "FULL",
+      totalLevels: 100,
+      completedLevels: 12,
+      complete: false,
+    });
+    expect(dashboard.collection).toHaveLength(100);
+    expect(dashboard.suggestedCheat).not.toBeNull();
+    expect(SOFT_LAUNCH_LEVELS.map(({ slug }) => slug)).not.toContain(dashboard.suggestedCheat!.slug);
+  });
+
+  it("self-heals historical 12-of-12 soft-launch players without replaying levels", async () => {
+    const id = playerId("historical-graduate");
+    const player = await database.user.create({ data: { playerId: id, releaseTrack: "SOFT_LAUNCH" } });
+    const onboarding = await database.cheatMethod.findMany({
+      where: { slug: { in: SOFT_LAUNCH_LEVELS.map(({ slug }) => slug) } },
+      select: { id: true },
+    });
+    await database.userCheat.createMany({
+      data: onboarding.map(({ id: cheatId }) => ({ userId: player.id, cheatId })),
+    });
+
+    const dashboard = await getDashboard(database, id, 1, fixedNow);
+    expect(dashboard.campaign.track).toBe("FULL");
+    expect(dashboard.campaign.completedLevels).toBe(12);
+    expect(dashboard.suggestedCheat).not.toBeNull();
+    expect((await database.user.findUniqueOrThrow({ where: { playerId: id } })).releaseTrack).toBe("FULL");
   });
 
   it("writes and idempotently completes a winning Hacker record", async () => {

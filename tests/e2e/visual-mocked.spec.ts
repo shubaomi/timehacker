@@ -140,37 +140,43 @@ function dashboard(cheatIndex = 0) {
 
 function softLaunchDashboard() {
   const base = dashboard(0);
-  const definitions = SOFT_LAUNCH_LEVELS.map(({ slug }) =>
+  const onboardingSlugs = new Set<string>(SOFT_LAUNCH_LEVELS.map(({ slug }) => slug));
+  const onboardingDefinitions = SOFT_LAUNCH_LEVELS.map(({ slug }) =>
     CHEAT_DEFINITIONS.find((definition) => definition.slug === slug)!,
   );
+  const nextFullDefinition = CHEAT_DEFINITIONS.find(({ slug }) => !onboardingSlugs.has(slug))!;
+  const nextFullNumber = CHEAT_DEFINITIONS.indexOf(nextFullDefinition) + 1;
   return {
     ...base,
     player: {
       ...base.player,
       currentLevel: 1,
       unlockedCheats: softLaunchComplete ? 12 : 0,
-      firstSuccessAt: null,
+      firstSuccessAt: softLaunchComplete ? "2026-08-22T00:00:00.000Z" : null,
     },
-    maximumDifficulty: 1,
-    suggestedCheat: softLaunchComplete ? null : definitions[0],
+    maximumDifficulty: softLaunchComplete ? 5 : 1,
+    suggestedCheat: softLaunchComplete ? nextFullDefinition : onboardingDefinitions[0],
     campaign: {
-      track: "SOFT_LAUNCH" as const,
-      totalLevels: 12,
+      track: softLaunchComplete ? "FULL" as const : "SOFT_LAUNCH" as const,
+      totalLevels: 100,
       completedLevels: softLaunchComplete ? 12 : 0,
-      currentLevelNumber: softLaunchComplete ? 12 : 1,
-      complete: softLaunchComplete,
+      currentLevelNumber: softLaunchComplete ? nextFullNumber : 1,
+      complete: false,
     },
-    collection: definitions.map((cheat) => ({
+    collection: CHEAT_DEFINITIONS.map((cheat) => {
+      const unlocked = softLaunchComplete && onboardingSlugs.has(cheat.slug);
+      return {
       slug: cheat.slug,
-      name: softLaunchComplete ? cheat.name : "CLASSIFIED",
-      nameZh: softLaunchComplete ? cheat.nameZh : "尚未解锁",
-      description: softLaunchComplete ? cheat.description : null,
-      descriptionZh: softLaunchComplete ? cheat.descriptionZh : null,
+      name: unlocked ? cheat.name : "CLASSIFIED",
+      nameZh: unlocked ? cheat.nameZh : "尚未解锁",
+      description: unlocked ? cheat.description : null,
+      descriptionZh: unlocked ? cheat.descriptionZh : null,
       difficulty: cheat.difficulty,
       category: cheat.category,
-      unlocked: softLaunchComplete,
-      completedAt: softLaunchComplete ? "2026-08-22T00:00:00.000Z" : null,
-    })),
+      unlocked,
+      completedAt: unlocked ? "2026-08-22T00:00:00.000Z" : null,
+    };
+    }),
   };
 }
 
@@ -558,7 +564,7 @@ test("the spatial pilot is absent from the default build", async ({ page }, test
   await expect(page.getByTestId("focus-orbit-spatial-depth")).toHaveCount(0);
 });
 
-test("new players see only the 12-level soft launch and emit the frozen anonymous start events", async ({ page }, testInfo) => {
+test("new players begin with the frozen 12-level onboarding and see the 100-level catalog", async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   test.skip(!["desktop-1440", "mobile-390"].includes(testInfo.project.name), "Soft-launch flow is verified on one desktop and one phone viewport.");
   softLaunchMode = true;
@@ -567,8 +573,8 @@ test("new players see only the 12-level soft launch and emit the frozen anonymou
 
   await page.getByRole("button", { name: "Open game menu" }).click();
   await page.getByRole("button", { name: /Cheat Catalog/ }).click();
-  await expect(page.locator(".collection-grid article")).toHaveCount(12);
-  await expect(page.getByText("00 / 12")).toBeVisible();
+  await expect(page.locator(".collection-grid article")).toHaveCount(100);
+  await expect(page.getByText("00 / 100")).toBeVisible();
   await page.getByRole("button", { name: "Close game menu" }).click();
   await page.locator(".play-button").click();
 
@@ -626,14 +632,17 @@ test("the soft-launch critical path emits all thirteen frozen events", async ({ 
   ).map(({ name }) => name))), { timeout: 20_000 }).toEqual(new Set(expectedNames));
 });
 
-test("the twelfth soft-launch completion does not expose a thirteenth puzzle", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop-1440", "Campaign completion contract runs once.");
+test("the twelfth onboarding completion graduates into the remaining full campaign", async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  test.skip(testInfo.project.name !== "desktop-1440", "Campaign graduation contract runs once.");
   softLaunchMode = true;
   softLaunchComplete = true;
   await page.goto("/");
-  await expect(page.getByText("You completed all 12 soft-launch levels.")).toBeVisible();
-  await expect(page.locator(".play-button")).toBeDisabled();
-  await expect(page.locator("[data-v2-slug]")).toHaveCount(0);
+  await expect(page.getByText("You completed all 12 soft-launch levels.")).toHaveCount(0);
+  await expect(page.locator(".play-button")).toBeEnabled();
+  await expect(page.locator("[data-v2-slug]")).toHaveCount(1);
+  await page.getByRole("button", { name: "Open game menu" }).click();
+  await expect(page.getByRole("button", { name: /Cheat Catalog/ })).toContainText("12/100");
 });
 
 test("level 001 preserves the authored page-corner puzzle on desktop and mobile", async ({ page }, testInfo) => {

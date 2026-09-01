@@ -48,7 +48,7 @@ The application uses the existing database and its default `public` schema. It d
    pnpm db:check
    ```
 
-   Local development and production currently use the same PostgreSQL database. Do not run destructive migration commands or write-based integration tests without an explicit database maintenance window. The soft-launch release uses the checked-in additive `pnpm db:migrate` migration: existing players default to the full 100-level track, while the deployed application explicitly assigns new players to the frozen 12-level sample. V2 rules still join to progress through stable slugs, and `pnpm db:sync-catalog` keeps all 100 canonical records synchronized without replacing IDs or deleting rows.
+   Local development and production currently use the same PostgreSQL database. Do not run destructive migration commands or write-based integration tests without an explicit database maintenance window. New players begin with the frozen 12-level onboarding sequence and graduate permanently to the full 100-level track as soon as all 12 unique onboarding levels are complete; existing FULL players remain unchanged. The checked-in forward-only migration upgrades already-complete onboarding players without deleting games or unlocks. V2 rules still join to progress through stable slugs, and `pnpm db:sync-catalog` keeps all 100 canonical records synchronized without replacing IDs or deleting rows.
 
 4. Start the application:
 

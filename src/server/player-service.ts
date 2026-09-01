@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { CHEAT_DEFINITIONS } from "@/game/cheats";
 import {
   definitionsForReleaseTrack,
+  hasCompletedSoftLaunch,
   publicLevelNumber,
   type ReleaseTrackName,
 } from "@/game/soft-launch";
@@ -82,7 +83,14 @@ export async function getDashboard(
   const discoveredSlugs = new Set(
     player.unlockedCheats.map(({ cheat }) => cheat.slug),
   );
-  const releaseTrack = player.releaseTrack as ReleaseTrackName;
+  let releaseTrack = player.releaseTrack as ReleaseTrackName;
+  if (releaseTrack === "SOFT_LAUNCH" && hasCompletedSoftLaunch(discoveredSlugs)) {
+    await database.user.updateMany({
+      where: { id: player.id, releaseTrack: "SOFT_LAUNCH" },
+      data: { releaseTrack: "FULL" },
+    });
+    releaseTrack = "FULL";
+  }
   const availableDefinitions = definitionsForReleaseTrack(releaseTrack);
   const suggestedCheat = releaseTrack === "SOFT_LAUNCH"
     ? availableDefinitions.find(({ slug, enabled }) => enabled && !discoveredSlugs.has(slug)) ?? null
@@ -97,7 +105,7 @@ export async function getDashboard(
     where: { userId: player.id, startedAt: { gte: start, lt: end } },
   });
 
-  const collection = availableDefinitions.map((definition) => {
+  const collection = CHEAT_DEFINITIONS.map((definition) => {
     const unlocked = player.unlockedCheats.find(
       ({ cheat }) => cheat.slug === definition.slug,
     );
@@ -113,7 +121,7 @@ export async function getDashboard(
       completedAt: unlocked?.completedAt ?? null,
     };
   });
-  const completedLevels = availableDefinitions.filter(({ slug }) => discoveredSlugs.has(slug)).length;
+  const completedLevels = CHEAT_DEFINITIONS.filter(({ slug }) => discoveredSlugs.has(slug)).length;
 
   return {
     player: {
@@ -139,12 +147,12 @@ export async function getDashboard(
     collection,
     campaign: {
       track: releaseTrack,
-      totalLevels: availableDefinitions.length,
+      totalLevels: CHEAT_DEFINITIONS.length,
       completedLevels,
       currentLevelNumber: suggestedCheat
         ? publicLevelNumber(suggestedCheat.slug, releaseTrack)
-        : availableDefinitions.length,
-      complete: suggestedCheat === null,
+        : CHEAT_DEFINITIONS.length,
+      complete: completedLevels === CHEAT_DEFINITIONS.length,
     },
   };
 }

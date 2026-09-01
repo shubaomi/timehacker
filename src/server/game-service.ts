@@ -1,7 +1,11 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { CheatEvent } from "@/game/types";
 import { CHEAT_DEFINITIONS, evaluateCheatTrigger } from "@/game/cheats";
-import { definitionsForReleaseTrack } from "@/game/soft-launch";
+import {
+  SOFT_LAUNCH_SLUGS,
+  definitionsForReleaseTrack,
+  hasCompletedSoftLaunch,
+} from "@/game/soft-launch";
 import { cheatEffectConfigSchema, effectElapsedTime, effectToleranceMs } from "@/game/effects";
 import { calculateLevel, difficultyForLevel, utcDayRange } from "@/game/progress";
 import { measureGame } from "@/game/timer";
@@ -51,6 +55,18 @@ export async function startGame(
             throw new AppError("Anonymous player was not found.", 404, "PLAYER_NOT_FOUND");
           }
 
+          const discoveredSlugs = player.unlockedCheats.map(({ cheat }) => cheat.slug);
+          const releaseTrack = player.releaseTrack === "SOFT_LAUNCH"
+            && hasCompletedSoftLaunch(discoveredSlugs)
+            ? "FULL"
+            : player.releaseTrack;
+          if (releaseTrack !== player.releaseTrack) {
+            await transaction.user.update({
+              where: { id: player.id },
+              data: { releaseTrack },
+            });
+          }
+
           const { start, end } = utcDayRange(now);
           const attemptsToday = await transaction.gameRecord.count({
             where: { userId: player.id, startedAt: { gte: start, lt: end } },
@@ -74,12 +90,12 @@ export async function startGame(
             const alreadyUnlocked = player.unlockedCheats.some(
               ({ cheat }) => cheat.slug === input.assignedCheatSlug,
             );
-            const expectedSoftLaunchCheat = player.releaseTrack === "SOFT_LAUNCH"
+            const expectedSoftLaunchCheat = releaseTrack === "SOFT_LAUNCH"
               ? definitionsForReleaseTrack("SOFT_LAUNCH").find(
                 ({ slug, enabled }) => enabled && !player.unlockedCheats.some(({ cheat }) => cheat.slug === slug),
               ) ?? null
               : null;
-            const invalidForTrack = player.releaseTrack === "SOFT_LAUNCH"
+            const invalidForTrack = releaseTrack === "SOFT_LAUNCH"
               ? expectedSoftLaunchCheat?.slug !== input.assignedCheatSlug
                 || definition?.difficulty !== input.difficulty
               : definition?.difficulty !== input.difficulty
@@ -183,6 +199,14 @@ export async function completeGame(
     const unlockedCheats = await transaction.userCheat.count({
       where: { userId: game.userId },
     });
+    const completedSoftLaunchLevels = game.user.releaseTrack === "SOFT_LAUNCH"
+      ? await transaction.userCheat.count({
+        where: {
+          userId: game.userId,
+          cheat: { slug: { in: [...SOFT_LAUNCH_SLUGS] } },
+        },
+      })
+      : 0;
     const nextSuccessGames = game.user.successGames + (measurement.success ? 1 : 0);
     const nextBestError =
       game.user.bestErrorMs === null
@@ -198,6 +222,8 @@ export async function completeGame(
         currentLevel: calculateLevel(nextSuccessGames, unlockedCheats),
         firstSuccessAt:
           measurement.success && game.user.firstSuccessAt === null ? now : undefined,
+        releaseTrack:
+          completedSoftLaunchLevels === SOFT_LAUNCH_SLUGS.length ? "FULL" : undefined,
       },
     });
 
