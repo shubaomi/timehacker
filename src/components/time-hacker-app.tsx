@@ -51,7 +51,6 @@ import { localeTag, type MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
 import type { CompletedGame, DashboardData, RankingsData } from "@/types/api";
 import { CollectionPanel } from "./collection-panel";
-import { CognitiveEvidenceGate } from "./cognitive-evidence-gate";
 import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
 import { ShareCardDialog } from "./share-card-dialog";
@@ -117,7 +116,6 @@ export function TimeHackerApp() {
   const [error, setError] = useState<string | null>(null);
   const [shareCardOpen, setShareCardOpen] = useState(false);
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2 | 3>(0);
-  const [cognitiveEvidenceReady, setCognitiveEvidenceReady] = useState(!COGNITIVE_REDESIGN_ENABLED);
   const [puzzleResetEpoch, setPuzzleResetEpoch] = useState(0);
   const [ghostAnchor, setGhostAnchor] = useState<"left" | "right" | null>(null);
   const [eclipseOffset, setEclipseOffset] = useState(0);
@@ -324,7 +322,6 @@ export function TimeHackerApp() {
     setError(null);
     setShareCardOpen(false);
     setHintLevel(0);
-    setCognitiveEvidenceReady(!COGNITIVE_REDESIGN_ENABLED);
     setActiveRoundCheat(nextCheat);
     setStatus(nextDashboard && nextDashboard.daily.remaining <= 0 ? "LIMIT_REACHED" : "READY");
   }, [activeRoundCheat?.slug, dashboard]);
@@ -522,15 +519,11 @@ export function TimeHackerApp() {
   const showSpatialPilot = spatialPhase !== null && Boolean(spatialSlug) && (
     showCognitiveRedesign || (SPATIAL_PILOT_ENABLED && isSpatialPilotSlug(spatialSlug))
   );
-  const showCognitiveEvidence = status === "READY" && showCognitiveRedesign
-    && Boolean(cognitiveDefinition) && !cognitiveEvidenceReady;
   const showV2Puzzle = status === "READY" && mode === "HACKER"
-    && Boolean(activeRoundCheat?.triggerConfig.v2Level)
-    && (!showCognitiveRedesign || cognitiveEvidenceReady);
+    && Boolean(activeRoundCheat?.triggerConfig.v2Level);
   const gameShellClassName = [
     "game-shell",
     showCognitiveRedesign ? "cognitive-redesign-active" : "",
-    showCognitiveEvidence ? "cognitive-evidence-active" : "",
     showCognitiveRedesign && showV2Puzzle ? "cognitive-puzzle-active" : "",
   ].filter(Boolean).join(" ");
 
@@ -594,18 +587,6 @@ export function TimeHackerApp() {
           >
             <h1>{t("simpleChallenge")}</h1>
           </motion.div>
-
-          {showCognitiveEvidence && cognitiveDefinition ? (
-            <CognitiveEvidenceGate
-              key={`cognitive-${cognitiveDefinition.slug}`}
-              definition={cognitiveDefinition}
-              locale={locale}
-              hintLevel={hintLevel}
-              visualEnabled={showSpatialPilot}
-              onDiscover={() => undefined}
-              onComplete={() => setCognitiveEvidenceReady(true)}
-            />
-          ) : null}
 
           {showV2Puzzle && activeRoundCheat ? (
             <V2PuzzleScene

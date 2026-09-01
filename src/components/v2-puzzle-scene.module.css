@@ -1285,3 +1285,24 @@
     transition: none;
   }
 }
+
+/* Level 002 protected-zone placement: the original quiet hold remains unchanged. */
+@media (min-width: 1001px) {
+  .breathGapScene {
+    left: calc(var(--timer-left) / 2);
+    top: calc(var(--timer-top) + 7rem);
+    width: min(20rem, max(12rem, calc(var(--timer-left) - 3rem)));
+    height: 2.25rem;
+  }
+}
+
+@media (max-width: 1000px) {
+  .breathGapScene {
+    left: 50%;
+    top: calc(var(--timer-bottom) + 7.75rem);
+    width: min(18rem, 82vw);
+    height: 1.75rem;
+  }
+
+  .breathGapCore { width: 1.45rem; }
+}
