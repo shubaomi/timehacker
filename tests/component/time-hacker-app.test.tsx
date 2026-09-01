@@ -59,6 +59,15 @@ function renderApp() {
   );
 }
 
+async function revealPuzzleIfCognitiveGatePresent(level: number) {
+  await screen.findByRole("button", { name: /START.*Space or Enter/i });
+  if (!screen.queryByTestId("cognitive-evidence-gate")) return;
+  const number = String(level).padStart(3, "0");
+  for (const role of ["surface", "anomaly", "relation"]) {
+    await userEvent.click(screen.getByTestId(`cognitive-probe-${role}-${number}`));
+  }
+}
+
 function installFetchMock(
   success = true,
   suggestedCheat = CHEAT_DEFINITIONS[0],
@@ -179,11 +188,13 @@ describe("TimeHackerApp", () => {
     const second = CHEAT_DEFINITIONS[1];
     installFetchMock(true, first, second);
     renderApp();
+    await revealPuzzleIfCognitiveGatePresent(1);
     expect(await screen.findByTestId("puzzle-scene", {}, { timeout: 4_000 })).toHaveAttribute("data-v2-slug", first.slug);
     await userEvent.click(screen.getByRole("button", { name: /START.*Space or Enter/i }));
     await userEvent.click(await screen.findByRole("button", { name: /STOP.*Space or Enter/i }));
     expect(screen.queryByTestId("puzzle-scene")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Run again.*Space or Enter/i }));
+    await revealPuzzleIfCognitiveGatePresent(2);
     expect(await screen.findByTestId("puzzle-scene")).toHaveAttribute("data-v2-slug", second.slug);
   });
 });
