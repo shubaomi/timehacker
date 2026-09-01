@@ -1,0 +1,170 @@
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.frame {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 560px;
+  height: 230px;
+  border: 1px solid rgb(32 36 63 / .18);
+  border-radius: 18px 6px 22px 12px;
+  background:
+    repeating-linear-gradient(101deg, rgb(32 36 63 / .025) 0 1px, transparent 1px 13px),
+    linear-gradient(145deg, rgb(255 253 246 / .8), rgb(238 248 250 / .62));
+  box-shadow: 0 18px 28px rgb(32 36 63 / .08), inset 0 1px 0 rgb(255 255 255 / .88);
+  clip-path: polygon(0 0, calc(100% - 72px) 0, 100% 72px, 100% 100%, 0 100%);
+}
+
+.gap {
+  position: absolute;
+  top: 560px;
+  right: 6%;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 0;
+  border-radius: 0 6px 0 74%;
+  background: rgb(255 255 255 / .05);
+  box-shadow: none;
+  cursor: default;
+  pointer-events: auto;
+}
+
+.gap::after {
+  content: "";
+  position: absolute;
+  inset: 15px 12px 12px 15px;
+  border-top: 1px solid rgb(32 36 63 / .08);
+  border-right: 1px solid rgb(32 36 63 / .08);
+  opacity: .38;
+}
+
+.gap:hover::after,
+.gap:focus-visible::after,
+.scene[data-edge-probed="true"] .gap::after { opacity: .76; }
+
+.gap:focus-visible,
+.fragment:focus-visible {
+  outline: 3px solid #20243f;
+  outline-offset: 4px;
+}
+
+.fragment {
+  position: absolute;
+  left: 9%;
+  top: 678px;
+  width: 66px;
+  height: 62px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  pointer-events: auto;
+  transition: transform 180ms cubic-bezier(.22, .9, .33, 1.1), left 220ms ease, right 220ms ease, top 220ms ease;
+}
+
+.fragment > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgb(32 36 63 / .13);
+  border-radius: 10px 13px 42px 9px;
+  background:
+    repeating-linear-gradient(102deg, rgb(32 36 63 / .035) 0 1px, transparent 1px 10px),
+    linear-gradient(145deg, #fffdf4, #e9f1f1);
+  box-shadow: 0 10px 18px rgb(32 36 63 / .11);
+  transform: rotate(-9deg);
+}
+
+.scene[data-edge-probed="true"] .fragment > span {
+  border-color: rgb(190 157 67 / .28);
+  background:
+    repeating-linear-gradient(102deg, rgb(190 157 67 / .07) 0 1px, transparent 1px 10px),
+    linear-gradient(145deg, #fffdf4, #edf2ee);
+}
+
+.scene[data-rejected-candidate="unprobed"] .fragment > span {
+  animation: reject 260ms ease-out 1;
+}
+
+.scene[data-edge-probed="true"]::after {
+  content: "";
+  position: absolute;
+  left: calc(9% + 72px);
+  right: calc(6% + 82px);
+  top: 710px;
+  height: 1px;
+  background: linear-gradient(90deg, rgb(190 157 67 / .24), transparent 72%);
+  pointer-events: none;
+}
+
+.scene[data-edge-probed="true"] .gap { cursor: pointer; }
+
+.scene[data-edge-probed="true"] .gap::before {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  top: 16px;
+  right: 16px;
+  border-radius: 50%;
+  background: rgb(110 219 181 / .62);
+}
+
+.scene[data-solved="true"] .fragment {
+  left: auto;
+  right: 6%;
+  top: 560px;
+  pointer-events: none;
+}
+
+.scene[data-solved="true"] .fragment > span {
+  width: 72px;
+  height: 72px;
+  border: 0;
+  border-radius: 0 6px 0 74%;
+  box-shadow: none;
+  transform: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes reject {
+  45% { transform: rotate(-9deg) translateX(-5px); }
+}
+
+@media (max-width: 720px) {
+  .frame {
+    left: 18px;
+    right: 18px;
+    top: 490px;
+    height: 280px;
+    clip-path: polygon(0 0, calc(100% - 58px) 0, 100% 58px, 100% 100%, 0 100%);
+  }
+  .gap { top: 490px; right: 18px; width: 58px; height: 58px; }
+  .fragment { left: 38px; top: 668px; width: 58px; height: 54px; }
+  .scene[data-edge-probed="true"]::after { left: 104px; right: 86px; top: 696px; }
+  .scene[data-solved="true"] .fragment { right: 18px; top: 490px; }
+  .scene[data-solved="true"] .fragment > span { width: 58px; height: 58px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fragment { transition: none; }
+  .scene[data-rejected-candidate="unprobed"] .fragment > span { animation: none; }
+}

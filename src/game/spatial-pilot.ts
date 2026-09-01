@@ -1,5 +1,10 @@
 export const SPATIAL_PILOT_SLUGS = [
   "four-corner-breach",
+  "breath-gap",
+  "relay-sandwich",
+  "slow-command",
+  "corner-cross",
+  "focus-orbit",
   "archive-route",
   "dual-device",
 ] as const;

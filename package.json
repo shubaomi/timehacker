@@ -14,6 +14,7 @@
     "test:integration": "vitest run tests/integration",
     "test:integration:safe": "vitest run tests/integration-safe",
     "test:e2e": "playwright test tests/e2e/visual-mocked.spec.ts",
+    "test:e2e:cognitive": "playwright test --config playwright.cognitive.config.ts",
     "test:e2e:database": "playwright test tests/e2e/time-hacker.spec.ts",
     "check:deploy": "tsx scripts/check-deployment-config.ts",
     "prisma:generate": "prisma generate",
@@ -26,7 +27,7 @@
     "analytics:report": "tsx scripts/report-playtest.ts",
     "generate:v2-levels": "tsx scripts/generate-v2-level-registry.ts",
     "audit:puzzles": "tsx scripts/generate-puzzle-audit.ts",
-    "verify": "pnpm check:deploy && pnpm prisma:validate && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration:safe && pnpm build && pnpm test:e2e"
+    "verify": "pnpm check:deploy && pnpm prisma:validate && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration:safe && pnpm build && pnpm test:e2e && pnpm test:e2e:cognitive"
   },
   "dependencies": {
     "@fontsource-variable/azeret-mono": "^5.3.0",

@@ -57,8 +57,17 @@ describe("SpatialTimeField", () => {
   });
 
   it("renders nothing for a level outside the approved pilot", () => {
-    render(<SpatialTimeField enabled slug="breath-gap" phase="idle" armed={false} />);
+    render(<SpatialTimeField enabled slug="precision-five" phase="idle" armed={false} />);
     expect(screen.queryByTestId("spatial-time-field")).not.toBeInTheDocument();
+  });
+
+  it.each(["breath-gap", "relay-sandwich", "slow-command", "corner-cross", "focus-orbit"])("renders the approved %s field as a decorative canvas", (slug) => {
+    render(<SpatialTimeField enabled slug={slug} phase="idle" armed={false} />);
+    const canvas = screen.getByTestId("spatial-time-field");
+
+    expect(canvas).toHaveAttribute("aria-hidden", "true");
+    expect(canvas).toHaveAttribute("data-spatial-pilot", slug);
+    expect(canvas).not.toHaveAttribute("tabindex");
   });
 
   it("keeps the enabled field hidden from accessibility and pointer input", () => {
@@ -70,6 +79,14 @@ describe("SpatialTimeField", () => {
     expect(canvas).toHaveAttribute("data-armed", "true");
     expect(canvas).not.toHaveAttribute("tabindex");
     expect(window.requestAnimationFrame).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the semantic game untouched when Canvas2D is unavailable", () => {
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null);
+    render(<SpatialTimeField enabled slug="relay-sandwich" phase="idle" armed={false} />);
+
+    expect(screen.getByTestId("spatial-time-field")).toHaveAttribute("aria-hidden", "true");
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 
   it("stops its frame loop offscreen and resumes only after re-entry", () => {

@@ -62,6 +62,11 @@ set +a
 
 [[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is not set in $ENV_FILE"
 
+# The approved 100-level cognitive/spatial redesign is production-on. Setting
+# the variable to 0 in the production environment and redeploying is the
+# complete rollback path; core gameplay does not depend on this visual gate.
+export NEXT_PUBLIC_TIME_HACKER_COGNITIVE_REDESIGN="${NEXT_PUBLIC_TIME_HACKER_COGNITIVE_REDESIGN:-1}"
+
 echo "[1/10] Installing locked dependencies"
 cd "$SOURCE_DIR"
 pnpm install --frozen-lockfile

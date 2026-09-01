@@ -238,7 +238,9 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-async function solveSpatialPilotLevel(page: Page, id: 1 | 43 | 81) {
+type SpatialPilotLevelId = 1 | 2 | 3 | 8 | 14 | 43 | 44 | 81;
+
+async function solveSpatialPilotLevel(page: Page, id: SpatialPilotLevelId) {
   const scene = page.getByTestId(`v2-scene-${String(id).padStart(3, "0")}`);
   if (id === 1) {
     const corner = scene.getByRole("button", { name: "Loose paper corner" });
@@ -247,6 +249,48 @@ async function solveSpatialPilotLevel(page: Page, id: 1 | 43 | 81) {
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowDown");
+  } else if (id === 2) {
+    await expect(page.getByTestId("breath-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    const bubble = scene.getByRole("button", { name: "Quiet bubble" });
+    await expect(bubble).toBeVisible({ timeout: 4_000 });
+    await bubble.focus();
+    await page.keyboard.down("Space");
+    await page.waitForTimeout(1_220);
+    await page.keyboard.up("Space");
+  } else if (id === 8) {
+    await expect(page.getByTestId("relay-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    const sheet = scene.getByRole("button", { name: "Transparent middle sheet" });
+    const left = scene.getByRole("button", { name: "Left coral shell" });
+    const right = scene.getByRole("button", { name: "Right coral shell" });
+    await sheet.focus();
+    await page.keyboard.press("Enter");
+    await left.focus();
+    await page.keyboard.press("ArrowRight");
+    await right.focus();
+    await page.keyboard.press("ArrowLeft");
+  } else if (id === 3) {
+    await expect(page.getByTestId("slow-word-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    const tiles = scene.getByRole("button", { name: /Letter/ });
+    for (let tile = 0; tile < 4; tile += 1) {
+      await tiles.nth(tile).click();
+      await tiles.nth(tile).click();
+    }
+    await expect(scene).toHaveAttribute("data-word", "SLOW");
+  } else if (id === 14) {
+    await expect(page.getByTestId("corner-cross-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    const horizontal = scene.getByRole("button", { name: "Broken horizontal ribbon" });
+    const vertical = scene.getByRole("button", { name: "Broken vertical ribbon" });
+    await horizontal.focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await vertical.focus();
+    await page.keyboard.press("ArrowUp");
+  } else if (id === 44) {
+    await expect(page.getByTestId("focus-orbit-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    const lens = scene.getByRole("button", { name: "Transparent focus lens" });
+    await lens.focus();
+    for (let move = 0; move < 4; move += 1) await page.keyboard.press("ArrowRight");
+    for (let move = 0; move < 3; move += 1) await page.keyboard.press("ArrowUp");
   } else if (id === 43) {
     const tabs = scene.locator("button[data-archive-tab]");
     for (let index = 0; index < 3; index += 1) await tabs.nth(index).focus();
@@ -266,7 +310,7 @@ async function solveSpatialPilotLevel(page: Page, id: 1 | 43 | 81) {
   return scene;
 }
 
-async function expectSpatialPilotGeometry(page: Page, id: 1 | 43 | 81) {
+async function expectSpatialPilotGeometry(page: Page, id: SpatialPilotLevelId) {
   if (id === 1) {
     await expect.poll(async () => page.getByTestId("v2-scene-001").evaluate((scene) => {
       const corner = scene.querySelector<HTMLButtonElement>("button")?.getBoundingClientRect();
@@ -299,6 +343,45 @@ async function expectSpatialPilotGeometry(page: Page, id: 1 | 43 | 81) {
     geometry.forEach((delta) => expect(delta).toBeLessThanOrEqual(1));
     return;
   }
+  if (id === 2) {
+    await expect.poll(async () => page.getByTestId("v2-scene-002").evaluate((scene) => {
+      const bubble = scene.querySelector<HTMLButtonElement>("button")?.getBoundingClientRect();
+      const bounds = scene.getBoundingClientRect();
+      return bubble ? Math.abs((bubble.left + bubble.right) / 2 - (bounds.left + bounds.right) / 2) : Number.POSITIVE_INFINITY;
+    })).toBeLessThanOrEqual(1);
+    return;
+  }
+  if (id === 8) {
+    await expect.poll(async () => page.getByTestId("v2-scene-008").evaluate((scene) => {
+      const pieces = [...scene.querySelectorAll<HTMLButtonElement>("button[data-locked=true]")].map((piece) => piece.getBoundingClientRect());
+      if (pieces.length !== 3) return Number.POSITIVE_INFINITY;
+      const centers = pieces.map((piece) => ({ x: (piece.left + piece.right) / 2, y: (piece.top + piece.bottom) / 2 }));
+      return Math.max(...centers.slice(1).map((center) => Math.hypot(center.x - centers[0].x, center.y - centers[0].y)));
+    })).toBeLessThanOrEqual(1);
+    return;
+  }
+  if (id === 3) {
+    await expect(page.getByTestId("v2-scene-003")).toHaveAttribute("data-word", "SLOW");
+    await expect(page.getByTestId("v2-scene-003").locator("button[data-correct=true]")).toHaveCount(4);
+    return;
+  }
+  if (id === 14) {
+    await expect(page.getByTestId("v2-scene-014")).toHaveAttribute("data-half-cross", "complete");
+    return;
+  }
+  if (id === 44) {
+    await expect.poll(async () => page.getByTestId("v2-scene-044").evaluate((scene) => {
+      const target = scene.querySelector<HTMLElement>("[data-testid=focus-orbit-target]")!.getBoundingClientRect();
+      const lens = [...scene.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.getAttribute("aria-label") === "Transparent focus lens")!
+        .getBoundingClientRect();
+      return Math.hypot(
+        (target.left + target.right) / 2 - (lens.left + lens.right) / 2,
+        (target.top + target.bottom) / 2 - (lens.top + lens.bottom) / 2,
+      );
+    })).toBeLessThanOrEqual(1);
+    return;
+  }
   await expect.poll(async () => page.getByTestId("v2-scene-081").evaluate((scene) => {
     const left = scene.querySelector<HTMLElement>("[data-testid=dual-pointer-half]")!.getBoundingClientRect();
     const right = scene.querySelector<HTMLElement>("[data-testid=dual-companion-half]")!.getBoundingClientRect();
@@ -315,28 +398,62 @@ async function expectSpatialPilotGeometry(page: Page, id: 1 | 43 | 81) {
   })).toBeLessThanOrEqual(1);
 }
 
+async function expectBatchAControlGeometryUnchanged(page: Page, id: 3 | 14 | 44) {
+  const selectors = id === 3
+    ? ["button"]
+    : id === 14
+      ? ["button:nth-of-type(1)", "button:nth-of-type(2)"]
+      : ["[data-testid=focus-orbit-target]", "button[aria-label='Transparent focus lens']"];
+  const deltas = await page.getByTestId(`v2-scene-${String(id).padStart(3, "0")}`).evaluate(async (scene, controlSelectors) => {
+    const rects = () => controlSelectors.map((selector) => {
+      const rect = scene.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+    });
+    const enabled = rects();
+    scene.setAttribute("data-spatial-pilot", "false");
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const disabled = rects();
+    scene.setAttribute("data-spatial-pilot", "true");
+    return enabled.map((rect, index) => Math.max(
+      Math.abs(rect.left - disabled[index].left),
+      Math.abs(rect.top - disabled[index].top),
+      Math.abs(rect.width - disabled[index].width),
+      Math.abs(rect.height - disabled[index].height),
+    ));
+  }, selectors);
+  deltas.forEach((delta) => expect(delta).toBeLessThanOrEqual(.5));
+}
+
 test("the approved spatial pilot stays decorative across real puzzle and timer states", async ({ page }, testInfo) => {
   test.skip(process.env.NEXT_PUBLIC_TIME_HACKER_SPATIAL_PILOT !== "1", "Runs only for the explicit default-off spatial pilot build.");
-  test.skip(!["desktop-1440", "mobile-390", "tablet-768", "reduced-motion", "webkit-desktop"].includes(testInfo.project.name), "Pilot matrix uses desktop, mobile, narrow tablet, reduced motion, and WebKit.");
-  test.setTimeout(120_000);
+  test.skip(!["desktop-1440", "mobile-360", "mobile-390", "tablet-768", "reduced-motion", "webkit-desktop"].includes(testInfo.project.name), "Pilot matrix uses desktop, both phone widths, narrow tablet, reduced motion, and WebKit.");
+  test.setTimeout(360_000);
   if (testInfo.project.name === "tablet-768") await page.setViewportSize({ width: 734, height: 876 });
   const root = path.join(screenshotRoot, "spatial-pilot");
   await mkdir(root, { recursive: true });
 
   for (const entry of [
     { id: 1 as const, slug: "four-corner-breach" },
+    { id: 2 as const, slug: "breath-gap" },
+    { id: 3 as const, slug: "slow-command" },
+    { id: 8 as const, slug: "relay-sandwich" },
+    { id: 14 as const, slug: "corner-cross" },
     { id: 43 as const, slug: "archive-route" },
+    { id: 44 as const, slug: "focus-orbit" },
     { id: 81 as const, slug: "dual-device" },
   ]) {
     forcedCheatIndex = CHEAT_DEFINITIONS.findIndex(({ slug }) => slug === entry.slug);
     completeDelayMs = 280;
     completeSuccess = true;
     await page.goto("/");
+    await page.evaluate(async () => { await document.fonts.ready; });
     const field = page.getByTestId("spatial-time-field");
     await expect(field).toHaveAttribute("aria-hidden", "true");
     await expect(field).toHaveAttribute("data-phase", "idle");
     await expect(field).toHaveCSS("pointer-events", "none");
     await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "true");
+    if (entry.id === 3 || entry.id === 14 || entry.id === 44) await expectBatchAControlGeometryUnchanged(page, entry.id);
+    await page.screenshot({ path: path.join(root, `${testInfo.project.name}-${String(entry.id).padStart(3, "0")}-idle.png`), fullPage: true });
     await solveSpatialPilotLevel(page, entry.id);
     await expectSpatialPilotGeometry(page, entry.id);
     if (entry.id === 43 || entry.id === 81) {
@@ -358,14 +475,62 @@ test("the approved spatial pilot stays decorative across real puzzle and timer s
 
     await button.click();
     await expect(field).toHaveAttribute("data-phase", "running");
+    await expect(button).toBeEnabled();
     await button.click();
-    await expect(field).toHaveAttribute("data-phase", "stopped");
+    await expect(field).toHaveAttribute("data-phase", /^(stopped|success)$/);
     await expect(field).toHaveAttribute("data-phase", "success");
     await page.screenshot({ path: path.join(root, `${testInfo.project.name}-${String(entry.id).padStart(3, "0")}-success.png`), fullPage: true });
 
     const serious = (await new AxeBuilder({ page }).analyze()).violations.filter(({ impact }) => impact === "serious" || impact === "critical");
     expect(serious).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+
+  const additionalViewport = testInfo.project.name === "desktop-1440"
+    ? { name: "short-390x590", width: 390, height: 590 }
+    : testInfo.project.name === "webkit-desktop"
+      ? { name: "webkit-mobile-390", width: 390, height: 844 }
+      : null;
+  if (additionalViewport) {
+    await page.setViewportSize({ width: additionalViewport.width, height: additionalViewport.height });
+    for (const entry of [
+      { id: 2 as const, slug: "breath-gap" },
+      { id: 3 as const, slug: "slow-command" },
+      { id: 8 as const, slug: "relay-sandwich" },
+      { id: 14 as const, slug: "corner-cross" },
+      { id: 44 as const, slug: "focus-orbit" },
+    ]) {
+      forcedCheatIndex = CHEAT_DEFINITIONS.findIndex(({ slug }) => slug === entry.slug);
+      completeSuccess = true;
+      await page.goto("/");
+      await page.evaluate(async () => { await document.fonts.ready; });
+      const extraField = page.getByTestId("spatial-time-field");
+      await expect(extraField).toHaveAttribute("data-phase", "idle");
+      await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "true");
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
+      const additionalFullPage = additionalViewport.name !== "webkit-mobile-390";
+      await page.screenshot({ path: path.join(root, `${additionalViewport.name}-${String(entry.id).padStart(3, "0")}-idle.png`), fullPage: additionalFullPage });
+      await solveSpatialPilotLevel(page, entry.id);
+      await expectSpatialPilotGeometry(page, entry.id);
+      const button = page.locator(".play-button");
+      await button.scrollIntoViewIfNeeded();
+      await expect(button).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
+      await page.screenshot({ path: path.join(root, `${additionalViewport.name}-${String(entry.id).padStart(3, "0")}-armed.png`), fullPage: additionalFullPage });
+      if (!additionalFullPage) {
+        await page.getByTestId(`v2-scene-${String(entry.id).padStart(3, "0")}`).screenshot({
+          path: path.join(root, `${additionalViewport.name}-${String(entry.id).padStart(3, "0")}-armed-mechanism.png`),
+        });
+      }
+      await button.click();
+      await expect(page.getByTestId("spatial-time-field")).toHaveAttribute("data-phase", "running");
+      await expect(button).toBeEnabled();
+      await button.click();
+      await expect(page.getByTestId("spatial-time-field")).toHaveAttribute("data-phase", "success");
+      await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: "instant" }));
+      await page.screenshot({ path: path.join(root, `${additionalViewport.name}-${String(entry.id).padStart(3, "0")}-success.png`), fullPage: additionalFullPage });
+    }
   }
 
   forcedCheatIndex = CHEAT_DEFINITIONS.findIndex(({ slug }) => slug === "four-corner-breach");
@@ -386,6 +551,11 @@ test("the spatial pilot is absent from the default build", async ({ page }, test
   await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "false");
   await expect(page.getByTestId("spatial-time-field")).toHaveCount(0);
   await expect(page.getByTestId("corner-spatial-depth")).toHaveCount(0);
+  await expect(page.getByTestId("breath-spatial-depth")).toHaveCount(0);
+  await expect(page.getByTestId("relay-spatial-depth")).toHaveCount(0);
+  await expect(page.getByTestId("slow-word-spatial-depth")).toHaveCount(0);
+  await expect(page.getByTestId("corner-cross-spatial-depth")).toHaveCount(0);
+  await expect(page.getByTestId("focus-orbit-spatial-depth")).toHaveCount(0);
 });
 
 test("new players see only the 12-level soft launch and emit the frozen anonymous start events", async ({ page }, testInfo) => {

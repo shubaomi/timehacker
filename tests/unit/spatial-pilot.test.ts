@@ -13,11 +13,16 @@ describe("spatial pilot contract", () => {
     expect(isSpatialPilotBuildEnabled("1")).toBe(true);
   });
 
-  it("limits the formal pilot to the three approved slugs", () => {
+  it("limits the formal pilot to the eight approved slugs", () => {
     expect(isSpatialPilotSlug("four-corner-breach")).toBe(true);
+    expect(isSpatialPilotSlug("breath-gap")).toBe(true);
+    expect(isSpatialPilotSlug("relay-sandwich")).toBe(true);
     expect(isSpatialPilotSlug("archive-route")).toBe(true);
     expect(isSpatialPilotSlug("dual-device")).toBe(true);
-    expect(isSpatialPilotSlug("breath-gap")).toBe(false);
+    expect(isSpatialPilotSlug("slow-command")).toBe(true);
+    expect(isSpatialPilotSlug("corner-cross")).toBe(true);
+    expect(isSpatialPilotSlug("focus-orbit")).toBe(true);
+    expect(isSpatialPilotSlug("precision-five")).toBe(false);
     expect(isSpatialPilotSlug(null)).toBe(false);
   });
 

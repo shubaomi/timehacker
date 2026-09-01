@@ -400,6 +400,28 @@ describe("V2 production puzzle scene 008", () => {
     expect(onDiscover).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("v2-scene-008")).toHaveAttribute("data-shells-respond", "true");
   });
+
+  it.each([false, true])("keeps the same pointer drop coordinates when spatialPilot=%s", (spatialPilot) => {
+    const onArm = vi.fn();
+    renderScene({ slug: "relay-sandwich", spatialPilot, onArm });
+    const target = screen.getByTestId("v2-scene-008").querySelector<HTMLElement>("[data-relay-target]")!;
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
+      x: 100, y: 100, top: 100, right: 200, bottom: 200, left: 100, width: 100, height: 100, toJSON: () => undefined,
+    });
+    const pieces = [
+      screen.getByRole("button", { name: "透明薄片" }),
+      screen.getByRole("button", { name: "左侧珊瑚外壳" }),
+      screen.getByRole("button", { name: "右侧珊瑚外壳" }),
+    ];
+
+    pieces.forEach((piece, index) => {
+      fireEvent.pointerDown(piece, { pointerId: 90 + index, clientX: 20, clientY: 20 });
+      fireEvent.pointerUp(piece, { pointerId: 90 + index, clientX: 150, clientY: 150 });
+    });
+
+    expect(pieces.every((piece) => piece.getAttribute("data-locked") === "true")).toBe(true);
+    expect(onArm).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("V2 production puzzle scene 009", () => {
@@ -7069,6 +7091,18 @@ describe("approved spatial pilot decorations", () => {
     expect(screen.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "false");
   });
 
+  it.each([
+    ["breath-gap", "breath-spatial-depth"],
+    ["relay-sandwich", "relay-spatial-depth"],
+    ["slow-command", "slow-word-spatial-depth"],
+    ["corner-cross", "corner-cross-spatial-depth"],
+    ["focus-orbit", "focus-orbit-spatial-depth"],
+  ])("keeps %s free of pilot-only DOM while the flag is closed", (slug, depthTestId) => {
+    renderScene({ slug });
+    expect(screen.queryByTestId(depthTestId)).not.toBeInTheDocument();
+    expect(screen.getByTestId("puzzle-scene")).toHaveAttribute("data-spatial-pilot", "false");
+  });
+
   it("keeps 001 keyboard completion identical when its aria-hidden depth is enabled", () => {
     const onArm = vi.fn();
     renderScene({ slug: "four-corner-breach", spatialPilot: true, onArm });
@@ -7081,6 +7115,81 @@ describe("approved spatial pilot decorations", () => {
     fireEvent.keyDown(corner, { key: "ArrowRight" });
     fireEvent.keyDown(corner, { key: "ArrowRight" });
     fireEvent.keyDown(corner, { key: "ArrowDown" });
+    expect(onArm).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps 002 quiet discovery and the 1.2 second hold identical when its depth is enabled", () => {
+    vi.useFakeTimers();
+    const onArm = vi.fn();
+    renderScene({ slug: "breath-gap", spatialPilot: true, onArm });
+
+    expect(screen.getByTestId("breath-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    act(() => vi.advanceTimersByTime(2_500));
+    const bubble = screen.getByRole("button", { name: "安静的气泡" });
+    fireEvent.pointerDown(bubble, { pointerId: 702 });
+    act(() => vi.advanceTimersByTime(1_199));
+    expect(onArm).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onArm).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("keeps 008 middle-first keyboard completion identical when its depth is enabled", () => {
+    const onArm = vi.fn();
+    renderScene({ slug: "relay-sandwich", spatialPilot: true, onArm });
+    const sheet = screen.getByRole("button", { name: "透明薄片" });
+    const left = screen.getByRole("button", { name: "左侧珊瑚外壳" });
+    const right = screen.getByRole("button", { name: "右侧珊瑚外壳" });
+
+    expect(screen.getByTestId("relay-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.keyDown(left, { key: "ArrowRight" });
+    expect(onArm).not.toHaveBeenCalled();
+    fireEvent.keyDown(sheet, { key: "Enter" });
+    fireEvent.keyDown(left, { key: "ArrowRight" });
+    fireEvent.keyDown(right, { key: "ArrowLeft" });
+    expect(onArm).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps 003 two-pass SLOW completion and its 400ms hold identical when depth is enabled", () => {
+    vi.useFakeTimers();
+    const onArm = vi.fn();
+    renderScene({ slug: "slow-command", spatialPilot: true, onArm });
+    const tiles = screen.getAllByRole("button", { name: /^字牌 \d/ });
+
+    expect(screen.getByTestId("slow-word-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    for (const tile of tiles) fireEvent.click(tile);
+    act(() => vi.advanceTimersByTime(500));
+    expect(onArm).not.toHaveBeenCalled();
+    for (const tile of tiles) fireEvent.click(tile);
+    act(() => vi.advanceTimersByTime(399));
+    expect(onArm).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(onArm).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("keeps 014 alternating-axis keyboard completion identical when depth is enabled", () => {
+    const onArm = vi.fn();
+    renderScene({ slug: "corner-cross", spatialPilot: true, onArm });
+    const horizontal = screen.getByRole("button", { name: "横向断裂丝带" });
+    const vertical = screen.getByRole("button", { name: "纵向断裂丝带" });
+
+    expect(screen.getByTestId("corner-cross-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.keyDown(horizontal, { key: "ArrowRight" });
+    fireEvent.keyDown(horizontal, { key: "ArrowRight" });
+    expect(onArm).not.toHaveBeenCalled();
+    fireEvent.keyDown(vertical, { key: "ArrowUp" });
+    expect(onArm).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps 044 focus-lens keyboard completion identical when depth is enabled", () => {
+    const onArm = vi.fn();
+    renderScene({ slug: "focus-orbit", spatialPilot: true, onArm });
+    const lens = screen.getByRole("button", { name: "透明焦点片" });
+
+    expect(screen.getByTestId("focus-orbit-spatial-depth")).toHaveAttribute("aria-hidden", "true");
+    for (let move = 0; move < 4; move += 1) fireEvent.keyDown(lens, { key: "ArrowRight" });
+    for (let move = 0; move < 3; move += 1) fireEvent.keyDown(lens, { key: "ArrowUp" });
     expect(onArm).toHaveBeenCalledTimes(1);
   });
 

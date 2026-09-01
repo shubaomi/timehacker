@@ -33,6 +33,10 @@ import {
 import type { PlaytestEventName } from "@/analytics/playtest-contract";
 import { evaluateCheatTrigger } from "@/game/cheats";
 import { effectElapsedTime, type CheatEffectConfig } from "@/game/effects";
+import {
+  FULL_COGNITIVE_BY_SLUG,
+  isCognitiveRedesignEnabled,
+} from "@/game/full-cognitive-campaign";
 import type { ShareCardPayload } from "@/game/share-card";
 import { formatSignedError } from "@/game/timer";
 import type { CheatEvent, GameMode } from "@/game/types";
@@ -47,6 +51,7 @@ import { localeTag, type MessageKey } from "@/i18n/config";
 import { useLocale } from "@/i18n/locale-provider";
 import type { CompletedGame, DashboardData, RankingsData } from "@/types/api";
 import { CollectionPanel } from "./collection-panel";
+import { CognitiveEvidenceGate } from "./cognitive-evidence-gate";
 import { RankingsPanel } from "./rankings-panel";
 import { ResetDialog } from "./reset-dialog";
 import { ShareCardDialog } from "./share-card-dialog";
@@ -66,6 +71,7 @@ type Panel = "game" | "cheats" | "ranks";
 
 const PLAYER_STORAGE_KEY = "time-hacker.player-id.v1";
 const SPATIAL_PILOT_ENABLED = isSpatialPilotBuildEnabled();
+const COGNITIVE_REDESIGN_ENABLED = isCognitiveRedesignEnabled();
 const SpatialTimeField = dynamic(
   () => import("./spatial-time-field").then((module) => module.SpatialTimeField),
   { ssr: false },
@@ -111,6 +117,7 @@ export function TimeHackerApp() {
   const [error, setError] = useState<string | null>(null);
   const [shareCardOpen, setShareCardOpen] = useState(false);
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2 | 3>(0);
+  const [cognitiveEvidenceReady, setCognitiveEvidenceReady] = useState(!COGNITIVE_REDESIGN_ENABLED);
   const [puzzleResetEpoch, setPuzzleResetEpoch] = useState(0);
   const [ghostAnchor, setGhostAnchor] = useState<"left" | "right" | null>(null);
   const [eclipseOffset, setEclipseOffset] = useState(0);
@@ -317,6 +324,7 @@ export function TimeHackerApp() {
     setError(null);
     setShareCardOpen(false);
     setHintLevel(0);
+    setCognitiveEvidenceReady(!COGNITIVE_REDESIGN_ENABLED);
     setActiveRoundCheat(nextCheat);
     setStatus(nextDashboard && nextDashboard.daily.remaining <= 0 ? "LIMIT_REACHED" : "READY");
   }, [activeRoundCheat?.slug, dashboard]);
@@ -509,18 +517,23 @@ export function TimeHackerApp() {
   const drawerTitle = panel === "cheats" ? t("cheatArchive") : panel === "ranks" ? t("globalRanks") : t("menuTitle");
   const spatialPhase = spatialVisualPhase(status);
   const spatialSlug = activeRoundCheat?.slug;
-  const showSpatialPilot = SPATIAL_PILOT_ENABLED && spatialPhase !== null && isSpatialPilotSlug(spatialSlug);
+  const cognitiveDefinition = spatialSlug ? FULL_COGNITIVE_BY_SLUG.get(spatialSlug) ?? null : null;
+  const showCognitiveRedesign = COGNITIVE_REDESIGN_ENABLED && mode === "HACKER" && Boolean(cognitiveDefinition);
+  const showSpatialPilot = spatialPhase !== null && Boolean(spatialSlug) && (
+    showCognitiveRedesign || (SPATIAL_PILOT_ENABLED && isSpatialPilotSlug(spatialSlug))
+  );
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="game-shell">
+      <main className={`game-shell ${showCognitiveRedesign ? "cognitive-redesign-active" : ""}`.trim()}>
         <div className="playful-sky" aria-hidden="true"><i /><i /><i /></div>
         {showSpatialPilot ? (
           <SpatialTimeField
+            allowUnlisted={showCognitiveRedesign}
             armed={mode === "HACKER" && armed}
             enabled
             phase={spatialPhase}
-            slug={spatialSlug}
+            slug={spatialSlug ?? ""}
           />
         ) : null}
 
@@ -571,7 +584,19 @@ export function TimeHackerApp() {
             <h1>{t("simpleChallenge")}</h1>
           </motion.div>
 
-          {status === "READY" && mode === "HACKER" && activeRoundCheat?.triggerConfig.v2Level ? (
+          {status === "READY" && showCognitiveRedesign && cognitiveDefinition && !cognitiveEvidenceReady ? (
+            <CognitiveEvidenceGate
+              key={`cognitive-${cognitiveDefinition.slug}`}
+              definition={cognitiveDefinition}
+              locale={locale}
+              hintLevel={hintLevel}
+              visualEnabled={showSpatialPilot}
+              onDiscover={() => undefined}
+              onComplete={() => setCognitiveEvidenceReady(true)}
+            />
+          ) : null}
+
+          {status === "READY" && mode === "HACKER" && activeRoundCheat?.triggerConfig.v2Level && (!showCognitiveRedesign || cognitiveEvidenceReady) ? (
             <V2PuzzleScene
               key={activeRoundCheat.slug}
               slug={activeRoundCheat.slug}

@@ -212,6 +212,7 @@ textarea:focus-visible,
 
 .simple-brand b {
   font: 720 0.82rem/1 var(--font-display);
+  font-variation-settings: "wght" 720;
   letter-spacing: 0.1em;
 }
 
@@ -242,6 +243,18 @@ textarea:focus-visible,
   justify-content: center;
   margin-inline: auto;
   padding: 28px 0 70px;
+}
+
+.game-shell.cognitive-redesign-active {
+  min-height: max(100svh, 58rem);
+  overflow: visible;
+  overflow-x: clip;
+}
+
+.cognitive-redesign-active .play-screen {
+  min-height: auto;
+  justify-content: flex-start;
+  padding-top: clamp(22px, 4vh, 44px);
 }
 
 .puzzle-scene {
@@ -500,6 +513,7 @@ textarea:focus-visible,
   background: transparent;
   color: var(--ink);
   font: 590 clamp(4.5rem, 13vw, 8.4rem)/0.9 var(--font-display);
+  font-variation-settings: "wght" 590;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.095em;
 }
@@ -508,6 +522,14 @@ textarea:focus-visible,
   color: var(--muted);
   font: 650 clamp(0.85rem, 2vw, 1.15rem)/1 var(--font-body);
   letter-spacing: 0;
+}
+
+/* Playwright WebKit ignores the variable wght axis for Azeret Mono; keep the
+   same face and metrics while restoring the intended visual weight. */
+@supports (-webkit-hyphens: none) {
+  .simple-brand b { -webkit-text-stroke: 0.65px currentcolor; }
+  .timer-readout { -webkit-text-stroke: 2.4px currentcolor; }
+  .timer-readout small { -webkit-text-stroke: 0; }
 }
 
 .play-button {

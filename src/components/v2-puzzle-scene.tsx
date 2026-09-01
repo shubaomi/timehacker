@@ -11,6 +11,7 @@ interface V2PuzzleSceneProps {
   slug: string;
   armed: boolean;
   hintLevel: 0 | 1 | 2 | 3;
+  directorMode?: boolean;
   spatialPilot?: boolean;
   resetEpoch?: number;
   ghostAnchor?: "left" | "right" | null;
@@ -30,6 +31,7 @@ interface ControllerProps {
   onGhostAnchorChange: (anchor: "left" | "right" | null) => void;
   menuOpen: boolean;
   eclipseOffset: number;
+  directorMode: boolean;
   spatialPilot: boolean;
   onDiscover: () => void;
   onArm: () => void;
@@ -203,7 +205,7 @@ function WaveAlign(props: ControllerProps) {
       : <DragRelation {...props} kind="wave-align" />;
 }
 
-function CornerCross({ locale, solved, onDiscover, onArm }: ControllerProps) {
+function CornerCross({ locale, solved, spatialPilot, onDiscover, onArm }: ControllerProps) {
   const [offsets, setOffsets] = useState({ x: -90, y: 90 });
   const offsetsRef = useRef({ x: -90, y: 90 });
   const dragStart = useRef<{ axis: "horizontal" | "vertical"; x: number; y: number; offsets: { x: number; y: number } } | null>(null);
@@ -273,10 +275,12 @@ function CornerCross({ locale, solved, onDiscover, onArm }: ControllerProps) {
       data-spatial-model="coupled-dual-axis"
       data-half-cross={halfCross}
       data-horizontal-offset={Math.round(offsets.x)}
+      data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-vertical-offset={Math.round(offsets.y)}
       data-testid="v2-scene-014"
       style={{ "--cross-x": `${offsets.x * .22}px`, "--cross-y": `${offsets.y * .22}px` } as React.CSSProperties}
     >
+      {spatialPilot ? <span className={styles.cornerCrossSpatialDepth} data-testid="corner-cross-spatial-depth" aria-hidden="true"><i /><b /><em /></span> : null}
       <span className={styles.crossCrease} aria-hidden="true" />
       <button
         type="button"
@@ -711,11 +715,13 @@ function CoupledDrag(props: ControllerProps) {
 }
 
 function CornerRepair(props: ControllerProps) {
-  const { locale, solved, spatialPilot, onDiscover, onArm } = props;
+  const { locale, solved, directorMode, spatialPilot, onDiscover, onArm } = props;
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [decoyOffset, setDecoyOffset] = useState({ x: 0, y: 0 });
   const [keyPosition, setKeyPosition] = useState({ x: 0, y: 0 });
-  const [wrong, setWrong] = useState(false);
+  const [wrongCandidate, setWrongCandidate] = useState<"match" | "decoy" | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const decoyDragStart = useRef<{ x: number; y: number } | null>(null);
 
   const finishPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (!dragStart.current) return;
@@ -736,13 +742,20 @@ function CornerRepair(props: ControllerProps) {
     );
 
     if (hit) {
-      setWrong(false);
+      setWrongCandidate(null);
       onArm();
       return;
     }
 
-    setWrong(true);
+    setWrongCandidate("match");
     setOffset({ x: 0, y: 0 });
+  };
+
+  const rejectDecoy = () => {
+    decoyDragStart.current = null;
+    setDecoyOffset({ x: 0, y: 0 });
+    setWrongCandidate("decoy");
+    onDiscover();
   };
 
   const moveWithKeyboard = (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -755,15 +768,17 @@ function CornerRepair(props: ControllerProps) {
     };
     setKeyPosition(next);
     setOffset({ x: next.x * 48, y: next.y * 32 });
-    setWrong(next.x === keyPosition.x && next.y === keyPosition.y);
+    setWrongCandidate(next.x === keyPosition.x && next.y === keyPosition.y ? "match" : null);
     if (next.x === 3 && next.y === 1) onArm();
   };
 
   return (
     <div
-      className={`${styles.cornerScene} ${wrong ? styles.cornerWrong : ""} ${solved ? styles.cornerSolved : ""}`}
+      className={`${styles.cornerScene} ${wrongCandidate ? styles.cornerWrong : ""} ${solved ? styles.cornerSolved : ""}`}
       data-corner-scene
       data-controller="corner-repair"
+      data-director-mode={directorMode ? "true" : "false"}
+      data-rejected-candidate={wrongCandidate ?? "none"}
       data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-spatial-model="page-corner"
       data-testid="v2-scene-001"
@@ -776,9 +791,48 @@ function CornerRepair(props: ControllerProps) {
         data-testid="corner-target-001"
         aria-hidden="true"
       />
+      {directorMode ? (
+        <button
+          type="button"
+          className={`${styles.looseCorner} ${styles.looseCornerDecoy}`}
+          data-corner-candidate="decoy"
+          aria-label={locale === "zh" ? "另一枚候选纸角" : "Another paper-corner candidate"}
+          style={{ transform: `translate(${decoyOffset.x}px, ${decoyOffset.y}px)` }}
+          onClick={rejectDecoy}
+          onKeyDown={(event) => {
+            if (!["Enter", " ", "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) return;
+            event.preventDefault();
+            rejectDecoy();
+          }}
+          onPointerDown={(event) => {
+            decoyDragStart.current = { x: event.clientX, y: event.clientY };
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            if (!decoyDragStart.current) return;
+            const x = event.clientX - decoyDragStart.current.x;
+            const y = event.clientY - decoyDragStart.current.y;
+            if (Math.hypot(x, y) > 12) onDiscover();
+            setDecoyOffset({ x, y });
+          }}
+          onPointerUp={(event) => {
+            if (!decoyDragStart.current) return;
+            const moved = Math.hypot(event.clientX - decoyDragStart.current.x, event.clientY - decoyDragStart.current.y);
+            if (moved > 12) rejectDecoy();
+            else decoyDragStart.current = null;
+          }}
+          onPointerCancel={() => {
+            decoyDragStart.current = null;
+            setDecoyOffset({ x: 0, y: 0 });
+          }}
+        >
+          <span aria-hidden="true" />
+        </button>
+      ) : null}
       <button
         type="button"
         className={styles.looseCorner}
+        data-corner-candidate="match"
         aria-label={locale === "zh" ? "游离的纸角" : "Loose paper corner"}
         style={{ transform: solved ? undefined : `translate(${offset.x}px, ${offset.y}px)` }}
         onClick={() => undefined}
@@ -802,6 +856,13 @@ function CornerRepair(props: ControllerProps) {
       >
         <span aria-hidden="true" />
       </button>
+      {directorMode && wrongCandidate ? (
+        <p className={styles.cornerCandidateFeedback} role="status">
+          {wrongCandidate === "decoy"
+            ? (locale === "zh" ? "折线接近，但纸纹没有连续。" : "The fold is close, but the paper grain does not continue.")
+            : (locale === "zh" ? "这枚纸角还没有对准缺口。" : "This paper corner is not aligned with the gap yet.")}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1924,7 +1985,7 @@ function FrameDrag(props: ControllerProps) {
       : <DragRelation {...props} kind="frame-drag" />;
 }
 
-function BreathGap({ locale, solved, onDiscover, onArm }: ControllerProps) {
+function BreathGap({ locale, solved, spatialPilot, onDiscover, onArm }: ControllerProps) {
   const [quietPhase, setQuietPhase] = useState<"closed" | "breathing" | "revealed">("closed");
   const [ready, setReady] = useState(false);
   const [holding, setHolding] = useState(false);
@@ -2053,10 +2114,12 @@ function BreathGap({ locale, solved, onDiscover, onArm }: ControllerProps) {
       className={`${styles.breathGapScene} ${styles[`breath_${quietPhase}`]} ${holding ? styles.isHolding : ""} ${disturbed ? styles.isDisturbed : ""} ${releasedEarly ? styles.wasReleased : ""}`}
       data-controller="patient-hold"
       data-discovery-state={quietPhase}
+      data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-testid="v2-scene-002"
     >
       <span className={styles.breathGapLeaf} aria-hidden="true" />
       <span className={styles.breathGapLeaf} aria-hidden="true" />
+      {spatialPilot ? <span className={styles.breathSpatialDepth} data-testid="breath-spatial-depth" aria-hidden="true"><i /><b /><em /></span> : null}
       {ready ? <button
         type="button"
         className={styles.breathGapCore}
@@ -2815,7 +2878,7 @@ function PatientHold(props: ControllerProps) {
 }
 
 const WORD_COLUMNS = [["F", "T", "S", "R"], ["A", "I", "L", "E"], ["S", "M", "O", "N"], ["T", "E", "W", "R"]] as const;
-function WordShift({ locale, solved, onDiscover, onArm }: ControllerProps) {
+function WordShift({ locale, solved, spatialPilot, onDiscover, onArm }: ControllerProps) {
   const [letters, setLetters] = useState(["F", "A", "S", "T"]);
   const pointerStarts = useRef<Record<number, number>>({});
   useEffect(() => {
@@ -2832,7 +2895,9 @@ function WordShift({ locale, solved, onDiscover, onArm }: ControllerProps) {
     }));
   };
   const visible = solved ? ["S", "L", "O", "W"] : letters;
-  return <div className={styles.slowWordScene} data-controller="word-shift" data-testid="v2-scene-003" aria-label={locale === "zh" ? "四块漂动的字牌" : "Four drifting letter tiles"}>
+  const word = visible.join("");
+  return <div className={styles.slowWordScene} data-controller="word-shift" data-spatial-pilot={spatialPilot ? "true" : "false"} data-word={word} data-testid="v2-scene-003" aria-label={locale === "zh" ? "四块漂动的字牌" : "Four drifting letter tiles"}>
+    {spatialPilot ? <span className={styles.slowWordSpatialDepth} data-testid="slow-word-spatial-depth" aria-hidden="true"><i /><b /><em /></span> : null}
     <span className={styles.slowWordShadow} aria-hidden="true">{visible.map((letter, index) => letter === "SLOW"[index] ? letter : "·").join("")}</span>
     <div className={styles.slowWordTiles} data-testid="slow-word-tiles-003">{visible.map((letter, index) => <button
       type="button"
@@ -4025,7 +4090,7 @@ function TabDoubleback({ locale, solved, onDiscover, onArm }: ControllerProps) {
 
 type RelayPiece = "left" | "sheet" | "right";
 
-function RelaySandwich({ locale, solved, onDiscover, onArm }: ControllerProps) {
+function RelaySandwich({ locale, solved, spatialPilot, onDiscover, onArm }: ControllerProps) {
   const [sheetCentered, setSheetCentered] = useState(false);
   const [leftLocked, setLeftLocked] = useState(false);
   const [rightLocked, setRightLocked] = useState(false);
@@ -4085,10 +4150,12 @@ function RelaySandwich({ locale, solved, onDiscover, onArm }: ControllerProps) {
       className={`${styles.relayScene} ${shellsRespond ? styles.relayResponding : ""} ${(solved || (sheetCentered && leftLocked && rightLocked)) ? styles.relayComplete : ""}`}
       data-controller="layer-stack"
       data-shells-respond={shellsRespond ? "true" : "false"}
+      data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-spatial-model="transparent-middle"
       data-top-layer-rejected={rejectedPiece ? "true" : "false"}
       data-testid="v2-scene-008"
     >
+      {spatialPilot ? <span className={styles.relaySpatialDepth} data-testid="relay-spatial-depth" aria-hidden="true"><i /><b /><em /></span> : null}
       <span className={styles.relayTarget} data-relay-target aria-hidden="true" />
       {(["left", "sheet", "right"] as const).map((piece) => (
         <button
@@ -9666,7 +9733,7 @@ function ArchiveRoute({ locale, solved, spatialPilot, onDiscover, onArm }: Contr
 
 const focusOrbitTarget = { x: 74, y: 38 } as const;
 
-function FocusOrbit({ locale, solved, onDiscover, onArm }: ControllerProps) {
+function FocusOrbit({ locale, solved, spatialPilot, onDiscover, onArm }: ControllerProps) {
   const [lensPosition, setLensPosition] = useState({ x: 18, y: 75 });
   const [localClear, setLocalClear] = useState(false);
   const [orbitRipples, setOrbitRipples] = useState(0);
@@ -9717,10 +9784,12 @@ function FocusOrbit({ locale, solved, onDiscover, onArm }: ControllerProps) {
       data-local-clarity={visibleSolved || localClear ? "clear" : "blurred"}
       data-orbit-ripples={orbitRipples}
       data-orbit-visibility="visible"
+      data-spatial-pilot={spatialPilot ? "true" : "false"}
       data-spatial-model="lens-over-ghost-decimal"
       data-testid="v2-scene-044"
       style={{ "--focus-lens-x": `${lensPosition.x}%`, "--focus-lens-y": `${lensPosition.y}%` } as React.CSSProperties}
     >
+      {spatialPilot ? <span className={styles.focusOrbitSpatialDepth} data-testid="focus-orbit-spatial-depth" aria-hidden="true"><i /><b /><em /></span> : null}
       <span className={styles.focusOrbitPaper} aria-hidden="true"><i /><b /></span>
       <button
         type="button"
@@ -13845,7 +13914,7 @@ function Controller(props: ControllerProps) {
   }
 }
 
-export function V2PuzzleScene({ slug, armed, hintLevel, spatialPilot = false, resetEpoch = 0, ghostAnchor = null, onGhostAnchorChange = () => undefined, menuOpen = false, eclipseOffset = 0, onDiscover, onArm }: V2PuzzleSceneProps) {
+export function V2PuzzleScene({ slug, armed, hintLevel, directorMode = false, spatialPilot = false, resetEpoch = 0, ghostAnchor = null, onGhostAnchorChange = () => undefined, menuOpen = false, eclipseOffset = 0, onDiscover, onArm }: V2PuzzleSceneProps) {
   const { locale } = useLocale();
   const level = V2_LEVEL_BY_SLUG.get(slug);
   const sceneRef = useRef<HTMLElement>(null);
@@ -13907,7 +13976,7 @@ export function V2PuzzleScene({ slug, armed, hintLevel, spatialPilot = false, re
         <span>{String(level.id).padStart(3, "0")}</span>
         {armed ? <h2>{locale === "zh" ? level.title.zh : level.title.en}</h2> : null}
       </header>
-      <Controller level={level} locale={locale} solved={armed} resetEpoch={resetEpoch} ghostAnchor={ghostAnchor} onGhostAnchorChange={onGhostAnchorChange} menuOpen={menuOpen} eclipseOffset={eclipseOffset} spatialPilot={spatialPilot} onDiscover={discover} onArm={onArm} />
+      <Controller level={level} locale={locale} solved={armed} resetEpoch={resetEpoch} ghostAnchor={ghostAnchor} onGhostAnchorChange={onGhostAnchorChange} menuOpen={menuOpen} eclipseOffset={eclipseOffset} directorMode={directorMode} spatialPilot={spatialPilot} onDiscover={discover} onArm={onArm} />
       {hintLevel > 0 && !armed ? <aside className={styles.hint} role="status"><span>{hints[0]}</span>{hintLevel > 1 ? <b>{hints[1]}</b> : null}{hintLevel > 2 ? <em>{locale === "zh" ? `答案：${level.solve}` : `Answer: ${hints[1]}`}</em> : null}</aside> : null}
       <p className={styles.solvedNote} aria-live="polite">{armed ? (locale === "zh" ? "抓到时间的破绽了" : "You found the crack in time") : ""}</p>
     </section>
