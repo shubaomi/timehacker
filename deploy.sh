@@ -103,7 +103,11 @@ fi
 
 echo "[7/10] Applying the additive database migration"
 pnpm db:migrate
-pnpm analytics:cleanup
+if [[ "${RUN_ANALYTICS_CLEANUP:-0}" == "1" ]]; then
+  pnpm analytics:cleanup
+else
+  echo "Skipping analytics cleanup (set RUN_ANALYTICS_CLEANUP=1 to opt in)."
+fi
 
 echo "[8/10] Synchronizing the catalog and activating the production runtime"
 pnpm db:sync-catalog

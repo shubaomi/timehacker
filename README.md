@@ -126,7 +126,7 @@ cd /data/claude_project/timehacker
 bash deploy.sh
 ```
 
-The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, runs the write-free integration suite, fully prepares the staging runtime, applies checked-in forward-only migrations, removes raw playtest events older than 30 days, idempotently synchronizes all 100 V2 level records, and verifies the database before swapping the runtime and starting it with PM2. It waits for local readiness and restores the previous application runtime if readiness fails. Database migrations are not rolled back automatically; the soft-launch migration is additive so the previous application safely ignores its new table and column. The script does not edit or reload Nginx.
+The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, runs the write-free integration suite, fully prepares the staging runtime, applies checked-in forward-only migrations, idempotently synchronizes all 100 V2 level records, and verifies the database before swapping the runtime and starting it with PM2. Raw playtest-event cleanup is opt-in with `RUN_ANALYTICS_CLEANUP=1`; ordinary deployments preserve historical analytics. The script waits for local readiness and restores the previous application runtime if readiness fails. Database migrations are not rolled back automatically; the soft-launch migration is additive so the previous application safely ignores its new table and column. The script does not edit or reload Nginx.
 
 Soft-launch operations:
 
