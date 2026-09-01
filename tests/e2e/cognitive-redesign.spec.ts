@@ -73,6 +73,84 @@ await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-v2-slug", d
   }
 });
 
+test("the production puzzle and timer stay in one page coordinate system", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-1440", "The responsive coordinate-system regression runs once in Chromium.");
+
+  const revealPuzzle = async () => {
+    const definition = FULL_COGNITIVE_CAMPAIGN[0];
+    await openLevel(page, definition.id);
+    for (const probeId of definition.sequence) {
+      await page.getByTestId(`cognitive-probe-${probeId}`).click();
+    }
+    await expect(page.getByTestId("puzzle-scene")).toHaveAttribute("data-v2-slug", definition.slug);
+  };
+
+  await revealPuzzle();
+  const desktop = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>(".game-shell")!;
+    const scene = document.querySelector<HTMLElement>("[data-testid='puzzle-scene']")!;
+    const timer = document.querySelector<HTMLElement>(".stopwatch-card")!;
+    const action = document.querySelector<HTMLElement>(".play-button")!;
+    return {
+      shellClasses: shell.className,
+      scenePosition: getComputedStyle(scene).position,
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      timer: timer.getBoundingClientRect().toJSON(),
+      action: action.getBoundingClientRect().toJSON(),
+    };
+  });
+  expect(desktop.shellClasses).toContain("cognitive-puzzle-active");
+  expect(desktop.scenePosition).toBe("absolute");
+  expect(desktop.scrollHeight).toBeLessThanOrEqual(desktop.viewportHeight + 1);
+  expect(desktop.timer.top).toBeGreaterThanOrEqual(0);
+  expect(desktop.action.bottom).toBeLessThanOrEqual(desktop.viewportHeight);
+
+  await page.setViewportSize({ width: 590, height: 698 });
+  await revealPuzzle();
+  const shortBefore = await page.evaluate(() => {
+    const scene = document.querySelector<HTMLElement>("[data-testid='puzzle-scene']")!;
+    const timer = document.querySelector<HTMLElement>(".stopwatch-card")!;
+    return {
+      scenePosition: getComputedStyle(scene).position,
+      sceneTop: scene.getBoundingClientRect().top,
+      timerTop: timer.getBoundingClientRect().top,
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(shortBefore.scenePosition).toBe("absolute");
+  expect(shortBefore.scrollHeight).toBeGreaterThan(shortBefore.viewportHeight);
+
+  await page.evaluate(() => window.scrollTo(0, 220));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  const shortAfter = await page.evaluate(() => {
+    const scene = document.querySelector<HTMLElement>("[data-testid='puzzle-scene']")!;
+    const timer = document.querySelector<HTMLElement>(".stopwatch-card")!;
+    return {
+      sceneTop: scene.getBoundingClientRect().top,
+      timerTop: timer.getBoundingClientRect().top,
+    };
+  });
+  expect(shortAfter.sceneTop - shortBefore.sceneTop).toBeCloseTo(shortAfter.timerTop - shortBefore.timerTop, 0);
+
+  for (const levelId of [43, 81]) {
+    const definition = FULL_COGNITIVE_CAMPAIGN[levelId - 1];
+    await openLevel(page, levelId);
+    for (const probeId of definition.sequence) {
+      const probe = page.getByTestId(`cognitive-probe-${probeId}`);
+      await probe.scrollIntoViewIfNeeded();
+      await probe.click();
+    }
+    const controller = page.locator("[data-controller]");
+    await controller.scrollIntoViewIfNeeded();
+    const controllerBox = await controller.boundingBox();
+    expect(controllerBox).not.toBeNull();
+    expect(controllerBox!.y).toBeGreaterThanOrEqual(0);
+    expect(controllerBox!.y + controllerBox!.height).toBeLessThanOrEqual(699);
+  }
+});
+
 test("all 100 contracts expose semantic evidence controls without answer copy in H0", async ({ page }) => {
   for (const definition of FULL_COGNITIVE_CAMPAIGN) {
     await openLevel(page, definition.id);

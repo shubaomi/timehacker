@@ -522,10 +522,21 @@ export function TimeHackerApp() {
   const showSpatialPilot = spatialPhase !== null && Boolean(spatialSlug) && (
     showCognitiveRedesign || (SPATIAL_PILOT_ENABLED && isSpatialPilotSlug(spatialSlug))
   );
+  const showCognitiveEvidence = status === "READY" && showCognitiveRedesign
+    && Boolean(cognitiveDefinition) && !cognitiveEvidenceReady;
+  const showV2Puzzle = status === "READY" && mode === "HACKER"
+    && Boolean(activeRoundCheat?.triggerConfig.v2Level)
+    && (!showCognitiveRedesign || cognitiveEvidenceReady);
+  const gameShellClassName = [
+    "game-shell",
+    showCognitiveRedesign ? "cognitive-redesign-active" : "",
+    showCognitiveEvidence ? "cognitive-evidence-active" : "",
+    showCognitiveRedesign && showV2Puzzle ? "cognitive-puzzle-active" : "",
+  ].filter(Boolean).join(" ");
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className={`game-shell ${showCognitiveRedesign ? "cognitive-redesign-active" : ""}`.trim()}>
+      <main className={gameShellClassName}>
         <div className="playful-sky" aria-hidden="true"><i /><i /><i /></div>
         {showSpatialPilot ? (
           <SpatialTimeField
@@ -584,7 +595,7 @@ export function TimeHackerApp() {
             <h1>{t("simpleChallenge")}</h1>
           </motion.div>
 
-          {status === "READY" && showCognitiveRedesign && cognitiveDefinition && !cognitiveEvidenceReady ? (
+          {showCognitiveEvidence && cognitiveDefinition ? (
             <CognitiveEvidenceGate
               key={`cognitive-${cognitiveDefinition.slug}`}
               definition={cognitiveDefinition}
@@ -596,7 +607,7 @@ export function TimeHackerApp() {
             />
           ) : null}
 
-          {status === "READY" && mode === "HACKER" && activeRoundCheat?.triggerConfig.v2Level && (!showCognitiveRedesign || cognitiveEvidenceReady) ? (
+          {showV2Puzzle && activeRoundCheat ? (
             <V2PuzzleScene
               key={activeRoundCheat.slug}
               slug={activeRoundCheat.slug}
