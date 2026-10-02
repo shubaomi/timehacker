@@ -1,5 +1,6 @@
 import { CHEAT_DEFINITIONS, type CheatDefinition } from "./cheats";
 import { V2_LEVEL_BY_SLUG } from "./v2-levels.generated";
+import { isReasoningEnabled, REASONING_ORDINAL } from "./reasoning-campaign/order";
 
 export type ReleaseTrackName = "FULL" | "SOFT_LAUNCH";
 
@@ -40,6 +41,7 @@ export function publicLevelNumber(
   releaseTrack: ReleaseTrackName,
 ): number | null {
   if (releaseTrack === "SOFT_LAUNCH") return SOFT_LAUNCH_LEVEL_BY_SLUG.get(slug) ?? null;
+  if (isReasoningEnabled()) return REASONING_ORDINAL.get(slug) ?? null;
   return V2_LEVEL_BY_SLUG.get(slug)?.id ?? null;
 }
 

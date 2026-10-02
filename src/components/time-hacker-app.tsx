@@ -56,6 +56,9 @@ import { ResetDialog } from "./reset-dialog";
 import { ShareCardDialog } from "./share-card-dialog";
 import { formatStopwatch, TimerStage } from "./timer-stage";
 import { V2EclipseMenuLayer, V2PuzzleScene } from "./v2-puzzle-scene";
+import { ReasoningScene } from "./reasoning-campaign/scene";
+import { REASONING_CAMPAIGN } from "@/game/reasoning-campaign/catalog";
+import "./reasoning-campaign/production.css";
 
 type GameStatus =
   | "LOADING"
@@ -195,6 +198,9 @@ export function TimeHackerApp() {
   const emitCheatEvent = useCallback(
     (type: string, value?: string | number, durationMs?: number) => {
       if (status !== "READY" || (modeRef.current !== "HACKER" && type !== "MODE_TOGGLE")) return;
+      // Reasoning scenes own their local exploration. Preserve only their two
+      // semantic events so keyboard exploration cannot evict discovery.
+      if (activeRoundCheat?.triggerConfig.reasoning && type !== "V2_PUZZLE_DISCOVERED" && type !== "V2_PUZZLE_ARMED") return;
       const now = performance.now();
       const event: CheatEvent = {
         type,
@@ -304,7 +310,7 @@ export function TimeHackerApp() {
 
   const prepareNext = useCallback((nextDashboard = dashboard) => {
     const nextCheat = nextDashboard?.suggestedCheat ?? null;
-    if (activeRoundCheat?.slug === "ghost-session" && nextCheat?.slug === "ghost-session") {
+    if (nextCheat?.triggerConfig.reasoning || (activeRoundCheat?.slug === "ghost-session" && nextCheat?.slug === "ghost-session")) {
       setPuzzleResetEpoch((epoch) => epoch + 1);
     } else {
       setPuzzleResetEpoch(0);
@@ -513,15 +519,19 @@ export function TimeHackerApp() {
   const drawerTitle = panel === "cheats" ? t("cheatArchive") : panel === "ranks" ? t("globalRanks") : t("menuTitle");
   const spatialPhase = spatialVisualPhase(status);
   const spatialSlug = activeRoundCheat?.slug;
+  const reasoningOrdinal = activeRoundCheat?.triggerConfig.reasoning?.ordinal;
+  const reasoningLevel = reasoningOrdinal ? REASONING_CAMPAIGN[reasoningOrdinal-1] : null;
+  const showReasoning = mode === "HACKER" && Boolean(reasoningLevel);
   const cognitiveDefinition = spatialSlug ? FULL_COGNITIVE_BY_SLUG.get(spatialSlug) ?? null : null;
-  const showCognitiveRedesign = COGNITIVE_REDESIGN_ENABLED && mode === "HACKER" && Boolean(cognitiveDefinition);
-  const showSpatialPilot = spatialPhase !== null && Boolean(spatialSlug) && (
+  const showCognitiveRedesign = !showReasoning && COGNITIVE_REDESIGN_ENABLED && mode === "HACKER" && Boolean(cognitiveDefinition);
+  const showSpatialPilot = !showReasoning && spatialPhase !== null && Boolean(spatialSlug) && (
     showCognitiveRedesign || (SPATIAL_PILOT_ENABLED && isSpatialPilotSlug(spatialSlug))
   );
   const showV2Puzzle = status === "READY" && mode === "HACKER"
     && Boolean(activeRoundCheat?.triggerConfig.v2Level);
   const gameShellClassName = [
     "game-shell",
+    showReasoning ? "reasoning-campaign-active" : "",
     showCognitiveRedesign ? "cognitive-redesign-active" : "",
     showCognitiveRedesign && showV2Puzzle ? "cognitive-puzzle-active" : "",
   ].filter(Boolean).join(" ");
@@ -587,7 +597,22 @@ export function TimeHackerApp() {
             <h1>{t("simpleChallenge")}</h1>
           </motion.div>
 
-          {showV2Puzzle && activeRoundCheat ? (
+          {showV2Puzzle && activeRoundCheat && reasoningLevel ? <ReasoningScene
+            key={`${activeRoundCheat.slug}:${puzzleResetEpoch}`}
+            slug={activeRoundCheat.slug}
+            level={reasoningLevel}
+            locale={locale}
+            armed={armed}
+            hintLevel={hintLevel}
+            onDiscover={() => {
+              emitCheatEvent("V2_PUZZLE_DISCOVERED", activeRoundCheat.slug);
+              trackSoftLaunchEventOnce("puzzle_discovered");
+            }}
+            onArm={() => {
+              emitCheatEvent("V2_PUZZLE_ARMED", activeRoundCheat.slug);
+              trackSoftLaunchEventOnce("puzzle_armed");
+            }}
+          /> : showV2Puzzle && activeRoundCheat ? (
             <V2PuzzleScene
               key={activeRoundCheat.slug}
               slug={activeRoundCheat.slug}
@@ -666,7 +691,7 @@ export function TimeHackerApp() {
                 transition={{ type: "spring", stiffness: 340, damping: 34 }}
                 onPointerDown={(event) => event.stopPropagation()}
               >
-                {status === "READY" && mode === "HACKER" && activeRoundCheat?.slug === "eclipse-session" && panel === "game" ? (
+                {!showReasoning && status === "READY" && mode === "HACKER" && activeRoundCheat?.slug === "eclipse-session" && panel === "game" ? (
                   <V2EclipseMenuLayer
                     offset={eclipseOffset}
                     aligned={eclipseOffset >= 60 && eclipseOffset <= 84}

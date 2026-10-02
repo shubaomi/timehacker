@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-02T15:42:26Z",
+  "title": "Design System: Time Hacker · Reasoning 100",
+  "extensions": {
+    "colorMeta": {
+      "sky": {
+        "role": "neutral",
+        "displayName": "浅蓝天空",
+        "tonalRamp": [
+          "oklch(15.00% 0.0267 230.34)",
+          "oklch(26.43% 0.0267 230.34)",
+          "oklch(37.86% 0.0267 230.34)",
+          "oklch(49.29% 0.0267 230.34)",
+          "oklch(60.71% 0.0267 230.34)",
+          "oklch(72.14% 0.0267 230.34)",
+          "oklch(83.57% 0.0267 230.34)",
+          "oklch(95.00% 0.0267 230.34)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "纸白",
+        "tonalRamp": [
+          "oklch(15.00% 0.0034 247.86)",
+          "oklch(26.43% 0.0034 247.86)",
+          "oklch(37.86% 0.0034 247.86)",
+          "oklch(49.29% 0.0034 247.86)",
+          "oklch(60.71% 0.0034 247.86)",
+          "oklch(72.14% 0.0034 247.86)",
+          "oklch(83.57% 0.0034 247.86)",
+          "oklch(95.00% 0.0034 247.86)"
+        ]
+      },
+      "board": {
+        "role": "neutral",
+        "displayName": "机关纸面",
+        "tonalRamp": [
+          "oklch(15.00% 0.0050 228.82)",
+          "oklch(26.43% 0.0050 228.82)",
+          "oklch(37.86% 0.0050 228.82)",
+          "oklch(49.29% 0.0050 228.82)",
+          "oklch(60.71% 0.0050 228.82)",
+          "oklch(72.14% 0.0050 228.82)",
+          "oklch(83.57% 0.0050 228.82)",
+          "oklch(95.00% 0.0050 228.82)"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "深蓝墨迹",
+        "tonalRamp": [
+          "oklch(15.00% 0.0504 276.10)",
+          "oklch(26.43% 0.0504 276.10)",
+          "oklch(37.86% 0.0504 276.10)",
+          "oklch(49.29% 0.0504 276.10)",
+          "oklch(60.71% 0.0504 276.10)",
+          "oklch(72.14% 0.0504 276.10)",
+          "oklch(83.57% 0.0504 276.10)",
+          "oklch(95.00% 0.0504 276.10)"
+        ]
+      },
+      "quiet": {
+        "role": "neutral",
+        "displayName": "安静文字",
+        "tonalRamp": [
+          "oklch(15.00% 0.0395 260.88)",
+          "oklch(26.43% 0.0395 260.88)",
+          "oklch(37.86% 0.0395 260.88)",
+          "oklch(49.29% 0.0395 260.88)",
+          "oklch(60.71% 0.0395 260.88)",
+          "oklch(72.14% 0.0395 260.88)",
+          "oklch(83.57% 0.0395 260.88)",
+          "oklch(95.00% 0.0395 260.88)"
+        ]
+      },
+      "coral": {
+        "role": "primary",
+        "displayName": "珊瑚主操作",
+        "tonalRamp": [
+          "oklch(15.00% 0.1753 30.88)",
+          "oklch(26.43% 0.1753 30.88)",
+          "oklch(37.86% 0.1753 30.88)",
+          "oklch(49.29% 0.1753 30.88)",
+          "oklch(60.71% 0.1753 30.88)",
+          "oklch(72.14% 0.1753 30.88)",
+          "oklch(83.57% 0.1753 30.88)",
+          "oklch(95.00% 0.1753 30.88)"
+        ]
+      },
+      "coral-hover": {
+        "role": "primary",
+        "displayName": "珊瑚悬停",
+        "tonalRamp": [
+          "oklch(15.00% 0.1508 30.88)",
+          "oklch(26.43% 0.1508 30.88)",
+          "oklch(37.86% 0.1508 30.88)",
+          "oklch(49.29% 0.1508 30.88)",
+          "oklch(60.71% 0.1508 30.88)",
+          "oklch(72.14% 0.1508 30.88)",
+          "oklch(83.57% 0.1508 30.88)",
+          "oklch(95.00% 0.1508 30.88)"
+        ]
+      },
+      "butter": {
+        "role": "secondary",
+        "displayName": "日光黄",
+        "tonalRamp": [
+          "oklch(15.00% 0.1387 90.47)",
+          "oklch(26.43% 0.1387 90.47)",
+          "oklch(37.86% 0.1387 90.47)",
+          "oklch(49.29% 0.1387 90.47)",
+          "oklch(60.71% 0.1387 90.47)",
+          "oklch(72.14% 0.1387 90.47)",
+          "oklch(83.57% 0.1387 90.47)",
+          "oklch(95.00% 0.1387 90.47)"
+        ]
+      },
+      "blue-well": {
+        "role": "secondary",
+        "displayName": "浅蓝容量槽",
+        "tonalRamp": [
+          "oklch(15.00% 0.0160 226.97)",
+          "oklch(26.43% 0.0160 226.97)",
+          "oklch(37.86% 0.0160 226.97)",
+          "oklch(49.29% 0.0160 226.97)",
+          "oklch(60.71% 0.0160 226.97)",
+          "oklch(72.14% 0.0160 226.97)",
+          "oklch(83.57% 0.0160 226.97)",
+          "oklch(95.00% 0.0160 226.97)"
+        ]
+      },
+      "yellow-paper": {
+        "role": "secondary",
+        "displayName": "黄色纸面",
+        "tonalRamp": [
+          "oklch(15.00% 0.0662 93.34)",
+          "oklch(26.43% 0.0662 93.34)",
+          "oklch(37.86% 0.0662 93.34)",
+          "oklch(49.29% 0.0662 93.34)",
+          "oklch(60.71% 0.0662 93.34)",
+          "oklch(72.14% 0.0662 93.34)",
+          "oklch(83.57% 0.0662 93.34)",
+          "oklch(95.00% 0.0662 93.34)"
+        ]
+      },
+      "coral-paper": {
+        "role": "secondary",
+        "displayName": "珊瑚纸面",
+        "tonalRamp": [
+          "oklch(15.00% 0.0263 32.24)",
+          "oklch(26.43% 0.0263 32.24)",
+          "oklch(37.86% 0.0263 32.24)",
+          "oklch(49.29% 0.0263 32.24)",
+          "oklch(60.71% 0.0263 32.24)",
+          "oklch(72.14% 0.0263 32.24)",
+          "oklch(83.57% 0.0263 32.24)",
+          "oklch(95.00% 0.0263 32.24)"
+        ]
+      },
+      "control": {
+        "role": "neutral",
+        "displayName": "机关按钮",
+        "tonalRamp": [
+          "oklch(15.00% 0.0042 236.49)",
+          "oklch(26.43% 0.0042 236.49)",
+          "oklch(37.86% 0.0042 236.49)",
+          "oklch(49.29% 0.0042 236.49)",
+          "oklch(60.71% 0.0042 236.49)",
+          "oklch(72.14% 0.0042 236.49)",
+          "oklch(83.57% 0.0042 236.49)",
+          "oklch(95.00% 0.0042 236.49)"
+        ]
+      },
+      "control-hover": {
+        "role": "neutral",
+        "displayName": "机关按钮悬停",
+        "tonalRamp": [
+          "oklch(15.00% 0.0117 231.65)",
+          "oklch(26.43% 0.0117 231.65)",
+          "oklch(37.86% 0.0117 231.65)",
+          "oklch(49.29% 0.0117 231.65)",
+          "oklch(60.71% 0.0117 231.65)",
+          "oklch(72.14% 0.0117 231.65)",
+          "oklch(83.57% 0.0117 231.65)",
+          "oklch(95.00% 0.0117 231.65)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "蓝灰描边",
+        "tonalRamp": [
+          "oklch(15.00% 0.0372 235.07)",
+          "oklch(26.43% 0.0372 235.07)",
+          "oklch(37.86% 0.0372 235.07)",
+          "oklch(49.29% 0.0372 235.07)",
+          "oklch(60.71% 0.0372 235.07)",
+          "oklch(72.14% 0.0372 235.07)",
+          "oklch(83.57% 0.0372 235.07)",
+          "oklch(95.00% 0.0372 235.07)"
+        ]
+      },
+      "target": {
+        "role": "neutral",
+        "displayName": "目标轮廓",
+        "tonalRamp": [
+          "oklch(15.00% 0.1414 33.05)",
+          "oklch(26.43% 0.1414 33.05)",
+          "oklch(37.86% 0.1414 33.05)",
+          "oklch(49.29% 0.1414 33.05)",
+          "oklch(60.71% 0.1414 33.05)",
+          "oklch(72.14% 0.1414 33.05)",
+          "oklch(83.57% 0.1414 33.05)",
+          "oklch(95.00% 0.1414 33.05)"
+        ]
+      },
+      "success": {
+        "role": "neutral",
+        "displayName": "关系成立",
+        "tonalRamp": [
+          "oklch(15.00% 0.0691 170.10)",
+          "oklch(26.43% 0.0691 170.10)",
+          "oklch(37.86% 0.0691 170.10)",
+          "oklch(49.29% 0.0691 170.10)",
+          "oklch(60.71% 0.0691 170.10)",
+          "oklch(72.14% 0.0691 170.10)",
+          "oklch(83.57% 0.0691 170.10)",
+          "oklch(95.00% 0.0691 170.10)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "计时与数量",
+        "purpose": "Azeret Mono 数字；中文标题不采用此栈。"
+      },
+      "headline": {
+        "displayName": "机关标题",
+        "purpose": "继承当前页面正文栈；中文采用现有 CJK 字体回退。"
+      },
+      "body": {
+        "displayName": "正文",
+        "purpose": "保持现有双语字体栈。"
+      },
+      "label": {
+        "displayName": "说明与反馈",
+        "purpose": "目标、图例与约束反馈。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "board",
+        "value": "0 16px 34px #285a7420",
+        "purpose": "纸面机关板"
+      },
+      {
+        "name": "strip",
+        "value": "0 5px 9px #295d7b24",
+        "purpose": "叠层纸条"
+      },
+      {
+        "name": "dial",
+        "value": "inset 0 3px 8px #295d7b14",
+        "purpose": "表盘内凹"
+      },
+      {
+        "name": "page",
+        "value": "0 6px 12px #826b3320",
+        "purpose": "折页"
+      },
+      {
+        "name": "timer-primary",
+        "value": "0 12px 28px rgba(233, 84, 67, 0.28), inset 0 -3px 0 rgba(110, 29, 25, 0.14)",
+        "purpose": "主计时操作"
+      },
+      {
+        "name": "timer-running",
+        "value": "0 12px 28px rgba(32, 36, 63, 0.24)",
+        "purpose": "运行中的停止操作"
+      }
+    ],
+    "motion": [
+      {
+        "name": "well-fill",
+        "value": "transform 160ms ease-out",
+        "purpose": "仅 prefers-reduced-motion: no-preference 时启用"
+      },
+      {
+        "name": "mechanism-press",
+        "value": "translateY(1px)",
+        "purpose": "仅允许动态且非禁用按钮按下时启用"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "campaign-mobile",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Mechanism Button",
+      "kind": "button",
+      "refersTo": "mechanism-button",
+      "description": "与实际机关一致的离散操作按钮。",
+      "html": "<button class=\"ds-action\">A → B · 2s</button>",
+      "css": ".ds-action{min-height:44px;min-width:44px;border:1px solid #8ba5b5;border-radius:10px;background:#fafdff;color:#20243f;padding:8px 12px;font:inherit;touch-action:manipulation;cursor:pointer}.ds-action:focus-visible{outline:3px solid #20243f;outline-offset:3px}.ds-action:disabled{cursor:default;opacity:.55}@media(hover:hover){.ds-action:not(:disabled):hover{background:#e9f2f7}}@media(prefers-reduced-motion:no-preference){.ds-action:active:not(:disabled){transform:translateY(1px)}}"
+    },
+    {
+      "name": "Timer Primary",
+      "kind": "button",
+      "refersTo": "timer-primary",
+      "description": "未运行时的主计时按钮。",
+      "html": "<button class=\"ds-primary\">开始</button>",
+      "css": ".ds-primary{min-width:170px;min-height:62px;padding:0 34px;border:0;border-radius:999px;background:var(--coral,#ff735d);color:var(--ink,#20243f);box-shadow:0 12px 28px rgba(233,84,67,.28),inset 0 -3px 0 rgba(110,29,25,.14);font-family:var(--font-body,\"Bricolage Grotesque Variable\",sans-serif);font-size:1.08rem;font-weight:780;letter-spacing:.01em;cursor:pointer}.ds-primary:hover:not(:disabled){background:#f77f6b}.ds-primary:focus-visible{outline:3px solid var(--ink,#20243f);outline-offset:4px}.ds-primary:disabled{opacity:.45;cursor:not-allowed}@media(max-width:600px){.ds-primary{min-width:124px;min-height:58px;padding:0 18px}}"
+    },
+    {
+      "name": "Timer Running",
+      "kind": "button",
+      "refersTo": "timer-running",
+      "description": "运行状态以深蓝底和纸白字显示停止。",
+      "html": "<button class=\"ds-primary ds-running\">停止</button>",
+      "css": ".ds-primary{min-width:170px;min-height:62px;padding:0 34px;border:0;border-radius:999px;background:var(--coral,#ff735d);color:var(--ink,#20243f);box-shadow:0 12px 28px rgba(233,84,67,.28),inset 0 -3px 0 rgba(110,29,25,.14);font-family:var(--font-body,\"Bricolage Grotesque Variable\",sans-serif);font-size:1.08rem;font-weight:780;letter-spacing:.01em;cursor:pointer}.ds-primary:hover:not(:disabled){background:#f77f6b}.ds-primary:focus-visible{outline:3px solid var(--ink,#20243f);outline-offset:4px}.ds-primary:disabled{opacity:.45;cursor:not-allowed}@media(max-width:600px){.ds-primary{min-width:124px;min-height:58px;padding:0 18px}}.ds-primary.ds-running{background:var(--ink,#20243f);color:var(--paper,#fbfdff);box-shadow:0 12px 28px rgba(32,36,63,.24)}"
+    },
+    {
+      "name": "Mechanism Board",
+      "kind": "card",
+      "refersTo": "mechanism-board",
+      "description": "标题、目标与机关共用的纸面容器。",
+      "html": "<section class=\"ds-board\"><header class=\"ds-intro\"><h2>时间有去处</h2><p>让所有时间抵达标记。</p></header></section>",
+      "css": ".ds-board{color:#20243f;width:min(100%,720px);margin:16px auto 26px;padding:26px;border-radius:24px;background:#f8fcfe;box-shadow:0 16px 34px #285a7420;font-family:var(--font-body,\"Bricolage Grotesque Variable\",sans-serif)}.ds-intro{margin-bottom:24px}.ds-intro h2{font-family:inherit;font-weight:650;font-size:clamp(22px,3vw,30px);line-height:1.2;margin:0 0 8px}.ds-intro p{color:#4c596f;font-size:14px;margin:0}@media(max-width:600px){.ds-board{padding:18px 12px;margin:12px auto 22px;border-radius:18px}}"
+    },
+    {
+      "name": "Target Cell",
+      "kind": "custom",
+      "refersTo": "target-cell",
+      "description": "深色当前状态、目标虚线和目标文字共同呈现。",
+      "html": "<button class=\"ds-action ds-cell\" aria-label=\"1: 深色; 目标: 深色\"><span>1</span><small>留</small></button>",
+      "css": ".ds-action{min-height:44px;min-width:44px;border:1px solid #8ba5b5;border-radius:10px;background:#fafdff;color:#20243f;padding:8px 12px;font:inherit;touch-action:manipulation;cursor:pointer}.ds-action:focus-visible{outline:3px solid #20243f;outline-offset:3px}.ds-action:disabled{cursor:default;opacity:.55}@media(hover:hover){.ds-action:not(:disabled):hover{background:#e9f2f7}}@media(prefers-reduced-motion:no-preference){.ds-action:active:not(:disabled){transform:translateY(1px)}}.ds-cell{aspect-ratio:1;display:grid;place-items:center;font-size:20px;border-width:2px;background:#20243f;color:#fafdff;outline:2px dashed #b44b36;outline-offset:3px}.ds-cell small{font-size:10px}.ds-cell:focus-visible{outline:3px solid #20243f;outline-offset:3px}"
+    },
+    {
+      "name": "Requested Hint",
+      "kind": "card",
+      "refersTo": "requested-hint",
+      "description": "玩家请求后才出现的提示纸面。",
+      "html": "<aside class=\"ds-hint\">比较一次操作前后，哪些位置一起改变了。</aside>",
+      "css": ".ds-hint{margin-top:14px;padding:12px;border-radius:10px;background:#fff0be;color:#20243f;font-family:var(--font-body,\"Bricolage Grotesque Variable\",sans-serif);font-size:14px;line-height:1.6}"
+    },
+    {
+      "name": "Existing Wordmark",
+      "kind": "nav",
+      "description": "仅复用既有 TIME HACKER 文字和时钟图标；不是新增标志。",
+      "html": "<a class=\"ds-brand\" href=\"#play\"><span><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"></circle><path d=\"M12 6v6h4\"></path></svg></span><b>TIME HACKER</b></a>",
+      "css": ".ds-brand{display:inline-flex;align-items:center;gap:10px;color:var(--ink,#20243f);text-decoration:none}.ds-brand span{width:38px;height:38px;display:grid;place-items:center;border-radius:13px;background:var(--butter,#ffd866);box-shadow:0 5px 16px rgba(210,165,35,.2)}.ds-brand b{font:720 .82rem/1 var(--font-display,\"Azeret Mono Variable\",ui-monospace,monospace);font-variation-settings:\"wght\" 720;letter-spacing:.1em}.ds-brand:focus-visible{outline:3px solid var(--ink,#20243f);outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "日光纸上剧场",
+    "overview": "在明亮的纸面上展示可操作对象及其关系。深蓝标记、浅色分层和短促变化帮助玩家比较动作前后；标题与说明让目标可读，机关保留试验和修正的空间。沿用 TIME HACKER 的字标、字体与浅蓝／珊瑚／日光黄身份。\n\n此文件仅约束 Reasoning 100 主线及其生产计时组合，不替换仓库级设计文件。来源顺序为已批准的 [R100 合同](../../plans/2026-10-02-reasoning-100-production-contract.md)、本次实际实现、[PRODUCT.md](../../../PRODUCT.md) 中仍适用的品牌承诺；旧产品文档中的历史阶段限制不覆盖新合同。",
+    "keyCharacteristics": [
+      "浅蓝舞台、纸白机关、深蓝信息。",
+      "当前状态与目标以数值、轮廓、文字共同呈现。",
+      "手机纵向自然滚动；机关和计时各有位置。",
+      "触摸与键盘提交相同的离散动作。"
+    ],
+    "rules": [
+      {
+        "name": "The Normal Flow Rule",
+        "body": "机关、反馈、撤销／重置和计时保持正常文档流；窄屏或短屏允许纵向滚动，不用固定覆盖层强迫一屏容纳全部内容。",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do 保留既有浅蓝、纸白、深蓝、珊瑚与日光黄身份。",
+      "Do 同时使用数值、轮廓或文字解释当前与目标。",
+      "Do 保留可见键盘焦点、可用触摸区域和纵向滚动。",
+      "Do 在减少动态时保留全部状态与反馈。"
+    ],
+    "donts": [
+      "Don't 为本主线新增品牌标志、字体下载、摄像头或 WebGL 场景。",
+      "Don't 使用黑色科技风、AI 紫色、过量外发光或全页玻璃卡片替代既有身份。",
+      "Don't 用视觉层代替玩家停止计时，或用颜色与动画单独传达解开状态。"
+    ]
+  }
+}

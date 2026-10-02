@@ -10,6 +10,8 @@ ENV_FILE="$PROD_DIR/.env.production"
 STAGING_DIR="$PROD_DIR/.standalone-next"
 CURRENT_DIR="$PROD_DIR/standalone"
 PREVIOUS_DIR="$PROD_DIR/.standalone-previous"
+RELEASE_BACKUP="$PROD_DIR/backups/$(date -u +%Y%m%dT%H%M%SZ)"
+CATALOG_CHANGED=0
 
 cleanup() {
   rm -rf "$STAGING_DIR"
@@ -28,6 +30,9 @@ rollback() {
   echo "Readiness checks failed. Restoring the previous runtime..." >&2
   pm2 logs "$APP_NAME" --lines 100 --nostream >&2 || true
   pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
+  if [[ "$CATALOG_CHANGED" == "1" ]]; then
+    pnpm exec tsx scripts/release-database.ts restore-catalog "$RELEASE_BACKUP" || fail "Catalog rollback failed; retained backup at $RELEASE_BACKUP"
+  fi
   rm -rf "$CURRENT_DIR"
   if [[ -d "$PREVIOUS_DIR" ]]; then
     mv "$PREVIOUS_DIR" "$CURRENT_DIR"
@@ -49,7 +54,7 @@ trap cleanup EXIT
 [[ -f "$ENV_FILE" ]] || fail "Missing production environment file: $ENV_FILE"
 [[ ! -f "$SOURCE_DIR/.env.local" ]] || fail ".env.local must not exist in the production source checkout."
 
-for command_name in node pnpm pm2 curl find; do
+for command_name in node pnpm pm2 curl find pg_dump pg_restore; do
   require_command "$command_name"
 done
 
@@ -66,6 +71,7 @@ set +a
 # the variable to 0 in the production environment and redeploying is the
 # complete rollback path; core gameplay does not depend on this visual gate.
 export NEXT_PUBLIC_TIME_HACKER_COGNITIVE_REDESIGN="${NEXT_PUBLIC_TIME_HACKER_COGNITIVE_REDESIGN:-1}"
+export NEXT_PUBLIC_TIME_HACKER_REASONING_CAMPAIGN="${NEXT_PUBLIC_TIME_HACKER_REASONING_CAMPAIGN:-1}"
 
 echo "[1/10] Installing locked dependencies"
 cd "$SOURCE_DIR"
@@ -79,13 +85,19 @@ pnpm prisma:generate
 pnpm prisma:validate
 pnpm lint
 pnpm typecheck
+(
+export NEXT_PUBLIC_TIME_HACKER_REASONING_CAMPAIGN=0
 NODE_ENV=test pnpm test
+)
 
 echo "[4/10] Building the standalone production bundle"
 pnpm build
 
 echo "[5/10] Running safe production integration tests"
+(
+export NEXT_PUBLIC_TIME_HACKER_REASONING_CAMPAIGN=0
 NODE_ENV=test pnpm test:integration:safe
+)
 
 echo "[6/10] Preparing the production staging runtime"
 rm -rf "$STAGING_DIR"
@@ -102,6 +114,8 @@ if [[ -d "$SOURCE_DIR/public" ]]; then
 fi
 
 echo "[7/10] Applying the additive database migration"
+pnpm exec tsx scripts/release-database.ts backup "$RELEASE_BACKUP"
+git rev-parse HEAD > "$RELEASE_BACKUP/source-sha.txt"
 pnpm db:migrate
 if [[ "${RUN_ANALYTICS_CLEANUP:-0}" == "1" ]]; then
   pnpm analytics:cleanup
@@ -110,8 +124,11 @@ else
 fi
 
 echo "[8/10] Synchronizing the catalog and activating the production runtime"
-pnpm db:sync-catalog
-pnpm db:check
+CATALOG_CHANGED=1
+if ! pnpm db:sync-catalog || ! pnpm db:check; then
+  pnpm exec tsx scripts/release-database.ts restore-catalog "$RELEASE_BACKUP"
+  fail "Catalog synchronization failed; previous runtime was not replaced."
+fi
 
 rm -rf "$PREVIOUS_DIR"
 if [[ -d "$CURRENT_DIR" ]]; then
@@ -144,10 +161,11 @@ done
 [[ "$ready" -eq 1 ]] || rollback
 
 pm2 save
-rm -rf "$PREVIOUS_DIR"
+# Retain the last working runtime for an explicit post-release rollback.
 trap - EXIT
 
 echo "Deployment complete."
 echo "Local runtime: http://127.0.0.1:$PORT"
 echo "Public URL: https://timehacker.hihongrun.com"
 echo "Nginx was not modified or reloaded by this script."
+echo "Verified backup: $RELEASE_BACKUP; previous runtime retained at $PREVIOUS_DIR"

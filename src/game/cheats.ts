@@ -12,6 +12,8 @@ import {
 } from "./puzzle-scenes";
 import type { CheatCategory, CheatEvent, EventPattern } from "./types";
 import { V2_CONTROLLER_KINDS, V2_LEVELS, type V2ControllerKind } from "./v2-levels.generated";
+import { REASONING_CAMPAIGN } from "./reasoning-campaign/catalog";
+import { isReasoningEnabled, REASONING_ORDINAL } from "./reasoning-campaign/order";
 
 const V2_COPY_BY_CONTROLLER: Record<V2ControllerKind, { description: string; hint: string }> = {
   "corner-repair": { description: "A loose piece of the page belongs back in its missing corner.", hint: "Inspect the page edge and return what escaped." },
@@ -157,6 +159,7 @@ const v2LevelMetadataSchema = z.object({
 const puzzleSceneExtension = z.object({
   puzzleScene: puzzleSceneConfigSchema,
   v2Level: v2LevelMetadataSchema.optional(),
+  reasoning: z.object({ revision: z.literal(3), ordinal: z.number().int().min(1).max(100) }).optional(),
 });
 
 export const cheatTriggerConfigSchema = z.intersection(z.union([
@@ -555,19 +558,21 @@ const REVISED_CHEATS: readonly CheatDefinition[] = PRE_REVISION_CHEATS.map((defi
 export const CHEAT_DEFINITIONS: readonly CheatDefinition[] = V2_LEVELS.map((level) => {
   const definition = REVISED_CHEATS.find(({ slug }) => slug === level.slug);
   if (!definition) throw new RangeError(`Missing stable cheat definition for V2 level ${level.id}: ${level.slug}`);
-  const difficulty = Math.ceil(level.id / 20);
+  const reasoning = isReasoningEnabled() ? REASONING_CAMPAIGN[(REASONING_ORDINAL.get(level.slug) ?? 1)-1] : null;
+  const difficulty = Math.ceil((reasoning?.ordinal ?? level.id) / 20);
   const copy = V2_COPY_BY_CONTROLLER[level.controller];
   return {
     ...definition,
-    name: level.title.en,
-    nameZh: level.title.zh,
-    description: `${level.title.en}. ${copy.description}`,
-    descriptionZh: level.scene,
-    hint: copy.hint,
-    hintZh: level.discovery,
+    name: reasoning?.title.en ?? level.title.en,
+    nameZh: reasoning?.title.zh ?? level.title.zh,
+    description: reasoning?.lesson.en ?? `${level.title.en}. ${copy.description}`,
+    descriptionZh: reasoning?.lesson.zh ?? level.scene,
+    hint: reasoning?.counter.en ?? copy.hint,
+    hintZh: reasoning?.counter.zh ?? level.discovery,
     difficulty,
     triggerConfig: {
       ...definition.triggerConfig,
+      ...(reasoning ? { reasoning: { revision: 3 as const, ordinal: reasoning.ordinal } } : {}),
       v2Level: v2LevelMetadataSchema.parse({
         schemaVersion: 2,
         ...level,
@@ -625,7 +630,7 @@ function puzzleSceneSequence(config: CheatTriggerConfig) {
           { type: "V2_PUZZLE_DISCOVERED", value: slug },
           { type: "V2_PUZZLE_ARMED", value: slug },
         ],
-        windowMs: 240_000,
+        windowMs: config.reasoning ? undefined : 240_000,
       }
     : null;
 }

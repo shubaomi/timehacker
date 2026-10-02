@@ -1,4 +1,5 @@
 import type { CheatDefinition } from "./cheats";
+import { REASONING_ORDINAL } from "./reasoning-campaign/order";
 
 interface SelectCheatInput {
   definitions: readonly CheatDefinition[];
@@ -14,7 +15,9 @@ export function selectNextCheat({
   seed,
 }: SelectCheatInput): CheatDefinition | null {
   const available = definitions
-    .filter((definition) => definition.enabled && !discoveredSlugs.has(definition.slug));
+    .filter((definition) => definition.enabled && !discoveredSlugs.has(definition.slug))
+    .sort((a,b) => a.triggerConfig.reasoning && b.triggerConfig.reasoning
+      ? (REASONING_ORDINAL.get(a.slug) ?? 101) - (REASONING_ORDINAL.get(b.slug) ?? 101) : 0);
   if (available.length === 0) return null;
 
   const unlockedDifficulty = available.filter(

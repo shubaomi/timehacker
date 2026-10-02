@@ -103,6 +103,15 @@ The default integration and browser tests mock persistence and perform no databa
 
 ## Production deployment on Linux
 
+The approved R100 reasoning campaign is documented in
+[`docs/plans/2026-10-02-reasoning-100-production-contract.md`](docs/plans/2026-10-02-reasoning-100-production-contract.md)
+and its [100 frozen level specifications](docs/contracts/reasoning-100/).
+`NEXT_PUBLIC_TIME_HACKER_REASONING_CAMPAIGN=1` enables it (the deploy script defaults to1).
+Set0 and redeploy to restore the legacy campaign. Stable slugs, database IDs,
+existing unlocks, timing rewards and the 12-level onboarding prefix remain intact.
+The learning order is not the historical V2 numeric order; API metadata selects
+the matching scene. Do not change mappings independently of the catalog.
+
 The checked-in deployment targets this topology:
 
 - source checkout: `/data/claude_project/timehacker`
@@ -127,6 +136,20 @@ bash deploy.sh
 ```
 
 The script installs locked dependencies, validates the deployment contract, runs static/unit checks, builds, runs the write-free integration suite, fully prepares the staging runtime, applies checked-in forward-only migrations, idempotently synchronizes all 100 V2 level records, and verifies the database before swapping the runtime and starting it with PM2. Raw playtest-event cleanup is opt-in with `RUN_ANALYTICS_CLEANUP=1`; ordinary deployments preserve historical analytics. The script waits for local readiness and restores the previous application runtime if readiness fails. Database migrations are not rolled back automatically; the soft-launch migration is additive so the previous application safely ignores its new table and column. The script does not edit or reload Nginx.
+
+Before migration the script now saves a private catalog snapshot and a full
+`pg_dump` archive, verified with `pg_restore --list`, under the timestamped
+production backup directory. Catalog or readiness failure restores catalog
+metadata only; player tables are never rolled back. The previous standalone
+runtime remains after success. See the R100 release evidence for the exact
+backup path. R100 adds no schema migration: its migration is an idempotent
+catalog update. PostgreSQL dump/restore clients are required on the server.
+
+Never run write-based tests with the shared `.env.local` database: it is live
+production through a tunnel. `scripts/verify-isolated.ts` pins a separate
+`timehacker_r100_verify_20261002` database. Its `test` command checks the legacy
+contracts then a new-player 1–100 journey. Run near the database; cross-network
+latency can exhaust the ten-minute journey timeout.
 
 Soft-launch operations:
 
