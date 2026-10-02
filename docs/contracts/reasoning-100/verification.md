@@ -20,7 +20,14 @@
 
 ## Production gate
 
-PENDING until deployment evidence is appended. Source before release:6becb404e4218ba43d5f50e8caaf8573e4754e17. Runtime `/data/prod/timehacker/standalone`, PM2timehacker on127.0.0.1:3008. Release script saves timestamped fullbackup+catalogsnapshot and retains `.standalone-previous`.
+DEPLOYED and externally verified. Application release: `784675941356ef06a66ad4a29376223011c5eeaf`, branchmain, pushedorigin and fast-forwarded clean server checkout. Previous source: `6becb404e4218ba43d5f50e8caaf8573e4754e17`.
+
+- Server reran lint/typecheck/Prisma checks, **934tests in43files**, productionbuild, and10write-freeintegrationtests: allpassed.
+- Verified production backup: `/data/prod/timehacker/backups/20261002T155255Z` (database.dump, catalog.json, source-sha.txt). Previous runtime retained at `/data/prod/timehacker/.standalone-previous`.
+- Schema migration reported no pending migrations. Idempotent catalog migration synchronized all100definitions without missing/unexpected/mismatched rows. At cutover counts remained78users,19games,5unlocks,66playtestevents, same as pre-release snapshot. Catalog IDs were preserved by upsert; no player tables changed by migration.
+- PM2timehacker online, newruntime `/data/prod/timehacker/standalone/server.js` on127.0.0.1:3008. Localreadiness and publicHTTPS both200. Productionresearchroute `/playtest-v2/reasoning-campaign` returns404 as intended.
+- Actualpublicbrowser loaded firstnewscene“借来的秒”.390px phoneviewport:client/scrollwidth390,boardright378.4,timerbottom737.2 within844height. Valid livecapture `.impeccable/review/reasoning-100/live-mobile.png`. Browser viewport restored afterward. Publicsmoke didnotcomplete or reset any player progress.
+- Release log retained at `/data/prod/timehacker/r100-release-20261002.log`. Nginxunchanged. Isolated verification DB and test staging directory retained for reproduction, not connected to productionruntime.
 
 Post-release rollback: prefer settingreasoningflag0 and redeploying verifiedcode. For immediate runtime failure the script restores the previous runtime and exact catalog snapshot. Do not restore a full database over newer player activity. Fullarchive is disaster-recovery evidence, not ordinary application rollback.
 
