@@ -57,6 +57,7 @@ import { ShareCardDialog } from "./share-card-dialog";
 import { formatStopwatch, TimerStage } from "./timer-stage";
 import { V2EclipseMenuLayer, V2PuzzleScene } from "./v2-puzzle-scene";
 import { ReasoningScene } from "./reasoning-campaign/scene";
+import { FIRST_LEVEL_COPY } from "./reasoning-campaign/first-level-copy";
 import { REASONING_CAMPAIGN } from "@/game/reasoning-campaign/catalog";
 import "./reasoning-campaign/production.css";
 
@@ -68,6 +69,7 @@ type GameStatus =
   | "STOPPING"
   | "SUCCESS"
   | "FAILED"
+  | "RESULT_UNCONFIRMED"
   | "LIMIT_REACHED";
 type Panel = "game" | "cheats" | "ranks";
 
@@ -135,6 +137,12 @@ export function TimeHackerApp() {
   const activeGameRef = useRef<string | null>(null);
   const initializationStartedRef = useRef(false);
   const analyticsOnceRef = useRef(new Set<string>());
+  const requestBusyRef = useRef(false);
+  const pendingStopRef = useRef<{ gameId: string; body: string; completed?: CompletedGame } | null>(null);
+  const firstLesson = mode === "HACKER" && activeRoundCheat?.triggerConfig.reasoning?.ordinal === 1;
+  const firstCopy = FIRST_LEVEL_COPY[locale];
+  const firstLevelCompleted = firstLesson && Boolean(result?.success && result.usedCheat?.slug === activeRoundCheat?.slug);
+  const firstLessonLocked = firstLesson && ["STARTING", "RUNNING", "STOPPING", "RESULT_UNCONFIRMED"].includes(status);
 
   const trackSoftLaunchEvent = useCallback((
     name: PlaytestEventName,
@@ -259,12 +267,15 @@ export function TimeHackerApp() {
 
   useEffect(() => {
     if (status !== "READY") return;
+    // A failed start / return from unassisted timing must not erase discovery
+    // while the first lesson's mounted scene still holds the matching state.
+    if (firstLesson && eventsRef.current.length > 0) return;
     const now = performance.now();
     readyEpochRef.current = now;
     idleStartRef.current = now;
     eventsRef.current = [{ type: "READY_MARK", at: 0 }];
     trackSoftLaunchEventOnce("level_view");
-  }, [activeRoundCheat, status, trackSoftLaunchEventOnce]);
+  }, [activeRoundCheat, firstLesson, status, trackSoftLaunchEventOnce]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -320,6 +331,7 @@ export function TimeHackerApp() {
     eventsRef.current = [];
     armedRef.current = false;
     activeGameRef.current = null;
+    pendingStopRef.current = null;
     effectRef.current = null;
     analyticsOnceRef.current.clear();
     setArmed(false);
@@ -333,12 +345,16 @@ export function TimeHackerApp() {
   }, [activeRoundCheat?.slug, dashboard]);
 
   const startChallenge = useCallback(async () => {
-    if (!playerId || !dashboard) return;
+    if (!playerId || !dashboard || requestBusyRef.current) return;
     if (dashboard.daily.remaining <= 0) {
       setStatus("LIMIT_REACHED");
       return;
     }
+    requestBusyRef.current = true;
     setStatus("STARTING");
+    setResult(null);
+    setShareCardOpen(false);
+    pendingStopRef.current = null;
     trackSoftLaunchEventOnce("first_interaction");
     setError(null);
     try {
@@ -364,36 +380,38 @@ export function TimeHackerApp() {
       const code = (startError as Error & { code?: string }).code;
       setStatus(code === "DAILY_LIMIT_REACHED" ? "LIMIT_REACHED" : "READY");
       setError(localizeError(startError, "challengeStartFailed"));
+    } finally {
+      requestBusyRef.current = false;
     }
   }, [activeRoundCheat, dashboard, difficulty, localizeError, mode, playerId, trackSoftLaunchEvent, trackSoftLaunchEventOnce]);
 
-  const stopChallenge = useCallback(async () => {
-    if (!playerId || !activeGameRef.current) return;
-    const wallDurationMs = performance.now() - wallStartRef.current;
-    const durationMs = effectElapsedTime(wallDurationMs, effectRef.current);
-    setElapsedMs(durationMs);
+  const confirmStoppedChallenge = useCallback(async () => {
+    const pending = pendingStopRef.current;
+    if (!playerId || !pending || requestBusyRef.current) return;
+    requestBusyRef.current = true;
     setStatus("STOPPING");
+    setError(null);
     try {
-      const response = await requestJson<{ game: CompletedGame }>(
-        `/api/games/${activeGameRef.current}/complete`,
-        {
-          method: "POST",
-          body: JSON.stringify({ playerId, durationMs, wallDurationMs, events: eventsRef.current }),
-        },
-      );
+      // The stop moment is immutable. Retrying a lost response confirms the
+      // same idempotent game, never a later time or a newly charged attempt.
+      const game = pending.completed ?? (await requestJson<{ game: CompletedGame }>(
+        `/api/games/${pending.gameId}/complete`,
+        { method: "POST", body: pending.body },
+      )).game;
+      pending.completed = game;
       await loadDashboard(playerId, difficulty);
-      setElapsedMs(response.game.durationMs);
-      setResult(response.game);
-      setStatus(response.game.success ? "SUCCESS" : "FAILED");
-      const puzzleSolved = Boolean(response.game.usedCheat);
-      const analyticsMode = response.game.assistanceType && puzzleSolved ? "assisted" : "normal";
+      setElapsedMs(game.durationMs);
+      setResult(game);
+      setStatus(game.success ? "SUCCESS" : "FAILED");
+      const puzzleSolved = Boolean(game.usedCheat);
+      const analyticsMode = game.assistanceType && puzzleSolved ? "assisted" : "normal";
       trackSoftLaunchEvent("timer_stopped", {
         mode: analyticsMode,
-        durationMs: response.game.durationMs,
-        success: response.game.success,
+        durationMs: game.durationMs,
+        success: game.success,
         puzzleSolved,
       });
-      if (response.game.success) {
+      if (game.success) {
         trackSoftLaunchEvent("level_completed", {
           mode: analyticsMode,
           success: true,
@@ -401,19 +419,44 @@ export function TimeHackerApp() {
         });
       }
     } catch (stopError) {
-      setStatus("FAILED");
-      setError(localizeError(stopError, "resultSaveFailed"));
+      setStatus(firstLesson ? "RESULT_UNCONFIRMED" : "FAILED");
+      setError(firstLesson ? firstCopy.unconfirmed : localizeError(stopError, "resultSaveFailed"));
+    } finally {
+      requestBusyRef.current = false;
     }
-  }, [difficulty, loadDashboard, localizeError, playerId, trackSoftLaunchEvent]);
+  }, [difficulty, firstCopy.unconfirmed, firstLesson, loadDashboard, localizeError, playerId, trackSoftLaunchEvent]);
+
+  const stopChallenge = useCallback(async () => {
+    if (!playerId || !activeGameRef.current || requestBusyRef.current) return;
+    const wallDurationMs = performance.now() - wallStartRef.current;
+    const durationMs = effectElapsedTime(wallDurationMs, effectRef.current);
+    setElapsedMs(durationMs);
+    pendingStopRef.current = {
+      gameId: activeGameRef.current,
+      body: JSON.stringify({ playerId, durationMs, wallDurationMs, events: eventsRef.current }),
+    };
+    await confirmStoppedChallenge();
+  }, [confirmStoppedChallenge, playerId]);
 
   const handlePrimary = useCallback(() => {
+    if (requestBusyRef.current) return;
     if (status === "RUNNING") void stopChallenge();
+    else if (status === "RESULT_UNCONFIRMED") void confirmStoppedChallenge();
+    else if (firstLesson && (status === "FAILED" || (status === "SUCCESS" && !firstLevelCompleted))) {
+      if (armedRef.current && status === "FAILED") void startChallenge();
+      else {
+        setResult(null);
+        setElapsedMs(0);
+        setError(null);
+        setStatus(dashboard && dashboard.daily.remaining <= 0 ? "LIMIT_REACHED" : "READY");
+      }
+    }
     else if (status === "SUCCESS" || status === "FAILED") {
       if (status === "SUCCESS") trackSoftLaunchEvent("next_level");
       prepareNext();
     }
     else if (status === "READY") void startChallenge();
-  }, [prepareNext, startChallenge, status, stopChallenge, trackSoftLaunchEvent]);
+  }, [confirmStoppedChallenge, dashboard, firstLesson, firstLevelCompleted, prepareNext, startChallenge, status, stopChallenge, trackSoftLaunchEvent]);
 
   const switchMode = (nextMode: GameMode) => {
     if (nextMode === "PURE" && !dashboard?.player.firstSuccessAt) return;
@@ -517,7 +560,7 @@ export function TimeHackerApp() {
   }
 
   const drawerTitle = panel === "cheats" ? t("cheatArchive") : panel === "ranks" ? t("globalRanks") : t("menuTitle");
-  const spatialPhase = spatialVisualPhase(status);
+  const spatialPhase = status === "RESULT_UNCONFIRMED" ? null : spatialVisualPhase(status);
   const spatialSlug = activeRoundCheat?.slug;
   const reasoningOrdinal = activeRoundCheat?.triggerConfig.reasoning?.ordinal;
   const reasoningLevel = reasoningOrdinal ? REASONING_CAMPAIGN[reasoningOrdinal-1] : null;
@@ -529,9 +572,21 @@ export function TimeHackerApp() {
   );
   const showV2Puzzle = status === "READY" && mode === "HACKER"
     && Boolean(activeRoundCheat?.triggerConfig.v2Level);
+  const firstPrimaryLabel = !firstLesson ? undefined
+    : status === "RESULT_UNCONFIRMED" ? firstCopy.confirm
+    : status === "SUCCESS" ? firstLevelCompleted ? firstCopy.next : firstCopy.back
+    : status === "FAILED" ? armed ? firstCopy.retry : firstCopy.back
+    : status === "READY" && armed ? firstCopy.start
+    : undefined;
+  const firstAssistMessage = firstLevelCompleted ? firstCopy.continue
+    : !armed ? firstCopy.normal
+    : status !== "RUNNING" || elapsedMs < 9500 ? firstCopy.ready
+    : elapsedMs < 10000 ? firstCopy.slowing
+    : elapsedMs === 10000 ? firstCopy.stopNow : firstCopy.passed;
   const gameShellClassName = [
     "game-shell",
     showReasoning ? "reasoning-campaign-active" : "",
+    firstLesson ? "first-lesson-active" : "",
     showCognitiveRedesign ? "cognitive-redesign-active" : "",
     showCognitiveRedesign && showV2Puzzle ? "cognitive-puzzle-active" : "",
   ].filter(Boolean).join(" ");
@@ -560,6 +615,7 @@ export function TimeHackerApp() {
             className="menu-button"
             aria-label={t("openMenu")}
             aria-expanded={menuOpen}
+            disabled={firstLessonLocked}
             onClick={() => {
               setPanel("game");
               setMenuOpen(true);
@@ -597,12 +653,14 @@ export function TimeHackerApp() {
             <h1>{t("simpleChallenge")}</h1>
           </motion.div>
 
-          {showV2Puzzle && activeRoundCheat && reasoningLevel ? <ReasoningScene
+          {(showV2Puzzle || firstLesson) && activeRoundCheat && reasoningLevel ? <ReasoningScene
             key={`${activeRoundCheat.slug}:${puzzleResetEpoch}`}
             slug={activeRoundCheat.slug}
             level={reasoningLevel}
             locale={locale}
             armed={armed}
+            firstLesson={firstLesson}
+            inactive={firstLesson && status !== "READY"}
             hintLevel={hintLevel}
             onDiscover={() => {
               emitCheatEvent("V2_PUZZLE_DISCOVERED", activeRoundCheat.slug);
@@ -642,6 +700,8 @@ export function TimeHackerApp() {
             disabled={status === "LIMIT_REACHED"}
             onPrimary={handlePrimary}
             onEvent={emitCheatEvent}
+            primaryLabelOverride={firstPrimaryLabel}
+            assistMessage={firstLesson ? firstAssistMessage : undefined}
           />
 
           <div className="live-message" aria-live="polite" role="status">
@@ -662,7 +722,10 @@ export function TimeHackerApp() {
                 aria-live="assertive"
               >
                 <div>
-                  <h2>{result.success ? t("successSimple") : t("missSimple")}</h2>
+                  <h2>{firstLesson
+                    ? firstLevelCompleted ? firstCopy.completed : result.success ? firstCopy.unassisted : result.errorMs < 0 ? firstCopy.early : firstCopy.late
+                    : result.success ? t("successSimple") : t("missSimple")}</h2>
+                  {firstLesson && (firstLevelCompleted || armed) ? <p>{firstLevelCompleted ? firstCopy.conquered : firstCopy.retained}</p> : null}
                 </div>
                 <div className="simple-result-number">
                   <span>{resultCopy?.duration}<small>s</small></span>

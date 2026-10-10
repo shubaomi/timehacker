@@ -4,14 +4,15 @@ import { useRef, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, RotateCcw, Undo2 } from "lucide-react";
 import { projection, solved, transition, type Level, type Block } from "@/game/reasoning-campaign/engine";
 import styles from "./scene.module.css";
+import { FIRST_LEVEL_COPY } from "./first-level-copy";
 
-type Props = { level: Level; locale: "zh" | "en"; armed: boolean; hintLevel: number; onDiscover: () => void; onArm: () => void; slug?: string };
+type Props = { level: Level; locale: "zh" | "en"; armed: boolean; hintLevel: number; onDiscover: () => void; onArm: () => void; slug?: string; firstLesson?: boolean; inactive?: boolean };
 
 /** R100: one normal-flow paper board; related state changes, not a discovery password.
  * Daylight blue, navy marks, yellow targets; motion explains a transfer only.
  * Finish: finite-state tests, mobile/keyboard evidence and independent review.
  */
-export function ReasoningScene({ level, locale, armed, hintLevel, onDiscover, onArm, slug }: Props) {
+export function ReasoningScene({ level, locale, armed, hintLevel, onDiscover, onArm, slug, firstLesson = false, inactive = false }: Props) {
   const [state, setState] = useState([...level.puzzle.initial]);
   const [history, setHistory] = useState<number[][]>([]);
   const [blocked, setBlocked] = useState<Block>(null);
@@ -22,7 +23,7 @@ export function ReasoningScene({ level, locale, armed, hintLevel, onDiscover, on
   const say = (cn: string, en: string) => zh ? cn : en;
   const complete = armed || solved(puzzle, state);
   function move(action: number) {
-    if (complete) return;
+    if (complete || inactive) return;
     if (!discovered.current) { discovered.current = true; onDiscover(); }
     const next = transition(puzzle, state, action);
     setBlocked(next.blocked);
@@ -34,8 +35,8 @@ export function ReasoningScene({ level, locale, armed, hintLevel, onDiscover, on
   const output = puzzle.kind === "paper" ? projection(puzzle, state) : null;
   const positions = (mask: number, count: number) => Array.from({ length: count }, (_, i) => mask & (1 << i) ? i+1 : null).filter((v) => v !== null).join(", ");
   const goal = puzzle.kind === "flow" ? say("让所有时间抵达标记。", "Bring every well to its mark.") : puzzle.kind === "gears" ? say("让每支指针对上自己的刻度。", "Bring each hand to its own mark.") : puzzle.kind === "weave" ? say("深色是当前，轮廓是目标。", "Dark is current; outlines show the target.") : puzzle.kind === "order" ? say("让页码回到对应位置。", "Return the pages to their matching positions.") : puzzle.kind === "route" ? say("把墨点送到 E，并留下指定的门状态。", "Bring the ink to E with the required gate states.") : say("让投影与轮廓重合。", "Match the projection to the outlines.");
-  return <section className={styles.board} data-v2-slug={slug} data-testid="reasoning-scene" data-solved={complete} aria-label={level.title[locale]}>
-    <header className={styles.intro}><h2>{level.title[locale]}</h2><p>{goal}</p></header>
+  return <section className={styles.board} data-first-lesson={firstLesson} data-inactive={inactive} data-v2-slug={slug} data-testid="reasoning-scene" data-solved={complete} aria-label={level.title[locale]}>
+    <header className={styles.intro}><h2>{level.title[locale]}</h2><p>{firstLesson ? FIRST_LEVEL_COPY[locale].goal : goal}</p></header>
     {puzzle.kind === "flow" ? <>
       <div className={styles.wells} style={{ "--count": state.length } as CSSProperties}>
         {state.map((value, i) => <div className={styles.well} key={i}>
@@ -44,7 +45,7 @@ export function ReasoningScene({ level, locale, armed, hintLevel, onDiscover, on
           <output aria-label={`${"ABCD"[i]}: ${value}, ${say("目标", "target")} ${puzzle.target[i]}`}>{value}<small> / {puzzle.target[i]}</small></output>
         </div>)}
       </div>
-      <div className={styles.controls}>{puzzle.edges.map((edge, i) => <button key={i} data-testid={`reasoning-action-${i}`} onClick={() => move(i)} disabled={complete}>
+      <div className={styles.controls}>{puzzle.edges.map((edge, i) => <button key={i} data-testid={`reasoning-action-${i}`} onClick={() => move(i)} disabled={complete || inactive}>
         <span>{"ABCD"[edge.from]} <ArrowRight size={16} aria-hidden="true" /> {"ABCD"[edge.to]}</span><b>{edge.amount}s</b>
         {edge.when ? <small>{"ABCD"[edge.when.cell]}: {edge.when.min}-{edge.when.max}</small> : null}
       </button>)}</div>
@@ -78,8 +79,8 @@ export function ReasoningScene({ level, locale, armed, hintLevel, onDiscover, on
       <div className={styles.gates}>{[..."abc"].filter(letter=>puzzle.rows.join("").includes(letter)).map(letter=>{const bit=1<<"abc".indexOf(letter);return <span key={letter}>{letter.toUpperCase()} {state[1]&bit?say("开", "open"):say("关", "closed")} / {say("目标", "target")} {puzzle.finalMask&bit?say("开", "open"):say("关", "closed")}</span>;})}</div>
       <div className={styles.tools}>{[ArrowUp,ArrowRight,ArrowDown,ArrowLeft].map((Icon,i)=><button key={i} data-testid={`reasoning-action-${i}`} disabled={complete} onClick={()=>move(i)} aria-label={(zh?["向上","向右","向下","向左"]:["Up","Right","Down","Left"])[i]}><Icon size={20}/></button>)}</div>
     </> : null}
-    <p className={styles.feedback} role="status">{complete ? say("关系成立。", "The relationship holds.") : blocked === "source" ? say("来源不够。试试另一条通路。", "Not enough at the source. Try another route.") : blocked === "capacity" ? say("接收处装不下。需要先留出空间。", "No room at the destination. Make space first.") : blocked === "condition" ? say("通路条件尚未满足。", "The route condition is not met.") : blocked === "wall" ? say("这里没有通路。", "There is no path here.") : ""}<span className={styles.srOnly}>{!complete && history.length > 0 ? `${say("当前状态", "Current state")}: ${state.join(", ")}` : ""}</span></p>
-    {!complete ? <div className={styles.tools}><button disabled={!history.length} onClick={() => { setState(history.at(-1)!); setHistory(history.slice(0,-1)); setBlocked(null); }}><Undo2 size={16} />{say("撤销", "Undo")}</button><button onClick={() => { setState([...puzzle.initial]); setHistory([]); setBlocked(null); }}><RotateCcw size={16} />{say("重置机关", "Reset puzzle")}</button></div> : null}
+    <p className={styles.feedback} role="status">{complete ? firstLesson ? <><strong>{FIRST_LEVEL_COPY[locale].solved}</strong><span className={styles.reward}>{FIRST_LEVEL_COPY[locale].reward}</span></> : say("关系成立。", "The relationship holds.") : blocked === "source" ? say("来源不够。试试另一条通路。", "Not enough at the source. Try another route.") : blocked === "capacity" ? say("接收处装不下。需要先留出空间。", "No room at the destination. Make space first.") : blocked === "condition" ? say("通路条件尚未满足。", "The route condition is not met.") : blocked === "wall" ? say("这里没有通路。", "There is no path here.") : ""}<span className={styles.srOnly}>{!complete && history.length > 0 ? `${say("当前状态", "Current state")}: ${state.join(", ")}` : ""}</span></p>
+    {!complete || firstLesson ? <div className={styles.tools} style={complete ? { visibility: "hidden" } : undefined}><button disabled={!history.length || inactive || complete} onClick={() => { setState(history.at(-1)!); setHistory(history.slice(0,-1)); setBlocked(null); }}><Undo2 size={16} />{say("撤销", "Undo")}</button><button disabled={inactive || complete} onClick={() => { setState([...puzzle.initial]); setHistory([]); setBlocked(null); }}><RotateCcw size={16} />{say("重置机关", "Reset puzzle")}</button></div> : null}
     {hintLevel > 0 ? <aside className={styles.hint}>{hintLevel === 1 ? say("比较一次操作前后，哪些位置一起改变了。", "Compare the positions affected by a single move.") : hintLevel === 2 ? level.lesson[locale] : level.counter[locale]}</aside> : null}
   </section>;
 }

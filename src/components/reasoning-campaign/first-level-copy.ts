@@ -1,0 +1,33 @@
+// First-lesson guidance only; other lessons keep their existing presentation.
+export const FIRST_LEVEL_COPY = {
+  zh: {
+    goal: "把三个容器都调到 10，为停表借来一点时间。",
+    solved: "你借到了 3 秒。",
+    reward: "秒表会在 9.50 后变慢，并在 10.00 停留 3 秒。记得亲手按停。",
+    start: "开始停表", retry: "重试停表", next: "进入第二关", back: "返回解谜",
+    ready: "减速已就绪", slowing: "时间放慢了", stopNow: "现在，按停",
+    passed: "已越过 10.00，按停后可以重试", normal: "解开机关，可以让时间变慢。",
+    completed: "第一关「借来的秒」完成",
+    continue: "第一关完成，可以继续了。",
+    conquered: "你让时间慢了下来，并停在了 10.00。",
+    early: "停早了。", late: "停晚了。",
+    retained: "机关已经解开，减速仍然有效。再试一次停表即可。",
+    unassisted: "命中 10 秒！解开机关后才能完成本关。",
+    unconfirmed: "结果暂未确认，请重试确认本局。", confirm: "重试确认结果",
+  },
+  en: {
+    goal: "Bring all three wells to 10 to borrow time for your stop.",
+    solved: "You borrowed 3 seconds.",
+    reward: "The timer slows after 9.50 and holds at 10.00 for 3 seconds. Remember to press stop.",
+    start: "Start timer", retry: "Retry timer", next: "Enter level 2", back: "Back to puzzle",
+    ready: "Slowdown ready", slowing: "Time has slowed", stopNow: "Now, press stop",
+    passed: "Past 10.00. Stop to try again.", normal: "Solve the puzzle to slow time down.",
+    completed: "Level 1: Borrowed Seconds complete",
+    continue: "Level 1 complete. Ready for the next?",
+    conquered: "You slowed time down and stopped at 10.00.",
+    early: "A little early.", late: "A little late.",
+    retained: "Puzzle solved. Slowdown is still yours. Try the timer again.",
+    unassisted: "You hit 10 seconds! Solve the puzzle to complete this level.",
+    unconfirmed: "Result not confirmed. Retry confirming this round.", confirm: "Confirm result again",
+  },
+} as const;

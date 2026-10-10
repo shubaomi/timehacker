@@ -10,9 +10,15 @@
 .reasoning-campaign-active .timer-blob { display: none; }
 .reasoning-campaign-active .play-button { min-width: 170px; min-height: 62px; }
 .reasoning-campaign-active .play-button.is-running { color: #fbfdff; }
+.first-lesson-active .first-level-assist { grid-column: 1 / -1; min-height: 24px; margin: 0; color: #215d4b; font-size: 14px; line-height: 24px; }
+.first-lesson-active .play-timer { grid-template-columns: minmax(0,1fr) 190px; }
+.first-lesson-active .play-button { width: 100%; min-width: 0; }
+.first-lesson-active .simple-result p { font-size: 14px; line-height: 1.5; }
 @media (max-width:600px) {
   .reasoning-campaign-active .play-screen { width: calc(100% - 24px); padding-top: 10px; }
   .reasoning-campaign-active .play-timer { padding: 0 4px; gap: 10px; }
   .reasoning-campaign-active .play-button { min-width: 124px; padding: 0 18px; min-height: 58px; }
   .reasoning-campaign-active .stopwatch-card { height: 86px; }
+  .first-lesson-active .play-timer { grid-template-columns: minmax(0,1fr) 148px; }
+  .first-lesson-active .play-button { min-width: 0; padding: 0 12px; }
 }

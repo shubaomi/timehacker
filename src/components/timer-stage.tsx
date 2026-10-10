@@ -11,6 +11,8 @@ interface TimerStageProps {
   disabled: boolean;
   onPrimary: () => void;
   onEvent: (type: string, value?: string | number, durationMs?: number) => void;
+  primaryLabelOverride?: string;
+  assistMessage?: string;
 }
 
 export function formatStopwatch(elapsedMs: number): string {
@@ -24,21 +26,24 @@ export function TimerStage({
   disabled,
   onPrimary,
   onEvent,
+  primaryLabelOverride,
+  assistMessage,
 }: TimerStageProps) {
   const { t } = useLocale();
   const running = status === "RUNNING";
   const busy = status === "STARTING" || status === "STOPPING";
   const holdStart = useRef(0);
-  const primaryLabel = running
+  const primaryLabel = primaryLabelOverride ?? (running
     ? t("stop")
     : busy
       ? t("pleaseWait")
       : status === "SUCCESS" || status === "FAILED"
         ? t("runAgain")
-        : t("start");
+        : t("start"));
 
   return (
     <section className={`play-timer ${armed ? "has-secret" : ""}`}>
+      {assistMessage !== undefined ? <p className="first-level-assist" role="status" aria-live="polite">{assistMessage}</p> : null}
       <div
         className="stopwatch-card"
         onWheel={(event) => onEvent("WHEEL", event.deltaY >= 0 ? "down" : "up")}
