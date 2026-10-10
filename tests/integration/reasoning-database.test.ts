@@ -34,4 +34,10 @@ it("migrates catalog without identity loss and completes onboarding plus all rem
   const last=await getDashboard(db,playerId,5,new Date("2026-10-08T10:00:00Z"));
   expect(last.campaign).toMatchObject({complete:true,completedLevels:100,totalLevels:100,track:"FULL"});
   expect(last.suggestedCheat).toBeNull();
+  const catalog = await db.cheatMethod.findMany({select:{id:true,slug:true,createdAt:true,updatedAt:true},orderBy:{slug:"asc"}});
+  const playerBefore = await db.user.findUniqueOrThrow({where:{playerId},include:{unlockedCheats:true,games:true}});
+  await seedCheatCatalog(db);
+  await seedCheatCatalog(db);
+  expect(await db.cheatMethod.findMany({select:{id:true,slug:true,createdAt:true,updatedAt:true},orderBy:{slug:"asc"}})).toEqual(catalog);
+  expect(await db.user.findUniqueOrThrow({where:{playerId},include:{unlockedCheats:true,games:true}})).toEqual(playerBefore);
 },600000);

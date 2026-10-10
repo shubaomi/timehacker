@@ -24,6 +24,9 @@ config({ path: ".env.local", quiet: true });
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required for database integration tests");
 }
+if (new URL(process.env.DATABASE_URL).pathname !== "/timehacker_r100_verify_20261002") {
+  throw new Error("Database write tests require the isolated R100 database; never run against production");
+}
 
 const database = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, keepAlive: true, max: 5 }) });
 const runId = randomUUID().slice(0, 8);

@@ -38,7 +38,7 @@ describe("R100 production contracts without shared database writes", () => {
     }
   });
   it("implements every frozen numeric specification exactly", async () => {
-    const specs = (await Promise.all(Array.from({length:10},(_,i)=>readFile(`docs/contracts/reasoning-100/chapter-${String(i+1).padStart(2,"0")}.md`,"utf8"))))
+    const specs = (await Promise.all(Array.from({length:10},(_,i)=>readFile(`docs/contracts/reasoning-100-revised/chapter-${String(i+1).padStart(2,"0")}.md`,"utf8"))))
       .flatMap(text=>[...text.matchAll(/```json\r?\n([^`]+)\r?\n```/g)].map(match=>JSON.parse(match[1])));
     expect(specs).toEqual(REASONING_CAMPAIGN.map(l=>l.puzzle));
   });

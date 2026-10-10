@@ -1,4 +1,4 @@
-// First-lesson guidance only; other lessons keep their existing presentation.
+// Shared timing guidance; the app supplies the current and next lesson labels.
 export const FIRST_LEVEL_COPY = {
   zh: {
     goal: "把三个容器都调到 10，为停表借来一点时间。",

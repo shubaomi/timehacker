@@ -34,11 +34,11 @@ describe("R100 real scene completion", () => {
     expect(screen.getByLabelText("B: 14, target 10")).toBeInTheDocument();
   });
   it("paper target positions and overlap are text, not color-only instructions", () => {
-    render(<ReasoningScene level={REASONING_CAMPAIGN[6]} locale="en" armed={false} hintLevel={0} onArm={vi.fn()} onDiscover={vi.fn()}/>);
+    render(<ReasoningScene level={REASONING_CAMPAIGN[98]} locale="en" armed={false} hintLevel={0} onArm={vi.fn()} onDiscover={vi.fn()}/>);
     expect(screen.getByText(/Target positions:/)).toHaveTextContent("Overlap at each target: 3");
   });
   it("route map exposes coordinates, walls and ink through named image roles", () => {
-    render(<ReasoningScene level={REASONING_CAMPAIGN[59]} locale="en" armed={false} hintLevel={0} onArm={vi.fn()} onDiscover={vi.fn()}/>);
+    render(<ReasoningScene level={REASONING_CAMPAIGN[70]} locale="en" armed={false} hintLevel={0} onArm={vi.fn()} onDiscover={vi.fn()}/>);
     expect(screen.getByRole("img",{name:"1,1: S ink"})).toBeInTheDocument();
     expect(screen.getByRole("img",{name:"2,2: wall"})).toBeInTheDocument();
     expect(screen.getByRole("img",{name:"1,3: gate A closed"})).toBeInTheDocument();

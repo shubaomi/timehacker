@@ -59,6 +59,7 @@ import { V2EclipseMenuLayer, V2PuzzleScene } from "./v2-puzzle-scene";
 import { ReasoningScene } from "./reasoning-campaign/scene";
 import { FIRST_LEVEL_COPY } from "./reasoning-campaign/first-level-copy";
 import { REASONING_CAMPAIGN } from "@/game/reasoning-campaign/catalog";
+import { isReasoningEnabled } from "@/game/reasoning-campaign/order";
 import "./reasoning-campaign/production.css";
 
 type GameStatus =
@@ -125,6 +126,9 @@ export function TimeHackerApp() {
   const [ghostAnchor, setGhostAnchor] = useState<"left" | "right" | null>(null);
   const [eclipseOffset, setEclipseOffset] = useState(0);
   const [nickname, setNickname] = useState("");
+  const [nicknameStatus, setNicknameStatus] = useState("");
+  const [nicknameBusy, setNicknameBusy] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const eventsRef = useRef<CheatEvent[]>([]);
@@ -139,10 +143,23 @@ export function TimeHackerApp() {
   const analyticsOnceRef = useRef(new Set<string>());
   const requestBusyRef = useRef(false);
   const pendingStopRef = useRef<{ gameId: string; body: string; completed?: CompletedGame } | null>(null);
-  const firstLesson = mode === "HACKER" && activeRoundCheat?.triggerConfig.reasoning?.ordinal === 1;
-  const firstCopy = FIRST_LEVEL_COPY[locale];
-  const firstLevelCompleted = firstLesson && Boolean(result?.success && result.usedCheat?.slug === activeRoundCheat?.slug);
-  const firstLessonLocked = firstLesson && ["STARTING", "RUNNING", "STOPPING", "RESULT_UNCONFIRMED"].includes(status);
+  // The first lesson's retry contract applies to every reasoning level.
+  const reasoningRound = mode === "HACKER" && Boolean(activeRoundCheat?.triggerConfig.reasoning);
+  const ordinal = activeRoundCheat?.triggerConfig.reasoning?.ordinal ?? 0;
+  const campaignComplete = isReasoningEnabled() && mode === "HACKER" && Boolean(dashboard?.campaign.complete) && !activeRoundCheat;
+  const roundCopy = {
+    ...FIRST_LEVEL_COPY[locale],
+    next: ordinal === 1 ? FIRST_LEVEL_COPY[locale].next : ordinal === 100
+      ? locale === "zh" ? "查看通关档案" : "View completed archive"
+      : locale === "zh" ? `进入第 ${ordinal + 1} 关` : `Enter level ${ordinal + 1}`,
+    completed: ordinal === 1 ? FIRST_LEVEL_COPY[locale].completed : locale === "zh"
+      ? `第 ${ordinal} 关「${REASONING_CAMPAIGN[ordinal - 1]?.title.zh}」完成`
+      : `Level ${ordinal}: ${REASONING_CAMPAIGN[ordinal - 1]?.title.en} complete`,
+    continue: ordinal === 100 ? locale === "zh" ? "100 关已完成。" : "All 100 levels complete."
+      : locale === "zh" ? "本关完成，可以继续了。" : "Level complete. Ready for the next?",
+  };
+  const roundCompleted = reasoningRound && Boolean(result?.success && result.usedCheat?.slug === activeRoundCheat?.slug);
+  const roundLocked = reasoningRound && ["STARTING", "RUNNING", "STOPPING", "RESULT_UNCONFIRMED"].includes(status);
 
   const trackSoftLaunchEvent = useCallback((
     name: PlaytestEventName,
@@ -268,14 +285,14 @@ export function TimeHackerApp() {
   useEffect(() => {
     if (status !== "READY") return;
     // A failed start / return from unassisted timing must not erase discovery
-    // while the first lesson's mounted scene still holds the matching state.
-    if (firstLesson && eventsRef.current.length > 0) return;
+    // while the reasoning scene still holds the matching state.
+    if (reasoningRound && eventsRef.current.length > 0) return;
     const now = performance.now();
     readyEpochRef.current = now;
     idleStartRef.current = now;
     eventsRef.current = [{ type: "READY_MARK", at: 0 }];
     trackSoftLaunchEventOnce("level_view");
-  }, [activeRoundCheat, firstLesson, status, trackSoftLaunchEventOnce]);
+  }, [activeRoundCheat, reasoningRound, status, trackSoftLaunchEventOnce]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -299,13 +316,23 @@ export function TimeHackerApp() {
   }, [emitCheatEvent]);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen || resetOpen || shareCardOpen) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusable = () => Array.from(drawerRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input, select, a[href], [tabindex="0"]') ?? []);
+    focusable()[0]?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Tab") {
+        const items = focusable();
+        const target = event.shiftKey ? items.at(-1) : items[0];
+        if (!items.includes(document.activeElement as HTMLElement) || document.activeElement === (event.shiftKey ? items[0] : items.at(-1))) {
+          event.preventDefault(); target?.focus();
+        }
+      }
     };
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [menuOpen]);
+    return () => { window.removeEventListener("keydown", closeOnEscape); previous?.focus(); };
+  }, [menuOpen, resetOpen, shareCardOpen]);
 
   useEffect(() => {
     if (status !== "RUNNING") return;
@@ -419,12 +446,12 @@ export function TimeHackerApp() {
         });
       }
     } catch (stopError) {
-      setStatus(firstLesson ? "RESULT_UNCONFIRMED" : "FAILED");
-      setError(firstLesson ? firstCopy.unconfirmed : localizeError(stopError, "resultSaveFailed"));
+      setStatus(reasoningRound ? "RESULT_UNCONFIRMED" : "FAILED");
+      setError(reasoningRound ? roundCopy.unconfirmed : localizeError(stopError, "resultSaveFailed"));
     } finally {
       requestBusyRef.current = false;
     }
-  }, [difficulty, firstCopy.unconfirmed, firstLesson, loadDashboard, localizeError, playerId, trackSoftLaunchEvent]);
+  }, [difficulty, roundCopy.unconfirmed, reasoningRound, loadDashboard, localizeError, playerId, trackSoftLaunchEvent]);
 
   const stopChallenge = useCallback(async () => {
     if (!playerId || !activeGameRef.current || requestBusyRef.current) return;
@@ -442,7 +469,7 @@ export function TimeHackerApp() {
     if (requestBusyRef.current) return;
     if (status === "RUNNING") void stopChallenge();
     else if (status === "RESULT_UNCONFIRMED") void confirmStoppedChallenge();
-    else if (firstLesson && (status === "FAILED" || (status === "SUCCESS" && !firstLevelCompleted))) {
+    else if (reasoningRound && (status === "FAILED" || (status === "SUCCESS" && !roundCompleted))) {
       if (armedRef.current && status === "FAILED") void startChallenge();
       else {
         setResult(null);
@@ -454,11 +481,13 @@ export function TimeHackerApp() {
     else if (status === "SUCCESS" || status === "FAILED") {
       if (status === "SUCCESS") trackSoftLaunchEvent("next_level");
       prepareNext();
+      if (roundCompleted && ordinal === 100) { setPanel("cheats"); setMenuOpen(true); }
     }
     else if (status === "READY") void startChallenge();
-  }, [confirmStoppedChallenge, dashboard, firstLesson, firstLevelCompleted, prepareNext, startChallenge, status, stopChallenge, trackSoftLaunchEvent]);
+  }, [confirmStoppedChallenge, dashboard, reasoningRound, roundCompleted, ordinal, prepareNext, startChallenge, status, stopChallenge, trackSoftLaunchEvent]);
 
   const switchMode = (nextMode: GameMode) => {
+    if (nextMode === mode) return;
     if (nextMode === "PURE" && !dashboard?.player.firstSuccessAt) return;
     emitCheatEvent("MODE_TOGGLE", nextMode.toLowerCase());
     modeRef.current = nextMode;
@@ -475,7 +504,9 @@ export function TimeHackerApp() {
 
   const saveNickname = async (event: FormEvent) => {
     event.preventDefault();
-    if (!playerId) return;
+    if (!playerId || nicknameBusy) return;
+    setNicknameBusy(true);
+    setNicknameStatus("");
     setError(null);
     try {
       await requestJson("/api/player", {
@@ -483,9 +514,10 @@ export function TimeHackerApp() {
         body: JSON.stringify({ playerId, nickname }),
       });
       await loadDashboard(playerId, difficulty);
+      setNicknameStatus(locale === "zh" ? "昵称已保存。" : "Name saved.");
     } catch (nicknameError) {
-      setError(localizeError(nicknameError, "nicknameSaveFailed"));
-    }
+      setNicknameStatus(localizeError(nicknameError, "nicknameSaveFailed"));
+    } finally { setNicknameBusy(false); }
   };
 
   const confirmReset = async () => {
@@ -572,21 +604,21 @@ export function TimeHackerApp() {
   );
   const showV2Puzzle = status === "READY" && mode === "HACKER"
     && Boolean(activeRoundCheat?.triggerConfig.v2Level);
-  const firstPrimaryLabel = !firstLesson ? undefined
-    : status === "RESULT_UNCONFIRMED" ? firstCopy.confirm
-    : status === "SUCCESS" ? firstLevelCompleted ? firstCopy.next : firstCopy.back
-    : status === "FAILED" ? armed ? firstCopy.retry : firstCopy.back
-    : status === "READY" && armed ? firstCopy.start
+  const roundPrimaryLabel = !reasoningRound ? undefined
+    : status === "RESULT_UNCONFIRMED" ? roundCopy.confirm
+    : status === "SUCCESS" ? roundCompleted ? roundCopy.next : roundCopy.back
+    : status === "FAILED" ? armed ? roundCopy.retry : roundCopy.back
+    : status === "READY" && armed ? roundCopy.start
     : undefined;
-  const firstAssistMessage = firstLevelCompleted ? firstCopy.continue
-    : !armed ? firstCopy.normal
-    : status !== "RUNNING" || elapsedMs < 9500 ? firstCopy.ready
-    : elapsedMs < 10000 ? firstCopy.slowing
-    : elapsedMs === 10000 ? firstCopy.stopNow : firstCopy.passed;
+  const roundAssistMessage = roundCompleted ? roundCopy.continue
+    : !armed ? roundCopy.normal
+    : status !== "RUNNING" || elapsedMs < 9500 ? roundCopy.ready
+    : elapsedMs < 10000 ? roundCopy.slowing
+    : elapsedMs === 10000 ? roundCopy.stopNow : roundCopy.passed;
   const gameShellClassName = [
     "game-shell",
     showReasoning ? "reasoning-campaign-active" : "",
-    firstLesson ? "first-lesson-active" : "",
+    reasoningRound ? "first-lesson-active" : "",
     showCognitiveRedesign ? "cognitive-redesign-active" : "",
     showCognitiveRedesign && showV2Puzzle ? "cognitive-puzzle-active" : "",
   ].filter(Boolean).join(" ");
@@ -615,7 +647,7 @@ export function TimeHackerApp() {
             className="menu-button"
             aria-label={t("openMenu")}
             aria-expanded={menuOpen}
-            disabled={firstLessonLocked}
+            disabled={roundLocked}
             onClick={() => {
               setPanel("game");
               setMenuOpen(true);
@@ -653,14 +685,14 @@ export function TimeHackerApp() {
             <h1>{t("simpleChallenge")}</h1>
           </motion.div>
 
-          {(showV2Puzzle || firstLesson) && activeRoundCheat && reasoningLevel ? <ReasoningScene
+          {(showV2Puzzle || reasoningRound) && activeRoundCheat && reasoningLevel ? <ReasoningScene
             key={`${activeRoundCheat.slug}:${puzzleResetEpoch}`}
             slug={activeRoundCheat.slug}
             level={reasoningLevel}
             locale={locale}
             armed={armed}
-            firstLesson={firstLesson}
-            inactive={firstLesson && status !== "READY"}
+            firstLesson={ordinal === 1}
+            inactive={reasoningRound && status !== "READY"}
             hintLevel={hintLevel}
             onDiscover={() => {
               emitCheatEvent("V2_PUZZLE_DISCOVERED", activeRoundCheat.slug);
@@ -693,16 +725,16 @@ export function TimeHackerApp() {
             />
           ) : null}
 
-          <TimerStage
+          {campaignComplete ? <section className="simple-result success" role="status"><h2>{locale === "zh" ? "100 关已完成" : "All 100 levels complete"}</h2><button type="button" onClick={() => switchPanel("cheats")}>{locale === "zh" ? "查看通关档案" : "View completed archive"}</button></section> : <TimerStage
             elapsedMs={elapsedMs}
             status={status}
             armed={mode === "HACKER" && armed}
             disabled={status === "LIMIT_REACHED"}
             onPrimary={handlePrimary}
             onEvent={emitCheatEvent}
-            primaryLabelOverride={firstPrimaryLabel}
-            assistMessage={firstLesson ? firstAssistMessage : undefined}
-          />
+            primaryLabelOverride={roundPrimaryLabel}
+            assistMessage={reasoningRound ? roundAssistMessage : undefined}
+          />}
 
           <div className="live-message" aria-live="polite" role="status">
             {error ? <span className="error-copy">{error}</span> : null}
@@ -722,10 +754,10 @@ export function TimeHackerApp() {
                 aria-live="assertive"
               >
                 <div>
-                  <h2>{firstLesson
-                    ? firstLevelCompleted ? firstCopy.completed : result.success ? firstCopy.unassisted : result.errorMs < 0 ? firstCopy.early : firstCopy.late
+                  <h2>{reasoningRound
+                    ? roundCompleted ? roundCopy.completed : result.success ? roundCopy.unassisted : result.errorMs < 0 ? roundCopy.early : roundCopy.late
                     : result.success ? t("successSimple") : t("missSimple")}</h2>
-                  {firstLesson && (firstLevelCompleted || armed) ? <p>{firstLevelCompleted ? firstCopy.conquered : firstCopy.retained}</p> : null}
+                  {reasoningRound && (roundCompleted || armed) ? <p>{roundCompleted ? roundCopy.conquered : roundCopy.retained}</p> : null}
                 </div>
                 <div className="simple-result-number">
                   <span>{resultCopy?.duration}<small>s</small></span>
@@ -744,6 +776,7 @@ export function TimeHackerApp() {
           {menuOpen ? (
             <motion.div className="drawer-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onPointerDown={() => setMenuOpen(false)}>
               <motion.aside
+                ref={drawerRef}
                 className="game-drawer"
                 role="dialog"
                 aria-modal="true"
@@ -792,7 +825,8 @@ export function TimeHackerApp() {
                           <button type="button" className={mode === "HACKER" ? "active" : ""} onClick={() => switchMode("HACKER")}>{t("playfulMode")}</button>
                           <button type="button" className={mode === "PURE" ? "active" : ""} disabled={dashboard.campaign.track === "SOFT_LAUNCH" || !dashboard.player.firstSuccessAt} onClick={() => switchMode("PURE")}>{t("pureMode")}</button>
                         </div>
-                        {dashboard.campaign.track === "FULL" && dashboard.player.firstSuccessAt ? (
+                        {dashboard.campaign.track === "SOFT_LAUNCH" ? <p>{locale === "zh" ? "完成前 12 关后解锁纯计时。" : "Complete the first 12 levels to unlock pure timing."}</p> : null}
+                        {!isReasoningEnabled() && dashboard.campaign.track === "FULL" && dashboard.player.firstSuccessAt ? (
                           <label className="difficulty-control">
                             <span>{t("difficultyLabel")}</span>
                             <select value={difficulty} onChange={async (event) => {
@@ -812,13 +846,14 @@ export function TimeHackerApp() {
 
                       <nav className="drawer-nav" aria-label={t("moreGameOptions")}>
                         {status === "READY" && mode === "HACKER" && activeRoundCheat ? (
-                          <button type="button" onClick={() => setHintLevel((level) => {
-                            const next = level === 0 ? 1 : level === 1 ? 2 : 3;
+                          <button type="button" onClick={() => {
+                            const next = hintLevel === 0 ? 1 : hintLevel === 1 ? 2 : 3;
                             trackSoftLaunchEventOnce(next === 1 ? "hint_1_open" : next === 2 ? "hint_2_open" : "answer_open");
-                            return next;
-                          })}>
+                            setMenuOpen(false);
+                            setHintLevel(next);
+                          }}>
                             <CircleHelp aria-hidden="true" size={20} />
-                            <span>{hintLevel === 0 ? t("hint") : hintLevel < 2 ? t("showNextHint") : t("showAnswer")}</span>
+                            <span>{hintLevel === 0 ? t("hint") : hintLevel < 2 ? t("showNextHint") : showReasoning ? locale === "zh" ? "解题思路" : "Solution approach" : t("showAnswer")}</span>
                             <b>{hintLevel}/3</b>
                           </button>
                         ) : null}
@@ -827,7 +862,7 @@ export function TimeHackerApp() {
                       </nav>
 
                       <section className="drawer-section progress-section">
-                        <div className="drawer-section-title"><div><BarChart3 aria-hidden="true" size={20} /><h3>{t("myProgress")}</h3></div><strong>L{dashboard.player.currentLevel}</strong></div>
+                        <div className="drawer-section-title"><div><BarChart3 aria-hidden="true" size={20} /><h3>{t("myProgress")}</h3></div><strong>{isReasoningEnabled() ? `${ordinal || 100}/100` : `L${dashboard.player.currentLevel}`}</strong></div>
                         <div className="metric-grid">
                           <div><span>{t("runs")}</span><b>{dashboard.player.totalGames}</b></div>
                           <div><span>{t("wins")}</span><b>{dashboard.player.successGames}</b></div>
@@ -841,7 +876,8 @@ export function TimeHackerApp() {
                           <UserRoundPen aria-hidden="true" size={17} />
                           <label htmlFor="nickname">{t("playerName")}</label>
                           <input id="nickname" value={nickname} onChange={(event) => setNickname(event.target.value)} minLength={2} maxLength={24} placeholder={t("playerName")} />
-                          <button type="submit">{t("save")}</button>
+                          <button type="submit" disabled={nicknameBusy}>{t("save")}</button>
+                          <p role="status">{nicknameStatus}</p>
                         </form>
                       ) : null}
 
@@ -849,7 +885,7 @@ export function TimeHackerApp() {
                     </>
                   ) : null}
 
-                  {panel === "cheats" ? <CollectionPanel collection={dashboard.collection} /> : null}
+                  {panel === "cheats" ? <CollectionPanel collection={dashboard.collection} reasoning={isReasoningEnabled()} /> : null}
                   {panel === "ranks" ? <RankingsPanel rankings={rankings} loading={rankingsLoading} error={rankingsError} onRetry={() => void loadRankings()} /> : null}
                 </div>
               </motion.aside>

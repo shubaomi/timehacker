@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: "first-level-loop.spec.ts",
   workers: 1,
+  outputDir: "test-results/first-level-runs",
   timeout: 60000,
   reporter: "list",
   use: { baseURL: "http://127.0.0.1:3011", channel: "msedge", trace: "retain-on-failure" },

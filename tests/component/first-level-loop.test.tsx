@@ -13,6 +13,8 @@ const first = CHEAT_DEFINITIONS.find(c => c.triggerConfig.reasoning?.ordinal ===
 const second = CHEAT_DEFINITIONS.find(c => c.triggerConfig.reasoning?.ordinal === 2)!;
 
 function setup(options: { missCount?: number; completionErrors?: number; dashboardErrors?: number; startErrors?: number; ordinal?: number } = {}) {
+  const current = options.ordinal === 2 ? second : first;
+  const next = CHEAT_DEFINITIONS.find(c => c.triggerConfig.reasoning?.ordinal === (options.ordinal ?? 1) + 1)!;
   let starts = 0, completions = 0, unlocked = false;
   let completionErrors = options.completionErrors ?? 0;
   let dashboardErrors = options.dashboardErrors ?? 0;
@@ -25,7 +27,7 @@ function setup(options: { missCount?: number; completionErrors?: number; dashboa
       return Response.json({
         player: { playerId: "first-loop", displayName: "Test", nickname: null, currentLevel: unlocked ? 2 : 1, totalGames: completions, successGames: unlocked ? 1 : 0, bestErrorMs: null, firstSuccessAt: null, unlockedCheats: unlocked ? 1 : 0 },
         daily: { limit: 50, attempts: starts, remaining: 50 - starts, resetsAt: "2026-10-12T00:00:00Z" },
-        difficulty: 1, maximumDifficulty: 1, suggestedCheat: unlocked || options.ordinal === 2 ? second : first,
+        difficulty: 1, maximumDifficulty: 1, suggestedCheat: unlocked ? next : current,
         campaign: { track: "SOFT_LAUNCH", totalLevels: 12, completedLevels: unlocked ? 1 : 0, currentLevelNumber: unlocked ? 2 : 1, complete: false }, collection: [],
       });
     }
@@ -38,10 +40,10 @@ function setup(options: { missCount?: number; completionErrors?: number; dashboa
       completionsSent.push({ url, body });
       if (completionErrors-- > 0) return Response.json({ error: "offline" }, { status: 503 });
       completions++;
-      const assisted = evaluateCheatTrigger(first.triggerConfig, body.events);
+      const assisted = evaluateCheatTrigger(current.triggerConfig, body.events);
       const success = completions > (options.missCount ?? 0);
       unlocked = success && assisted;
-      return Response.json({ game: { id: `game-${starts}`, durationMs: success ? 10000 : 9000, errorMs: success ? 0 : -1000, absoluteErrorMs: success ? 0 : 1000, success, mode: "HACKER", usedCheat: assisted ? { slug: first.slug, name: first.name } : null } });
+      return Response.json({ game: { id: `game-${starts}`, durationMs: success ? 10000 : 9000, errorMs: success ? 0 : -1000, absoluteErrorMs: success ? 0 : 1000, success, mode: "HACKER", usedCheat: assisted ? { slug: current.slug, name: current.name } : null } });
     }
     return Response.json({ player: { playerId: "first-loop" } });
   });
@@ -132,11 +134,25 @@ it("retains real solve evidence after a failed start and blocks duplicate starts
   expect(evaluateCheatTrigger(first.triggerConfig, mock.completionsSent[0].body.events)).toBe(true);
 });
 
-it("leaves the second level on the existing interaction path", async () => {
+it("keeps the second level mounted and inactive during timing", async () => {
   setup({ ordinal: 2 });
   await screen.findByTestId("reasoning-scene");
   expect(screen.queryByText("你借到了 3 秒。")).not.toBeInTheDocument();
   await clickPrimary("开始");
   await screen.findByRole("button", { name: /^停止/ });
-  expect(screen.queryByTestId("reasoning-scene")).not.toBeInTheDocument();
+  expect(screen.getByTestId("reasoning-scene")).toHaveAttribute("data-inactive", "true");
+});
+
+it("applies immutable result recovery and dynamic next labels beyond the first lesson", async () => {
+  const mock = setup({ ordinal: 2, completionErrors: 1 });
+  await screen.findByTestId("reasoning-scene");
+  solve(REASONING_CAMPAIGN[1].puzzle)!.forEach(action => fireEvent.click(screen.getByTestId(`reasoning-action-${action}`)));
+  await clickPrimary("开始停表"); await clickPrimary("停止");
+  await clickPrimary("重试确认结果");
+  await screen.findByText("第 2 关「满格之后」完成");
+  expect(mock.completionsSent[1]).toEqual(mock.completionsSent[0]);
+  expect(mock.starts()).toBe(1);
+  await clickPrimary("进入第 3 关");
+  expect(await screen.findByRole("heading", { name: "共享指针" })).toBeInTheDocument();
+  expect(screen.getByTestId("reasoning-scene")).toHaveAttribute("data-solved", "false");
 });

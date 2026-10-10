@@ -8,7 +8,7 @@ import { REASONING_CAMPAIGN } from "@/game/reasoning-campaign/catalog";
 import { solve } from "@/game/reasoning-campaign/engine";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); });
-it("retains discovery after long keyboard exploration and resets a solved scene with its event state", async () => {
+it("retains discovery after long keyboard exploration and preserves a solved scene when reselecting the active mode", async () => {
   const cheat = CHEAT_DEFINITIONS.find(c=>c.triggerConfig.reasoning?.ordinal===1)!;
   const dashboard = { player: { playerId: "r100-component", displayName: "Test", nickname:null, currentLevel:1, totalGames:0, successGames:0, bestErrorMs:null, firstSuccessAt:null, unlockedCheats:0 }, daily:{ limit:50, attempts:0, remaining:50, resetsAt:"2026-10-04T00:00:00Z" }, difficulty:1, maximumDifficulty:1, suggestedCheat:cheat, campaign:{track:"SOFT_LAUNCH", totalLevels:12, completedLevels:0, currentLevelNumber:1, complete:false}, collection:[] };
   vi.stubGlobal("fetch", vi.fn(async(input:RequestInfo|URL)=>String(input).startsWith("/api/dashboard") ? Response.json(dashboard) : Response.json({player:{playerId:"r100-component"}})));
@@ -21,8 +21,8 @@ it("retains discovery after long keyboard exploration and resets a solved scene 
   expect(document.querySelector(".play-timer")).toHaveClass("has-secret");
   fireEvent.click(screen.getByRole("button",{name:"Open game menu"}));
   fireEvent.click(screen.getByRole("button",{name:"With secrets"}));
-  await waitFor(()=>expect(screen.getByTestId("reasoning-scene")).toHaveAttribute("data-solved","false"));
-  expect(document.querySelector(".play-timer")).not.toHaveClass("has-secret");
+  await waitFor(()=>expect(screen.getByTestId("reasoning-scene")).toHaveAttribute("data-solved","true"));
+  expect(document.querySelector(".play-timer")).toHaveClass("has-secret");
   path.forEach(action=>fireEvent.click(screen.getByTestId(`reasoning-action-${action}`)));
   expect(document.querySelector(".play-timer")).toHaveClass("has-secret");
 });

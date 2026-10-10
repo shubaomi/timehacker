@@ -14,6 +14,7 @@
 .first-lesson-active .play-timer { grid-template-columns: minmax(0,1fr) 190px; }
 .first-lesson-active .play-button { width: 100%; min-width: 0; }
 .first-lesson-active .simple-result p { font-size: 14px; line-height: 1.5; }
+.nickname-form > p { grid-column: 1 / -1; margin: 0; font-size: 13px; }
 @media (max-width:600px) {
   .reasoning-campaign-active .play-screen { width: calc(100% - 24px); padding-top: 10px; }
   .reasoning-campaign-active .play-timer { padding: 0 4px; gap: 10px; }
